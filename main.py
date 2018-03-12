@@ -32,7 +32,7 @@ def run_training(env):
         s2, r, t, info = env.step(a)
 
         episode_reward += r
-        #env.render()
+        env.render()
         r /= reward_scale
         #print(s1)
         buffer.append(s1, a, r, s2, t)

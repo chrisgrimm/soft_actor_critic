@@ -26,7 +26,7 @@ class AbstractSoftActorCritic(object):
         # constructing Q loss
         V_bar_S2 = self.V_network(S2, 'V_bar')
         Q = self.Q_network(S1, A, 'Q', reuse=True)
-        self.Q_loss = Q_loss = tf.reduce_mean(0.5*tf.square(Q - (R + gamma * V_bar_S2)))
+        self.Q_loss = Q_loss = tf.reduce_mean(0.5*tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
 
         # constructing pi loss
         self.pi_loss = pi_loss = tf.reduce_mean(log_pi_sampled * tf.stop_gradient(log_pi_sampled - Q_sampled + V_S1))
