@@ -1,22 +1,23 @@
 import numpy as np
 import gym
+from chaser import ChaserEnv
 from gym import spaces
 
 from replay_buffer.replay_buffer import ReplayBuffer
-from networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
+from networks.policy_mixins import MLPPolicy, GaussianPolicy2, CategoricalPolicy
 from networks.value_function_mixins import MLPValueFunc
 from networks.network_interface import AbstractSoftActorCritic
 
 def build_agent(env):
     state_shape = env.observation_space.shape
     if type(env.action_space) is spaces.Discrete:
-        print('is discrete!')
+        print('is discrete')
         action_shape = [env.action_space.n]
         PolicyType = CategoricalPolicy
     else:
         print('is gaussian')
         action_shape = env.action_space.shape
-        PolicyType = GaussianPolicy
+        PolicyType = GaussianPolicy2
 
     class Agent(PolicyType, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
@@ -37,8 +38,8 @@ def build_action_converter(env):
 
 def run_training(env):
     buffer_size = 10**7
-    num_train_steps = 4
-    batch_size = 32
+    num_train_steps = 1
+    batch_size = 128
     reward_scale = 1.0
     s1 = env.reset()
 
@@ -58,7 +59,7 @@ def run_training(env):
         time_steps += 1
 
         episode_reward += r
-        #env.render()
+        env.render()
         r /= reward_scale
         #print(s1)
         buffer.append(s1, a, r, s2, t)
@@ -79,9 +80,10 @@ def run_training(env):
             episodes += 1
 
 
-env = gym.make('HalfCheetah-v2')
+#env = gym.make('HalfCheetah-v2')
 #env = gym.make('CartPole-v0')
 #env = gym.make('Pendulum-v0')
+env = ChaserEnv()
 #env = gym.make('MountainCarContinuous-v0')
 run_training(env)
 

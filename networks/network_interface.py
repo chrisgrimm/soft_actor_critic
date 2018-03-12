@@ -60,8 +60,8 @@ class AbstractSoftActorCritic(object):
         sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
-        [_, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
-            [self.check, self.train_Q, self.train_V, self.train_pi, self.V_loss, self.Q_loss, self.pi_loss],
+        [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
+            [self.train_V, self.train_Q, self.train_pi, self.V_loss, self.Q_loss, self.pi_loss],
             feed_dict={self.S1: S1, self.A: A, self.R: R, self.S2: S2, self.T: T})
         self.sess.run(self.soft_update_xi_bar)
         return V_loss, Q_loss, pi_loss

@@ -11,6 +11,8 @@ class MLPValueFunc(object):
     def Q_network(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
+            print(s, a)
+            print(sa)
             fc1 = tf.layers.dense(sa, 128, tf.nn.relu, name='fc1')
             fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
             q = tf.reshape(tf.layers.dense(fc2, 1, name='q'), [-1])
