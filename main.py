@@ -36,7 +36,7 @@ def build_action_converter(env):
 
 
 def run_training(env):
-    buffer_size = 10**6
+    buffer_size = 10**7
     num_train_steps = 4
     batch_size = 32
     reward_scale = 1.0
@@ -44,18 +44,21 @@ def run_training(env):
 
     agent = build_agent(env)
     action_converter = build_action_converter(env)
+
     buffer = ReplayBuffer(buffer_size)
     episode_reward = 0
     episodes = 0
+    time_steps = 0
     while True:
         a = agent.sample_actions([s1])
         a = a[0]
         #s2, r, t, info = env.step(2*a)
         #s2, r, t, info = env.step(np.argmax(a))
         s2, r, t, info = env.step(action_converter(a))
+        time_steps += 1
 
         episode_reward += r
-        env.render()
+        #env.render()
         r /= reward_scale
         #print(s1)
         buffer.append(s1, a, r, s2, t)
@@ -71,12 +74,12 @@ def run_training(env):
             #summary.value.add(tag='episode reward', simple_value=episode_reward)
             #agent.tb_writer.add_summary(summary, episodes)
             #agent.tb_writer.flush()
-            print('Episode %s\t Reward: %s' % (episodes, episode_reward))
+            print('Episode %s\t Time Steps: %s\t Reward: %s' % (episodes, time_steps, episode_reward))
             episode_reward = 0
             episodes += 1
 
 
-env = gym.make('BipedalWalker-v2')
+env = gym.make('HalfCheetah-v2')
 #env = gym.make('CartPole-v0')
 #env = gym.make('Pendulum-v0')
 #env = gym.make('MountainCarContinuous-v0')

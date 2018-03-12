@@ -20,7 +20,7 @@ class GaussianPolicy(object):
     def produce_policy_parameters(self, a_shape, processed_s):
         mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params')
         sigma_params = tf.layers.dense(processed_s, a_shape, tf.nn.sigmoid, name='sigma_params')
-        return (mu_params, sigma_params + 0.0001)
+        return (mu_params, 2*sigma_params + 0.0001)
 
     def policy_parameters_to_log_prob(self, a, parameters):
         (mu, sigma) = parameters
