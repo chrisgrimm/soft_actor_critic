@@ -20,5 +20,5 @@ class CriticValueNetwork(object):
         with tf.variable_scope(name, reuse=reuse):
             fc1 = tf.layers.dense(state1, self.hidden_size, tf.nn.relu, name='fc1')
             fc2 = tf.layers.dense(fc1, self.hidden_size, tf.nn.relu, name='fc2')
-            V = tf.layers.dense(fc2, 1, name='Q')
+            V = tf.layers.dense(fc2, 1, name='V')
         return V

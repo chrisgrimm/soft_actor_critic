@@ -3,7 +3,7 @@ from collections import deque
 
 class ReplayBuffer(object):
 
-    def __init__(self, state_shape, action_shape, maxlen):
+    def __init__(self, maxlen):
         self.S1 = deque(maxlen=maxlen)
         self.S2 = deque(maxlen=maxlen)
         self.A = deque(maxlen=maxlen)
