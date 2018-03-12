@@ -2,6 +2,10 @@ from networks import network_interface
 import tensorflow as tf
 import numpy as np
 
+
+def leaky_relu(x, alpha=0.2):
+    return tf.maximum(x, alpha*x)
+
 class MLPValueFunc(object):
 
     def Q_network(self, s, a, name, reuse=None):

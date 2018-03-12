@@ -1,41 +1,8 @@
 import tensorflow as tf
 from abc import abstractmethod
 
-class AbstractPolicy(object):
-
-    @abstractmethod
-    def input_processing(self, s):
-        pass
-
-    @abstractmethod
-    def produce_policy_parameters(self, a_shape, processed_s):
-        pass
-
-    @abstractmethod
-    def policy_parameters_to_log_prob(self, a, parameters):
-        pass
-
-    @abstractmethod
-    def policy_parameters_to_sample(self, parameters):
-        pass
-
-
-    def pi_network_log_prob(self, a, s, name, reuse=None):
-        with tf.variable_scope(name, reuse=reuse):
-            processed_s = self.input_processing(s)
-            a_shape = a.get_shape()[1].value
-            parameters = self.produce_policy_parameters(a_shape, processed_s)
-            log_prob = self.policy_parameters_to_log_prob(a, parameters)
-        return log_prob
-
-    def sample_pi_network(self, a_shape, s, name, reuse=None):
-        with tf.variable_scope(name, reuse=reuse):
-            print(s)
-            processed_s = self.input_processing(s)
-            parameters = self.produce_policy_parameters(a_shape, processed_s)
-            sample = self.policy_parameters_to_sample(parameters)
-        return sample
-
+def leaky_relu(x, alpha=0.2):
+    return tf.maximum(x, alpha*x)
 
 class MLPPolicy(object):
 
@@ -52,7 +19,7 @@ class GaussianPolicy(object):
 
     def produce_policy_parameters(self, a_shape, processed_s):
         mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params')
-        sigma_params = tf.layers.dense(processed_s, a_shape, tf.nn.relu, name='sigma_params')
+        sigma_params = tf.layers.dense(processed_s, a_shape, tf.nn.sigmoid, name='sigma_params')
         return (mu_params, sigma_params + 0.0001)
 
     def policy_parameters_to_log_prob(self, a, parameters):
@@ -68,6 +35,17 @@ class GaussianPolicy(object):
         # apply tanh to output of sample.
         return tf.tanh(tf.distributions.Normal(mu, sigma).sample())
 
+class GaussianMixturePolicy(object):
+
+    def produce_policy_parameters(self, a_shape, processed_s):
+        pass
+
+    def policy_parmeters_to_log_prob(self, a, parameters):
+        pass
+
+    def policy_parameters_to_sample(self, parameters):
+        pass
+
 
 class CategoricalPolicy(object):
 
@@ -77,9 +55,14 @@ class CategoricalPolicy(object):
 
     def policy_parameters_to_log_prob(self, a, parameters):
         logits = parameters
-        return tf.distributions.Categorical(logits=logits).log_prob(tf.argmax(a, axis=1))
+
+        out = tf.distributions.Categorical(logits=logits).log_prob(tf.argmax(a, axis=1))
+        #out = tf.Print(out, [out], summarize=10)
+        return out
 
     def policy_parameters_to_sample(self, parameters):
         logits = parameters
         a_shape = logits.get_shape()[1].value
-        return tf.one_hot(tf.distributions.Categorical(logits=logits).sample(), a_shape)
+        #logits = tf.Print(logits, [tf.nn.softmax(logits)], message='logits are:', summarize=10)
+        out = tf.one_hot(tf.distributions.Categorical(logits=logits).sample(), a_shape)
+        return out

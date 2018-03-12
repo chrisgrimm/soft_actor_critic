@@ -16,6 +16,7 @@ class AbstractSoftActorCritic(object):
         learning_rate = 3*10**-4
 
         # constructing V loss
+
         self.A_sampled = A_sampled = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1, 'pi'))
         V_S1 = self.V_network(S1, 'V')
         Q_sampled = self.Q_network(S1, A_sampled, 'Q')
@@ -78,9 +79,32 @@ class AbstractSoftActorCritic(object):
         pass
 
     @abstractmethod
-    def pi_network_log_prob(self, a, s, name, reuse=None):
+    def input_processing(self, s):
         pass
 
     @abstractmethod
-    def sample_pi_network(self, a_shape, s, name, reuse=None):
+    def produce_policy_parameters(self, a_shape, processed_s):
         pass
+
+    @abstractmethod
+    def policy_parameters_to_log_prob(self, a, parameters):
+        pass
+
+    @abstractmethod
+    def policy_parameters_to_sample(self, parameters):
+        pass
+
+    def pi_network_log_prob(self, a, s, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            processed_s = self.input_processing(s)
+            a_shape = a.get_shape()[1].value
+            parameters = self.produce_policy_parameters(a_shape, processed_s)
+            log_prob = self.policy_parameters_to_log_prob(a, parameters)
+        return log_prob
+
+    def sample_pi_network(self, a_shape, s, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            processed_s = self.input_processing(s)
+            parameters = self.produce_policy_parameters(a_shape, processed_s)
+            sample = self.policy_parameters_to_sample(parameters)
+        return sample

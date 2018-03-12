@@ -2,11 +2,12 @@ import numpy as np
 import gym
 
 from replay_buffer.replay_buffer import ReplayBuffer
-from networks.policy_mixins import AbstractPolicy, MLPPolicy, GaussianPolicy, CategoricalPolicy
+from networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
 from networks.value_function_mixins import MLPValueFunc
 from networks.network_interface import AbstractSoftActorCritic
 
-class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractPolicy, AbstractSoftActorCritic):
+
+class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
     def __init__(self, s_shape, a_shape):
         super(Agent, self).__init__(s_shape, a_shape)
 
@@ -26,16 +27,20 @@ def run_training(env):
     while True:
         a = agent.sample_actions([s1])
         a = a[0]
-        s2, r, t, info = env.step(2*a)
+        #s2, r, t, info = env.step(2*a)
+        #s2, r, t, info = env.step(np.argmax(a))
+        s2, r, t, info = env.step(a)
+
         episode_reward += r
-        env.render()
+        #env.render()
         r /= reward_scale
+        #print(s1)
         buffer.append(s1, a, r, s2, t)
         if len(buffer) >= batch_size:
             for i in range(num_train_steps):
                 s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
                 [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                print('v_loss', v_loss, 'q_loss', q_loss, 'pi_loss', pi_loss)
+                #print('v_loss', v_loss, 'q_loss', q_loss, 'pi_loss', pi_loss)
 
         s1 = s2
         if t:
@@ -49,8 +54,9 @@ def run_training(env):
             episodes += 1
 
 
-
+env = gym.make('BipedalWalker-v2')
 #env = gym.make('CartPole-v0')
-env = gym.make('Pendulum-v0')
+#env = gym.make('Pendulum-v0')
+#env = gym.make('MountainCarContinuous-v0')
 run_training(env)
 
