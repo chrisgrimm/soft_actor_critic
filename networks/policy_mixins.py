@@ -13,7 +13,6 @@ class AbstractPolicy(object):
 
     @abstractmethod
     def policy_parameters_to_log_prob(self, a, parameters):
-
         pass
 
     @abstractmethod
@@ -49,12 +48,12 @@ class MLPPolicy(object):
 class GaussianPolicy(object):
     '''
     Policy outputs a gaussian action that is clamped to the interval [-1, 1]
-
     '''
+
     def produce_policy_parameters(self, a_shape, processed_s):
         mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params')
-        sigma_params = tf.layers.dense(processed_s, a_shape, tf.nn.sigmoid, name='sigma_params')
-        return (mu_params, sigma_params)
+        sigma_params = tf.layers.dense(processed_s, a_shape, tf.nn.relu, name='sigma_params')
+        return (mu_params, sigma_params + 0.0001)
 
     def policy_parameters_to_log_prob(self, a, parameters):
         (mu, sigma) = parameters
@@ -63,7 +62,6 @@ class GaussianPolicy(object):
         log_prob = tf.distributions.Normal(mu, sigma).log_prob(u)
         return tf.reduce_sum(log_prob, axis=1) - tf.reduce_sum(tf.log(1 - tf.square(tf.tanh(u))), axis=1)
 
-
     def policy_parameters_to_sample(self, parameters):
         (mu, sigma) = parameters
         # TODO same here: confirm that this function behaves as expected
@@ -71,27 +69,17 @@ class GaussianPolicy(object):
         return tf.tanh(tf.distributions.Normal(mu, sigma).sample())
 
 
-class DiscretePolicy(object):
-
+class CategoricalPolicy(object):
 
     def produce_policy_parameters(self, a_shape, processed_s):
-        pass
+        logits = tf.layers.dense(processed_s, a_shape, name='logits')
+        return logits
 
     def policy_parameters_to_log_prob(self, a, parameters):
-        pass
+        logits = parameters
+        return tf.distributions.Categorical(logits=logits).log_prob(tf.argmax(a, axis=1))
 
     def policy_parameters_to_sample(self, parameters):
-        pass
-
-
-
-
-# TODO build convolutional policy adapter
-#class ConvPolicy(AbstractPolicy):
-#
-#    def input_processing(self, s):
-
-
-
-
-
+        logits = parameters
+        a_shape = logits.get_shape()[1].value
+        return tf.one_hot(tf.distributions.Categorical(logits=logits).sample(), a_shape)

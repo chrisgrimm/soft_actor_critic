@@ -1,21 +1,14 @@
 import numpy as np
-from replay_buffer.replay_buffer import ReplayBuffer
 import gym
-import tensorflow as tf
-from networks_new.policy_mixins import AbstractPolicy, MLPPolicy, GaussianPolicy
-from networks_new.value_function_mixins import MLP_Values
-from networks_new.network_interface import AbstractSoftActorCritic
-from networks_new import policy_mixins, network_interface, value_function_mixins
 
+from replay_buffer.replay_buffer import ReplayBuffer
+from networks.policy_mixins import AbstractPolicy, MLPPolicy, GaussianPolicy, CategoricalPolicy
+from networks.value_function_mixins import MLPValueFunc
+from networks.network_interface import AbstractSoftActorCritic
 
-class Agent(GaussianPolicy, MLPPolicy, MLP_Values, AbstractPolicy, AbstractSoftActorCritic):
-
+class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractPolicy, AbstractSoftActorCritic):
     def __init__(self, s_shape, a_shape):
         super(Agent, self).__init__(s_shape, a_shape)
-
-
-
-
 
 def run_training(env):
     state_size = env.observation_space.shape

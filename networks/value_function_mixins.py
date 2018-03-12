@@ -1,8 +1,8 @@
-from networks_new import network_interface
+from networks import network_interface
 import tensorflow as tf
 import numpy as np
 
-class MLP_Values(object):
+class MLPValueFunc(object):
 
     def Q_network(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
