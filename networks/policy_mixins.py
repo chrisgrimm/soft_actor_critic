@@ -35,7 +35,7 @@ class GaussianPolicy(object):
         (mu, log_sigma) = parameters
         # TODO same here: confirm that this function behaves as expected
         # apply tanh to output of sample.
-        return 0.99*tf.tanh(tf.distributions.Normal(mu, tf.exp(log_sigma)).sample())
+        return tf.clip_by_value(tf.tanh(tf.distributions.Normal(mu, tf.exp(log_sigma)).sample()), -0.99, 0.99)
 
 class GaussianPolicy2(object):
     '''

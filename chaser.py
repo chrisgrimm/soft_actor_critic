@@ -71,8 +71,8 @@ class ChaserEnv(Env):
                 return np.concatenate([np.array(self.agent_pos) / self.size, np.array(self.prey_pos) / self.size], axis=0)
 
     def update_position(self, old_pos, delta):
-        new_pos_x = (old_pos[0] + delta[0]) % self.size
-        new_pos_y = (old_pos[1] + delta[1]) % self.size
+        new_pos_x = np.clip((old_pos[0] + delta[0]), 0, self.size)
+        new_pos_y = np.clip((old_pos[1] + delta[1]), 0, self.size)
         return (new_pos_x, new_pos_y)
 
 
