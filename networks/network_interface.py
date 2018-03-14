@@ -19,13 +19,13 @@ class AbstractSoftActorCritic(object):
 
         self.A_sampled = A_sampled = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1, 'pi'))
         V_S1 = self.V_network(S1, 'V')
-        Q_sampled = self.Q_network(S1, A_sampled, 'Q')
+        Q_sampled = self.Q_network(S1, self.transform_action_sample(A_sampled), 'Q')
         log_pi_sampled = self.pi_network_log_prob(A_sampled, S1, 'pi', reuse=True)
         self.V_loss = V_loss = tf.reduce_mean(0.5*tf.square(V_S1 - (Q_sampled - log_pi_sampled)))
 
         # constructing Q loss
         V_bar_S2 = self.V_network(S2, 'V_bar')
-        Q = self.Q_network(S1, A, 'Q', reuse=True)
+        Q = self.Q_network(S1, self.transform_action_sample(A), 'Q', reuse=True)
         self.Q_loss = Q_loss = tf.reduce_mean(0.5*tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
 
         # constructing pi loss
@@ -92,6 +92,10 @@ class AbstractSoftActorCritic(object):
 
     @abstractmethod
     def policy_parameters_to_sample(self, parameters):
+        pass
+
+    @abstractmethod
+    def transform_action_sample(self, action_sample):
         pass
 
     def pi_network_log_prob(self, a, s, name, reuse=None):

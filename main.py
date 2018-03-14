@@ -3,7 +3,7 @@ import gym
 from chaser import ChaserEnv
 from gym import spaces
 
-from replay_buffer.replay_buffer import ReplayBuffer
+from replay_buffer.replay_buffer import ReplayBuffer2
 from networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
 from networks.value_function_mixins import MLPValueFunc
 from networks.network_interface import AbstractSoftActorCritic
@@ -30,6 +30,7 @@ def build_action_converter(env):
             return np.argmax(a)
     else:
         def converter(a):
+            a = np.tanh(a)
             h, l = env.action_space.high, env.action_space.low
             return ((a + 1) / 2) * (h - l) + l
     return converter
@@ -37,16 +38,16 @@ def build_action_converter(env):
 
 
 def run_training(env):
-    buffer_size = 10**6
+    buffer_size = 10**7
     num_train_steps = 1
     batch_size = 32
-    reward_scale = 1./10.0
+    reward_scale = 1./10.
     s1 = env.reset()
 
     agent = build_agent(env)
     action_converter = build_action_converter(env)
 
-    buffer = ReplayBuffer(buffer_size)
+    buffer = ReplayBuffer2(buffer_size)
     episode_reward = 0
     episodes = 0
     time_steps = 0
