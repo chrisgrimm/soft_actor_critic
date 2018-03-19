@@ -1,4 +1,4 @@
-from networks import network_interface
+from sac.networks import network_interface
 import tensorflow as tf
 import numpy as np
 

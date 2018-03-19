@@ -12,7 +12,7 @@ setup(name='soft-actor-critic',
       url='https://github.com/chrisgrimm/soft_actor_critic',
       author='Chris Grimm',
       author_email='cgrimm1994@gmail.com',
-      packages=['soft_actor_critic'],
+      packages=['sac'],
       install_requires=[
           'tensorflow==1.6.0',
           'gym==0.10.4',

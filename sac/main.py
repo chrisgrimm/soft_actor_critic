@@ -4,10 +4,10 @@ import numpy as np
 import gym
 from gym import spaces
 
-from replay_buffer.replay_buffer import ReplayBuffer2
-from networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
-from networks.value_function_mixins import MLPValueFunc
-from networks.network_interface import AbstractSoftActorCritic
+from sac.replay_buffer.replay_buffer import ReplayBuffer2
+from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
+from sac.networks.value_function_mixins import MLPValueFunc
+from sac.networks.network_interface import AbstractSoftActorCritic
 
 
 def build_agent(env):
