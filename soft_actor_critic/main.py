@@ -2,7 +2,6 @@ import argparse
 
 import numpy as np
 import gym
-from chaser import ChaserEnv
 from gym import spaces
 
 from replay_buffer.replay_buffer import ReplayBuffer2
@@ -97,4 +96,4 @@ if __name__ == '__main__':
                  buffer_size=args.buffer_size,
                  reward_scale=args.reward_scale,
                  batch_size=args.batch_size,
-                 num_train_steps=args.num_train.steps)
+                 num_train_steps=args.num_train_steps)

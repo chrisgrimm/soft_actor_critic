@@ -12,10 +12,9 @@ setup(name='soft-actor-critic',
       url='https://github.com/chrisgrimm/soft_actor_critic',
       author='Chris Grimm',
       author_email='cgrimm1994@gmail.com',
-      packages=['runs'],
+      packages=['soft_actor_critic'],
       install_requires=[
-          'paramiko==2.3.1',
-          'termcolor==1.1.0',
-          'PyYAML==3.12',
-          'tabulate==0.8.1',
-      ])
+          'tensorflow==1.6.0',
+          'gym==0.10.4',
+          'pygame==1.9.3',
+          ])
