@@ -1,0 +1,18 @@
+Network Structure Mix-ins
+
+The MLPPolicy mix-in abstracts away the structure of the input to the network. For vector based input two dense layers
+are provided in the MLPPolicy class, if convolutional input was desired, a corresponding mixin could be defined.
+
+Policy Distribution Mixins
+
+The GaussianPolicy and CategoricalPolicy mix-ins separate the type of distribution from the network architecture.
+This is done by implementing functions that take the processed input, which is assumed to have been transformed
+into a vector-based representation (by the input_processing function in the MLPPolicy mix-in), and output the
+parameters of the distribution. Here, parameters of a distribution refer to the quantities necessary for the computation
+of policy state-conditional action log-prob and for sampling random actions. Functions for sampling and
+computing the state-conditional action log-prob should be implemented as well. Finally, a transform_action_sample
+function is implemented.
+
+This function allows for a final transformation to be applied to the actions before they are
+passed to the network's value functions. This is done to allow for the policy network to use a different representation
+of the action-space than the value networks. This allows for better numerical stability for the GaussianPolicy.

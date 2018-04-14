@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from abc import abstractmethod
+from utils import component
 
 
 class AbstractSoftActorCritic(object):
@@ -17,11 +18,16 @@ class AbstractSoftActorCritic(object):
 
         # constructing V loss
 
-        self.A_sampled = A_sampled = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1, 'pi'))
+        self.A_sampled1 = A_sampled1 = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1, 'pi'))
+        self.A_sampled2 = A_sampled2 = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
+        self.A_max_likelihood = A_max_likelihood = tf.stop_gradient(self.get_best_action(a_shape[0], S1, 'pi', reuse=True))
+
         V_S1 = self.V_network(S1, 'V')
-        Q_sampled = self.Q_network(S1, self.transform_action_sample(A_sampled), 'Q')
-        log_pi_sampled = self.pi_network_log_prob(A_sampled, S1, 'pi', reuse=True)
-        self.V_loss = V_loss = tf.reduce_mean(0.5*tf.square(V_S1 - (Q_sampled - log_pi_sampled)))
+        Q_sampled1 = self.Q_network(S1, self.transform_action_sample(A_sampled1), 'Q')
+        log_pi_sampled1 = self.pi_network_log_prob(A_sampled1, S1, 'pi', reuse=True)
+        Q_sampled2 = self.Q_network(S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
+        log_pi_sampled2 = self.pi_network_log_prob(A_sampled2, S1, 'pi', reuse=True)
+        self.V_loss = V_loss = tf.reduce_mean(0.5*tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
 
         # constructing Q loss
         V_bar_S2 = self.V_network(S2, 'V_bar')
@@ -29,18 +35,13 @@ class AbstractSoftActorCritic(object):
         self.Q_loss = Q_loss = tf.reduce_mean(0.5*tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
 
         # constructing pi loss
-        self.pi_loss = pi_loss = tf.reduce_mean(log_pi_sampled * tf.stop_gradient(log_pi_sampled - Q_sampled + V_S1))
+        self.pi_loss = pi_loss = tf.reduce_mean(log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
 
         # grabbing all the relevant variables
         phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
         theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Q/')
         xi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V/')
         xi_bar = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
-
-        print('\nphi', phi)
-        print('\ntheta', theta)
-        print('\nxi', xi)
-        print('\nxi_bar', xi_bar)
 
         soft_update_xi_bar_ops = [tf.assign(xbar, tau*x + (1 - tau)*xbar) for (xbar, x) in zip(xi_bar, xi)]
         self.soft_update_xi_bar = soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
@@ -66,8 +67,11 @@ class AbstractSoftActorCritic(object):
         self.sess.run(self.soft_update_xi_bar)
         return V_loss, Q_loss, pi_loss
 
-    def sample_actions(self, S1):
-        actions = self.sess.run(self.A_sampled, feed_dict={self.S1: S1})
+    def get_actions(self, S1, sample=True):
+        if sample:
+            actions = self.sess.run(self.A_sampled1, feed_dict={self.S1: S1})
+        else:
+            actions = self.sess.run(self.A_max_likelihood, feed_dict={self.S1: S1})
         return actions
 
     @abstractmethod
@@ -95,6 +99,10 @@ class AbstractSoftActorCritic(object):
         pass
 
     @abstractmethod
+    def policy_parameters_to_max_likelihood_action(self, parameters):
+        pass
+
+    @abstractmethod
     def transform_action_sample(self, action_sample):
         pass
 
@@ -112,3 +120,10 @@ class AbstractSoftActorCritic(object):
             parameters = self.produce_policy_parameters(a_shape, processed_s)
             sample = self.policy_parameters_to_sample(parameters)
         return sample
+
+    def get_best_action(self, a_shape, s, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            processed_s = self.input_processing(s)
+            parameters = self.produce_policy_parameters(a_shape, processed_s)
+            actions = self.policy_parameters_to_max_likelihood_action(parameters)
+        return actions

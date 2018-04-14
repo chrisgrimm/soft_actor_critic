@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow as tf
 
 def onehot(idx, num_entries):
     x = np.zeros(num_entries)
@@ -22,3 +23,18 @@ def horz_stack_images(*images, spacing=5, background_color=(0,0,0)):
         canvas[:, width_pos:width_pos+width, :] = image
         width_pos += (width + spacing)
     return canvas
+
+
+def component(function):
+
+    def wrapper(*args, **kwargs):
+        reuse = kwargs.get('reuse', None)
+        name = kwargs['name']
+        if 'reuse' in kwargs:
+            del kwargs['reuse']
+        del kwargs['name']
+        with tf.variable_scope(name, reuse=reuse):
+            out = function(*args, **kwargs)
+            variables = tf.get_variable_scope().get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+            return out, variables
+    return wrapper
