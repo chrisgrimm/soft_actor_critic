@@ -1,1 +1,1 @@
-Implementation of Soft Actor Critic
+Implementation of Soft Actor Critic.
