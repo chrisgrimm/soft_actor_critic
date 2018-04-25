@@ -3,21 +3,21 @@ import argparse
 import numpy as np
 import gym
 from gym import spaces
+from goal_wrapper import MountaincarGoalWrapper
+import tensorflow as tf
 
 from sac.replay_buffer.replay_buffer import ReplayBuffer2
 from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
 from sac.networks.value_function_mixins import MLPValueFunc
 from sac.networks.network_interface import AbstractSoftActorCritic
-
+from sac.chaser import ChaserEnv
 
 def build_agent(env):
     state_shape = env.observation_space.shape
     if type(env.action_space) is spaces.Discrete:
-        print('is discrete')
         action_shape = [env.action_space.n]
         PolicyType = CategoricalPolicy
     else:
-        print('is gaussian')
         action_shape = env.action_space.shape
         PolicyType = GaussianPolicy
 
@@ -38,48 +38,49 @@ def build_action_converter(env):
             return ((a + 1) / 2) * (h - l) + l
     return converter
 
-
-def run_training(env, buffer_size, reward_scale, batch_size, num_train_steps):
-    if env == 'chaser':
+def string_to_env(env_name, buffer, reward_scaling):
+    if env_name == 'chaser':
         env = ChaserEnv()
+    elif env_name == 'mountaincar_continuous_hindsight':
+        env = MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'), buffer, reward_scaling=reward_scaling)
     else:
-        env = gym.make(env)
+        env = gym.make(env_name)
+    return env
 
+
+
+
+def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
     s1 = env.reset()
 
     agent = build_agent(env)
     action_converter = build_action_converter(env)
 
-    buffer = ReplayBuffer2(buffer_size)
     episode_reward = 0
     episodes = 0
     time_steps = 0
+    evaluation_period = 10
+    is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
     while True:
-        a = agent.sample_actions([s1])
+        a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))
         a = a[0]
-        # s2, r, t, info = env.step(2*a)
-        # s2, r, t, info = env.step(np.argmax(a))
         s2, r, t, info = env.step(action_converter(a))
         time_steps += 1
 
-        episode_reward += r
-        # env.render()
+        episode_reward += info['base_reward']
+        #env.render()
         r /= reward_scale
-        # print(s1)
-        buffer.append(s1, a, r, s2, t)
-        if len(buffer) >= batch_size:
-            for i in range(num_train_steps):
-                s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
-                [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                # print('v_loss', v_loss, 'q_loss', q_loss, 'pi_loss', pi_loss)
+        if not is_eval_period(episodes):
+            buffer.append(s1, a, r, s2, t)
+            if len(buffer) >= batch_size:
+                for i in range(num_train_steps):
+                    s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
+                    [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
         s1 = s2
         if t:
             s1 = env.reset()
-            # summary = tf.Summary()
-            # summary.value.add(tag='episode reward', simple_value=episode_reward)
-            # agent.tb_writer.add_summary(summary, episodes)
-            # agent.tb_writer.flush()
-            print('Episode %s\t Time Steps: %s\t Reward: %s' % (episodes, time_steps, episode_reward))
+            print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(episodes) else 'TRAIN',
+                                                                     episodes, time_steps, episode_reward))
             episode_reward = 0
             episodes += 1
 
@@ -92,8 +93,12 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1/10., type=float)
     args = parser.parse_args()
-    run_training(env=args.env,
-                 buffer_size=args.buffer_size,
+
+    buffer = ReplayBuffer2(args.buffer_size)
+    env = string_to_env(args.env, buffer, args.reward_scale)
+
+    run_training(env=env,
+                 buffer=buffer,
                  reward_scale=args.reward_scale,
                  batch_size=args.batch_size,
                  num_train_steps=args.num_train_steps)

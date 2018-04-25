@@ -30,6 +30,10 @@ class GaussianPolicy(object):
         #print(log_prob)
         return tf.reduce_sum(log_prob, axis=1) - tf.reduce_sum(tf.log(1 - tf.square(tf.tanh(u)) + EPS), axis=1)
 
+    def policy_parameters_to_max_likelihood_action(self, parameters):
+        (mu, sigma) = parameters
+        return mu
+
     def policy_parameters_to_sample(self, parameters):
         (mu, sigma) = parameters
         return tf.distributions.Normal(mu, sigma).sample()
@@ -68,6 +72,11 @@ class CategoricalPolicy(object):
         #logits = tf.Print(logits, [tf.nn.softmax(logits)], message='logits are:', summarize=10)
         out = tf.one_hot(tf.distributions.Categorical(logits=logits).sample(), a_shape)
         return out
+
+    def policy_parameters_to_max_likelihood_action(self, parameters):
+        logits = parameters
+        a_shape = logits.get_shape()[1].value
+        return tf.one_hot(tf.argmax(logits, axis=1), a_shape)
 
     def transform_action_sample(self, action_sample):
         return action_sample
