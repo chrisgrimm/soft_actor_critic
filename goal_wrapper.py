@@ -1,8 +1,10 @@
 from abc import abstractmethod
 import numpy as np
+from environment.pick_and_place import PickAndPlaceEnv
 from gym.spaces import Box
 
-class GoalWrapper(object):
+
+class GoalWrapper:
 
     def __init__(self, env, buffer, reward_scaling):
         self.env = env
@@ -41,8 +43,7 @@ class GoalWrapper(object):
 
     @abstractmethod
     def final_goal(self):
-        pass
-
+        pass 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
         new_s2 = self.obs_from_obs_part_and_goal(s2, self.final_goal())
@@ -63,8 +64,6 @@ class GoalWrapper(object):
     def render(self):
         return self.env.render()
 
-
-
     def recompute_trajectory(self, trajectory):
         if not trajectory:
             return
@@ -79,18 +78,19 @@ class GoalWrapper(object):
             new_r = self.reward(sp_obs_part, final_goal)
             new_t = self.terminal(sp_obs_part, final_goal) or t
             yield new_s, a, new_r, new_sp, new_t
-            if new_t == True:
+            if new_t:
                 break
 
     def feed_new_trajectory_to_buffer(self, trajectory):
         for (s, a, r, sp, t) in self.recompute_trajectory(trajectory):
-            self.buffer.append(s, a, r / self.reward_scaling, sp ,t)
+            self.buffer.append(s, a, r / self.reward_scaling, sp, t)
 
 
 class MountaincarGoalWrapper(GoalWrapper):
     '''
     new obs is [pos, vel, goal_pos]
     '''
+
     def obs_part_to_goal(self, obs_part):
         return np.array([obs_part[0]])
 
@@ -115,6 +115,29 @@ class MountaincarGoalWrapper(GoalWrapper):
         return np.array([0.5])
 
 
+class PickAndPlaceGoalWrapper(GoalWrapper):
+    def __init__(self, env, buffer, reward_scaling):
+        assert isinstance(env, PickAndPlaceEnv)
+        super().__init__(env, buffer, reward_scaling)
 
+    def obs_part_to_goal(self, obs_part):
+        return self.env._obs_to_goal(obs_part)
 
+    def reward(self, obs_part, goal):
+        return self.env._compute_reward(goal, obs_part)
 
+    def terminal(self, obs_part, goal):
+        return self.env._compute_terminal(goal, obs_part)
+
+    def get_obs_part(self, obs):
+        goal, obs_history = self.env.destructure_mlp_input(obs)
+        return obs_history
+
+    def get_goal_part(self, obs):
+        return self.env.obs_to_goal(obs)
+
+    def obs_from_obs_part_and_goal(self, obs_part, goal):
+        return self.env.mlp_input(goal, obs_part)
+
+    def final_goal(self):
+        self.env._goal()

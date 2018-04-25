@@ -2,6 +2,7 @@ import argparse
 
 import numpy as np
 import gym
+from environment.pick_and_place import PickAndPlaceEnv
 from gym import spaces
 from goal_wrapper import MountaincarGoalWrapper
 import tensorflow as tf
@@ -11,6 +12,7 @@ from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPol
 from sac.networks.value_function_mixins import MLPValueFunc
 from sac.networks.network_interface import AbstractSoftActorCritic
 from sac.chaser import ChaserEnv
+
 
 def build_agent(env):
     state_shape = env.observation_space.shape
@@ -31,23 +33,25 @@ def build_agent(env):
 def build_action_converter(env):
     def converter(a):
         if type(env.action_space) is spaces.Discrete:
-                return np.argmax(a)
+            return np.argmax(a)
         else:
             a = np.tanh(a)
             h, l = env.action_space.high, env.action_space.low
             return ((a + 1) / 2) * (h - l) + l
+
     return converter
+
 
 def string_to_env(env_name, buffer, reward_scaling):
     if env_name == 'chaser':
         env = ChaserEnv()
-    elif env_name == 'mountaincar_continuous_hindsight':
+    elif env_name == 'mountaincar-continuous-hindsight':
         env = MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'), buffer, reward_scaling=reward_scaling)
+    elif env_name == 'pick-and-place':
+        env = PickAndPlaceEnv(max_steps=500, neg_reward=False)
     else:
         env = gym.make(env_name)
     return env
-
-
 
 
 def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
@@ -67,8 +71,8 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
         s2, r, t, info = env.step(action_converter(a))
         time_steps += 1
 
-        episode_reward += info['base_reward']
-        #env.render()
+        episode_reward += r
+        env.render()
         r /= reward_scale
         if not is_eval_period(episodes):
             buffer.append(s1, a, r, s2, t)
@@ -91,7 +95,7 @@ if __name__ == '__main__':
     parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--reward-scale', default=1/10., type=float)
+    parser.add_argument('--reward-scale', default=1 / 10., type=float)
     args = parser.parse_args()
 
     buffer = ReplayBuffer2(args.buffer_size)

@@ -1,8 +1,6 @@
-import pygame
-import numpy as np
 import cv2
-import utils
-
+import numpy as np
+import pygame
 from gym import Env, spaces
 
 
