@@ -1,13 +1,13 @@
-import argparse
-
 import numpy as np
 import gym
 from gym import spaces
 
 from sac.replay_buffer.replay_buffer import ReplayBuffer2
-from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
+from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, \
+        CategoricalPolicy
 from sac.networks.value_function_mixins import MLPValueFunc
 from sac.networks.network_interface import AbstractSoftActorCritic
+import argparse
 
 
 def build_agent(env):
@@ -34,14 +34,14 @@ def build_action_converter(env):
                 return np.argmax(a)
         else:
             a = np.tanh(a)
-            h, l = env.action_space.high, env.action_space.low
-            return ((a + 1) / 2) * (h - l) + l
+            high, low = env.action_space.high, env.action_space.low
+            return ((a + 1) / 2) * (high - low) + low
     return converter
 
 
 def run_training(env, buffer_size, reward_scale, batch_size, num_train_steps):
     if env == 'chaser':
-        env = ChaserEnv()
+        env = sac.ChaserEnv()
     else:
         env = gym.make(env)
 
@@ -69,8 +69,10 @@ def run_training(env, buffer_size, reward_scale, batch_size, num_train_steps):
         buffer.append(s1, a, r, s2, t)
         if len(buffer) >= batch_size:
             for i in range(num_train_steps):
-                s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
-                [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                s1_sample, a_sample, r_sample, s2_sample, t_sample = \
+                        buffer.sample(batch_size)
+                [v_loss, q_loss, pi_loss] = agent.train_step(
+                        s1_sample, a_sample, r_sample, s2_sample, t_sample)
                 # print('v_loss', v_loss, 'q_loss', q_loss, 'pi_loss', pi_loss)
         s1 = s2
         if t:
