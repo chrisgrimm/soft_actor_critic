@@ -5,6 +5,7 @@ import gym
 from gym import spaces
 from goal_wrapper import MountaincarGoalWrapper
 import tensorflow as tf
+import dill as pickle
 
 from sac.replay_buffer.replay_buffer import ReplayBuffer2
 from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
@@ -26,6 +27,15 @@ def build_agent(env):
             super(Agent, self).__init__(s_shape, a_shape)
 
     return Agent(state_shape, action_shape)
+
+def inject_mimic_experiences(mimic_file, buffer, N=1):
+    with open(mimic_file, 'r') as f:
+        mimic_trajectories = pickle.load(f)
+    for trajectory in mimic_file:
+        for (s1, a, r, s2, t) in trajectory:
+            for _ in range(N):
+                buffer.append(s1, a, r, s2, t)
+
 
 
 def build_action_converter(env):
@@ -67,7 +77,7 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
         s2, r, t, info = env.step(action_converter(a))
         time_steps += 1
 
-        episode_reward += info['base_reward']
+        episode_reward += r
         #env.render()
         r /= reward_scale
         if not is_eval_period(episodes):
@@ -92,11 +102,13 @@ if __name__ == '__main__':
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1/10., type=float)
+    parser.add_argument('--mimic-file', default=None, type=str)
     args = parser.parse_args()
 
     buffer = ReplayBuffer2(args.buffer_size)
     env = string_to_env(args.env, buffer, args.reward_scale)
-
+    if args.mimic_file is not None:
+        inject_mimic_experiences(args.mimic_file, buffer)
     run_training(env=env,
                  buffer=buffer,
                  reward_scale=args.reward_scale,
