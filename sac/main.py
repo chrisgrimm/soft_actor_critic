@@ -72,7 +72,7 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
         time_steps += 1
 
         episode_reward += r
-        env.render()
+        # env.render()
         r /= reward_scale
         if not is_eval_period(episodes):
             buffer.append(s1, a, r, s2, t)
