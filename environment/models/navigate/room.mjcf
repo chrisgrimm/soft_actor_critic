@@ -1,0 +1,31 @@
+<worldbody>
+    <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
+    <geom name="floor" type="plane" size="2 2 2" class="floor"/>
+
+    <!--interior wall-->
+    <geom name="interior0" type="box" size=".05 .4 1" pos="-.5 1.6 1" class="wall"/>
+    <geom name="interior1" type="box" size=".05 .4 1" pos="-.5 -.1 1" class="wall"/>
+    <geom name="interior2" type="box" size=".05 .45 .2" pos="-.5 .75 1.8" class="wall"/>
+
+    <!--exterior walls-->
+    <geom name="exterior0" type="box" size=".05 2.1 1" pos="-2 0 1" class="wall"/>
+    <geom name="exterior1" type="box" size=".05 2.1 1" pos="2 0 1" class="wall"/>
+    <geom name="exterior2" type="box" size="2.1 .05 1" pos="0 2 1" class="wall"/>
+    <!--camera-facing wall:-->
+    <geom name="exterior3" type="box" size="2.1 .05 1" pos="0 -2 1" rgba="50 50 50 .1"/>
+
+    <!--corners-exterior-->
+    <!--<geom name="interior1" type="box" size=".1 .2 1" pos=" 2 2 1" rgba="50 50 50 50" euler="0 0 45"/>-->
+    <!--<geom name="interior1" type="box" size=".2 .1 1" pos="-2 2 1" rgba="50 50 50 50" euler="0 0 45"/>-->
+    <!--<geom name="interior1" type="box" size=".2 .1 1" pos=" 2 -2 1" rgba="50 50 50 50" euler="0 0 45"/>-->
+    <!--<geom name="interior1" type="box" size=".1 .2 1" pos="-2 -2 1" rgba="50 50 50 50" euler="0 0 45"/>-->
+
+    <!--furniture-->
+    <geom name="counter" type="box" size="1.25 .4 .5" pos=".75 1.6 .5" class="furniture"/>
+    <geom name="leg0" type="box" size=".03 .03 .37" pos=".4 .2 .35" class="furniture"/>
+    <geom name="leg1" type="box" size=".03 .03 .37" pos="-.4 .2 .35" class="furniture"/>
+    <geom name="leg2" type="box" size=".03 .03 .37" pos=".4 -.2 .35" class="furniture"/>
+    <geom name="leg3" type="box" size=".03 .03 .37" pos="-.4 -.2 .35" class="furniture"/>
+    <geom name="tabletop" type="box" size=".5 .3 .03" pos="0 0 .7" class="furniture"/>
+    <geom name="apple" type="sphere" size=".05 .05 .05" pos="1.4 1.5 1.05" rgba="0 1 0 1"/>
+</worldbody>

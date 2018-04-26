@@ -1,0 +1,106 @@
+<mujoco model="world">
+    <option timestep="0.01" cone="elliptic"/>
+    <default>
+        <default class="wall">
+            <geom rgba="2 2 2 1"/>
+        </default>
+
+        <default class="floor">
+            <geom rgba=".9 .1 .1 1"/>
+        </default>
+
+        <default class="furniture">
+            <geom rgba="1 1 .8 1"/>
+        </default>
+
+        <default class="white">
+            <geom rgba="40 40 40 0.65"/>
+        </default>
+
+        <default class="gray">
+            <geom rgba="0.5 0.5 0.5 1"/>
+        </default>
+
+        <default class="black">
+            <geom rgba="0.1 0.1 0.1 1"/>
+        </default>
+
+    </default>
+    <visual>
+        <map znear=".03"/>
+    </visual>
+
+    <compiler coordinate="local" angle="degree" meshdir="../../hsr_meshes/meshes/" texturedir="../hsr_textures/textures"
+              inertiafromgeom="true"/>
+
+    <size njmax="500" nconmax="100"/>
+    <asset>
+        <mesh name="base_light" file="base_v2/base_light.stl"/>
+        <mesh name="body_light" file="base_v2/body_light.stl"/>
+        <mesh name="torso_base" file="base_v2/torso_base.stl"/>
+        <mesh name="base" file="base_v2/base.stl"/>
+        <mesh name="laser" file="sensors/laser.stl"/>
+        <mesh name="torso_light" file="torso_v0/torso_light.stl"/>
+        <mesh name="torso" file="torso_v0/torso.stl"/>
+        <mesh name="head_pan" file="head_v1/head_pan.stl" class="white"/>
+        <mesh name="head_upper" file="head_v1/head_upper.stl"/>
+        <mesh name="head_tilt" file="head_v1/head_tilt.stl"/>
+        <mesh name="tablet_base" file="head_v1/tablet_base.stl"/>
+        <mesh name="head" file="head_v1/head.stl"/>
+        <mesh name="tablet" file="head_v1/tablet.stl"/>
+        <mesh name="head_camera" file="sensors/head_camera.stl"/>
+        <mesh name="rgbd_light" file="sensors/rgbd_light.stl"/>
+        <mesh name="rgbd" file="sensors/rgbd.stl"/>
+        <mesh name="shoulder" file="arm_v0/shoulder.stl"/>
+        <mesh name="arm_flex_light" file="arm_v0/arm_flex_light.stl"/>
+        <mesh name="arm_flex" file="arm_v0/arm_flex.stl"/>
+        <mesh name="arm_roll_light" file="arm_v0/arm_roll_light.stl"/>
+        <mesh name="arm_roll" file="arm_v0/arm_roll.stl"/>
+        <mesh name="wrist_flex" file="wrist_v0/wrist_flex.stl"/>
+        <mesh name="wrist_roll" file="wrist_v0/wrist_roll.stl"/>
+        <mesh name="palm" file="hand_v0/palm.stl"/>
+        <mesh name="l_proximal" file="hand_v0/l_proximal.stl"/>
+        <mesh name="l_distal" file="hand_v0/l_distal.stl"/>
+        <mesh name="r_proximal" file="hand_v0/r_proximal.stl"/>
+        <mesh name="r_distal" file="hand_v0/r_distal.stl"/>
+        <mesh name="sofa" file="environment/sofa_seat.stl"/>
+        <mesh name="chair" file="environment/chair_seat.stl"/>
+
+        <!--&lt;!&ndash; Custom Textures - Environment &ndash;&gt;-->
+        <!--texture name="chair" builtin="gradient" height="100" rgb1=".4 .5 .6" rgb2="0 0 0" type="skybox" width="100"/>-->
+        <!--<texture name="wood" type="2d" file="wood.png"/>-->
+        <!--<texture name="floor" file="floor.png" type="2d"/>-->
+        <!--<texture name="dark_wood" type="2d" file="dark_wood.png"/>-->
+        <!--<texture name="sofa" type="2d" file="sofa.png"/>-->
+
+        <!--&lt;!&ndash; Custom Textures - HSR  &ndash;&gt;-->
+        <!--<texture name="black" type="cube" height="100" width="100" builtin="flat" rgb1="255 255 255"/>-->
+        <!--<texture name="gray" type="cube" height="100" width="100" builtin="flat" rgb1="255 255 255"/>-->
+        <!--<texture name="white" type="cube" height="100" width="100" builtin="flat" rgb1="255 255 255"/>-->
+
+        <!--&lt;!&ndash; Custom Materials - Environment &ndash;&gt;-->
+        <!--<material name="chair_material" texture="chair"/>-->
+        <!--<material name="wood_material" texture="wood"/>-->
+        <!--<material name="floor_material" texture="floor"/>-->
+        <!--<material name="dark_wood_material" texture="dark_wood"/>-->
+        <!--<material name="sofa_material" texture="sofa"/>-->
+
+        <!--&lt;!&ndash; Custom Materials - HSR &ndash;&gt;-->
+        <!--<material name="white_material" texture="white"/>-->
+        <!--<material name="black_material" texture="black"/>-->
+        <!--<material name="gray_material" texture="gray"/>-->
+
+    </asset>
+    <worldbody>
+        <include file="hsr.mjcf"/>
+        <include file="empty_room.mjcf"/>
+    </worldbody>
+    <actuator>
+        <motor gear="1000.0" name="slide_x_motor" joint="slide_x" forcelimited="true" forcerange="-.001 .001"/>
+        <motor gear="1000.0" name="slide_y_motor" joint="slide_y" forcelimited="true" forcerange="-.001 .001"/>
+        <motor gear="1000.0" name="turn_motor" joint="turn" forcelimited="true" forcerange="-.001 .001"/>
+    </actuator>
+    <sensor>
+        <touch name="touchsensor" site="touchsensor_site"/>
+    </sensor>
+</mujoco>

@@ -1,0 +1,13 @@
+<worldbody>
+    <geom type="plane" size="2 2 2" class="floor" name="floor" contype="0" conaffinity="0"/>
+
+    <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
+    <!--exterior walls-->
+    <geom type="box" size=".01 2 1" pos="-2  0  1" class="wall"/>
+    <geom type="box" size=".01 2 1" pos=" 2  0  1" class="wall"/>
+    <geom type="box" size="2 .01 1" pos=" 0  2  1" class="wall"/>
+
+    <!--camera-facing wall:-->
+    <geom type="box" size="2 .01 1" pos=" 0 -2 1" rgba="1 1 1 .1"/>
+
+</worldbody>
