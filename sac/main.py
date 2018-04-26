@@ -3,6 +3,8 @@ import argparse
 import itertools
 import numpy as np
 import gym
+import time
+
 from environment.pick_and_place import PickAndPlaceEnv
 from environment.arm2pos import Arm2PosEnv
 from gym import spaces
@@ -84,11 +86,12 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
     episode_q_loss = 0
     episode_pi_loss = 0
     episode_reward = 0
-    time_steps = 0
+    episode_timesteps = 0
+    episodes = 0
     evaluation_period = 10
     is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
 
-    for episodes in itertools.count():
+    for time_steps in itertools.count():
         a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))
         a = a[0]
         if using_hindsight:
@@ -96,9 +99,10 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
         else:
             s2, r, t, info = env.step(action_converter(a))
 
-        time_steps += 1
+        tick = time.time()
 
         episode_reward += r
+        episode_timesteps += 1
         env.render()
         r /= reward_scale
         if not is_eval_period(episodes):
@@ -115,17 +119,21 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
             s1 = env.reset()
             print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(episodes) else 'TRAIN',
                                                                      episodes, time_steps, episode_reward))
+
+            fps = int(episode_timesteps / (time.time() - tick))
             if logdir:
                 summary = tf.Summary()
                 summary.value.add(tag='average reward', simple_value=total_reward / float(episodes))
                 summary.value.add(tag='V loss', simple_value=episode_v_loss)
                 summary.value.add(tag='Q loss', simple_value=episode_q_loss)
                 summary.value.add(tag='pi loss', simple_value=episode_pi_loss)
+                summary.value.add(tag='fps', simple_value=fps)
                 summary.value.add(tag='episode reward', simple_value=episode_reward)
                 tb_writer.add_summary(summary, episodes)
                 tb_writer.flush()
 
-            episode_v_loss = episode_q_loss = episode_pi_loss = episode_reward = 0
+            episodes += 1
+            episode_v_loss = episode_q_loss = episode_pi_loss = episode_reward = episode_timesteps = 0
 
 
 if __name__ == '__main__':
