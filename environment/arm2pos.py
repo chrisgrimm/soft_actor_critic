@@ -9,7 +9,7 @@ from environment.mujoco import MujocoEnv
 
 class Arm2PosEnv(MujocoEnv):
     def __init__(self, continuous, max_steps, history_len=1, neg_reward=True,
-                 action_multiplier=1):
+                 action_multiplier=1, geofence=.03):
 
         super().__init__(
                          max_steps=max_steps,
@@ -19,16 +19,19 @@ class Arm2PosEnv(MujocoEnv):
                          steps_per_action=10,
                          image_dimensions=None)
 
+        self._geofence = geofence
         left_finger_name = 'hand_l_distal_link'
-        self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
+        self._finger_names = [left_finger_name,
+                              left_finger_name.replace('_l_', '_r_')]
         self._set_new_goal()
         self._action_multiplier = action_multiplier
         self._continuous = continuous
         obs_shape = history_len * np.size(self._obs()) + np.size(self._goal())
-        self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs_shape)
+        self.observation_space = spaces.Box(-np.inf, np.inf,
+                                            shape=(obs_shape,))
 
         if continuous:
-            self.action_space = spaces.Box(-1, 1, shape=self.sim.nu)
+            self.action_space = spaces.Box(-1, 1, shape=(self.sim.nu,))
         else:
             self.action_space = spaces.Discrete(self.sim.nu * 2 + 1)
 

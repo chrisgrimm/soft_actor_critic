@@ -26,7 +26,7 @@ def failed(resting_block_height, goal_block_height):
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self, max_steps, min_lift_height=.02, geofence=.06, neg_reward=True, history_len=1):
         self._goal_block_name = 'block1'
-        self._min_lift_height = min_lift_height
+        self._min_lift_height = min_lift_height + geofence
         self._geofence = geofence
 
         super().__init__(
@@ -58,22 +58,22 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
-        # if np.random.uniform(0, 1) < .5:
-        #     self.init_qpos = np.array([
-        #         7.450e-05,
-        #         - 3.027e-03,
-        #         4.385e-01,
-        #         1.000e+00,
-        #         0,
-        #         0,
-        #         - 6.184e-04,
-        #         - 1.101e+00,
-        #         0,
-        #         3.573e-01,
-        #         3.574e-01,
-        #     ])
-        # else:
-        #     self.init_qpos = self.initial_qpos
+        if np.random.uniform(0, 1) < .5:
+            self.init_qpos = np.array([
+                7.450e-05,
+                -3.027e-03,
+                4.385e-01,
+                1.000e+00,
+                0,
+                0,
+                -6.184e-04,
+                -1.101e+00,
+                0,
+                3.573e-01,
+                3.574e-01,
+            ])
+        else:
+            self.init_qpos = self.initial_qpos
 
         # block_joint = self.sim.jnt_qposadr('block1joint')
 
@@ -102,19 +102,21 @@ class PickAndPlaceEnv(MujocoEnv):
         pass
 
     def _obs(self):
-        return self.sim.qpos, [self._fingers_touching(), self._block_lifted()]
+        return self.sim.qpos,
 
-    def _fingers_touching(self):
-        return not np.allclose(self.sim.sensordata[1:], [0, 0], atol=1e-2)
+    # def _fingers_touching(self):
+    #     return not np.allclose(self.sim.sensordata[1:], [0, 0], atol=1e-2)
 
-    def _block_lifted(self):
-        return np.allclose(self.sim.sensordata[:1], [0], atol=1e-2) and self._block_pos()[2] > self._min_lift_height
+    # def _block_lifted(self):
+    # return self._block_pos()[2] > self._min_lift_height - self._geofence
+    # return np.allclose(self.sim.sensordata[:1], [0], atol=1e-2) and self._block_pos()[2] > self._min_lift_height
 
     def _block_pos(self):
         return self.sim.get_body_xpos(self._goal_block_name)
 
     def _goal(self):
-        return self._block_pos(), [True]
+        goal_pos = self._initial_block_pos + np.array([0, 0, self._min_lift_height])
+        return goal_pos, goal_pos
 
     def goal_3d(self):
         return self._goal()[0]
@@ -123,16 +125,17 @@ class PickAndPlaceEnv(MujocoEnv):
         return False
 
     def _achieved_goal(self, goal, obs):
-        goal_pos, (should_lift,) = goal
-        qpos, (fingers_touching, block_lifted) = obs
-        _at_goal = at_goal(self._gripper_pos(qpos), goal_pos, self._geofence)
-        return _at_goal and should_lift == (block_lifted and fingers_touching)
+        gripper_goal_pos, block_goal_pos = goal
+        gripper_at_goal = at_goal(self._gripper_pos(obs[0]), gripper_goal_pos, self._geofence)
+        block_at_goal = at_goal(self._block_pos(), block_goal_pos, self._geofence)
+        return gripper_at_goal and block_at_goal
 
     def _compute_terminal(self, goal, obs):
         return self._achieved_goal(goal, obs)
 
     def _compute_reward(self, goal, obs):
         if self._achieved_goal(goal, obs):
+            print('block height', self._block_pos()[2] - self._initial_block_pos[2])
             return 1
         elif self._neg_reward:
             return -.0001
@@ -141,8 +144,7 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def _obs_to_goal(self, obs):
         qpos, block_lifted = obs
-        should_lift = block_lifted
-        return self._gripper_pos(qpos), should_lift
+        return self._gripper_pos(qpos), self._block_pos()
 
     def _gripper_pos(self, qpos=None):
         finger1, finger2 = [self.sim.get_body_xpos(name, qpos)
@@ -175,4 +177,3 @@ class PickAndPlaceEnv(MujocoEnv):
                                        self.action_space.shape)
         action = np.insert(action, mirroring_indexes, action[mirrored_indexes])
         return super().step(action)
-

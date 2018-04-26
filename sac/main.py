@@ -6,7 +6,6 @@ import gym
 import time
 
 from environment.pick_and_place import PickAndPlaceEnv
-from environment.arm2pos import Arm2PosEnv
 from gym import spaces
 from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper
 import tensorflow as tf
