@@ -14,6 +14,15 @@ class MLPPolicy(object):
         fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
         return fc2
 
+class CNN_Goal_Policy(object):
+
+    def input_processing(self, s):
+        c1 = tf.layers.conv2d(s, 32, 5, activation=tf.nn.relu, strides=2, padding='SAME', name='c1') # 14 x 14 x 32
+        c2 = tf.layers.conv2d(c1, 32, 5, activation=tf.nn.relu, strides=2, padding='SAME', name='c2') # 7 x 7 x 32
+        flat = tf.reshape(c2, [-1, 7*7*32])
+        enc = tf.layers.dense(flat, 128, activation=tf.nn.relu, name='fc1')
+        return enc
+
 
 class GaussianPolicy(object):
     '''

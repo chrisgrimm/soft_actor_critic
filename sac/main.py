@@ -8,9 +8,10 @@ import tensorflow as tf
 import dill as pickle
 
 from sac.replay_buffer.replay_buffer import ReplayBuffer2
-from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
-from sac.networks.value_function_mixins import MLPValueFunc
+from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy, CNN_Goal_Policy
+from sac.networks.value_function_mixins import MLPValueFunc, CNN_Goal_ValueFunc
 from sac.networks.network_interface import AbstractSoftActorCritic
+from block_env import BlockGoalWrapper, BlockEnv
 from sac.chaser import ChaserEnv
 
 def build_agent(env):
@@ -27,6 +28,22 @@ def build_agent(env):
             super(Agent, self).__init__(s_shape, a_shape)
 
     return Agent(state_shape, action_shape)
+
+def build_image_goal_agent(env):
+    assert type(env.action_space) is spaces.Discrete
+    action_shape = [env.action_space.n]
+    PolicyType = CategoricalPolicy
+    class Agent(PolicyType, CNN_Goal_Policy, CNN_Goal_ValueFunc, AbstractSoftActorCritic):
+        def __init__(self, s_shape, a_shape):
+            super(Agent, self).__init__(s_shape, a_shape)
+
+    return Agent([28, 28, 3+10], action_shape)
+
+
+
+
+
+
 
 def inject_mimic_experiences(mimic_file, buffer, N=1):
     with open(mimic_file, 'r') as f:
@@ -60,10 +77,9 @@ def string_to_env(env_name, buffer, reward_scaling):
 
 
 
-def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
+def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, hindsight_agent=False):
     s1 = env.reset()
 
-    agent = build_agent(env)
     action_converter = build_action_converter(env)
 
     episode_reward = 0
@@ -74,11 +90,15 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
     while True:
         a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))
         a = a[0]
-        s2, r, t, info = env.step(action_converter(a))
+        if hindsight_agent:
+            s2, r, t, info = env.step(a, action_converter)
+        else:
+            s2, r, t, info = env.step(action_converter(a))
+
         time_steps += 1
 
         episode_reward += r
-        #env.render()
+        env.render()
         r /= reward_scale
         if not is_eval_period(episodes):
             buffer.append(s1, a, r, s2, t)
@@ -97,7 +117,7 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', default='HalfCheetah-v2')
+    #parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
@@ -106,11 +126,18 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     buffer = ReplayBuffer2(args.buffer_size)
-    env = string_to_env(args.env, buffer, args.reward_scale)
-    if args.mimic_file is not None:
-        inject_mimic_experiences(args.mimic_file, buffer)
+
+
+    #env = string_to_env(args.env, buffer, args.reward_scale)
+    env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
+    agent = build_image_goal_agent(env)
+
+    #if args.mimic_file is not None:
+    #    inject_mimic_experiences(args.mimic_file, buffer)
     run_training(env=env,
+                 agent=agent,
                  buffer=buffer,
                  reward_scale=args.reward_scale,
                  batch_size=args.batch_size,
-                 num_train_steps=args.num_train_steps)
+                 num_train_steps=args.num_train_steps,
+                 hindsight_agent=True)

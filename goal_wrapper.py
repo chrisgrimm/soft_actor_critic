@@ -10,7 +10,7 @@ class GoalWrapper(object):
         self.action_space = self.env.action_space
         s1 = env.reset()
         new_s1 = self.obs_from_obs_part_and_goal(s1, self.final_goal())
-        self.observation_space = Box(-1, 1, new_s1.shape)
+        #self.observation_space = Box(-1, 1, new_s1.shape)
         self.current_trajectory = []
         self.current_state = new_s1
         self.reward_scaling = reward_scaling
@@ -43,23 +43,25 @@ class GoalWrapper(object):
     def final_goal(self):
         pass
 
-    def step(self, action):
-        s2, r, t, info = self.env.step(action)
+    def step(self, action, action_converter):
+        s2, r, t, info = self.env.step(action_converter(action))
         new_s2 = self.obs_from_obs_part_and_goal(s2, self.final_goal())
         new_r = self.reward(s2, self.final_goal())
-        if r > 0 and t and new_r != 100:
-            print(s2, r, t)
-            input('waiting...')
-        #    raise Exception('This shouldnt be able to happen')
-        new_t = self.terminal(s2, self.final_goal()) or t
+        #new_t = self.terminal(s2, self.final_goal()) or t
+        new_t = t
         self.current_trajectory.append((self.current_state, action, new_r, new_s2, new_t))
 
         self.current_state = new_s2
         return new_s2, new_r, new_t, {'base_reward': r}
 
+
+    def reset_called(self):
+        pass
+
     def reset(self):
         self.feed_new_trajectory_to_buffer(self.current_trajectory)
         s1 = self.env.reset()
+        self.reset_called()
         new_s1 = self.obs_from_obs_part_and_goal(s1, self.final_goal())
         self.current_trajectory = []
         self.current_state = new_s1

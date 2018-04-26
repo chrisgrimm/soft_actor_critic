@@ -20,7 +20,6 @@ class AbstractSoftActorCritic(object):
 
         self.A_sampled1 = A_sampled1 = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1, 'pi'))
         self.A_sampled2 = A_sampled2 = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
-        print(a_shape, S1)
 
         self.A_max_likelihood = A_max_likelihood = tf.stop_gradient(self.get_best_action(a_shape[0], S1, 'pi', reuse=True))
 
@@ -128,5 +127,4 @@ class AbstractSoftActorCritic(object):
             processed_s = self.input_processing(s)
             parameters = self.produce_policy_parameters(a_shape, processed_s)
             actions = self.policy_parameters_to_max_likelihood_action(parameters)
-        print(actions)
         return actions
