@@ -119,7 +119,7 @@ class MountaincarGoalWrapper(GoalWrapper):
         return np.concatenate([obs_part, goal], axis=0)
 
     def final_goal(self):
-        return np.array([0.5])
+        return np.array([0.45])
 
 
 class PickAndPlaceGoalWrapper(GoalWrapper):
