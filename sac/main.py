@@ -121,7 +121,7 @@ if __name__ == '__main__':
     parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--reward-scale', default=1/10., type=float)
+    parser.add_argument('--reward-scale', default=1., type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
     args = parser.parse_args()
 

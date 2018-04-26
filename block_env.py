@@ -100,7 +100,7 @@ class BlockGoalWrapper(GoalWrapper):
         return dist < self.closeness_cutoff
 
     def reward(self, obs_part, goal):
-        return 1 if self.at_goal(obs_part, goal) else -0.01
+        return 100 if self.at_goal(obs_part, goal) else -1
 
     def terminal(self, obs_part, goal):
         return self.at_goal(obs_part, goal)

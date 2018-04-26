@@ -14,7 +14,7 @@ class AbstractSoftActorCritic(object):
         self.T = T = tf.placeholder(tf.float32, [None])
         gamma = 0.99
         tau = 0.01
-        learning_rate = 3*10**-4
+        learning_rate = 1*10**-4
 
         # constructing V loss
 

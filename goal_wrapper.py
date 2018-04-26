@@ -47,8 +47,8 @@ class GoalWrapper(object):
         s2, r, t, info = self.env.step(action_converter(action))
         new_s2 = self.obs_from_obs_part_and_goal(s2, self.final_goal())
         new_r = self.reward(s2, self.final_goal())
-        #new_t = self.terminal(s2, self.final_goal()) or t
-        new_t = t
+        new_t = self.terminal(s2, self.final_goal()) or t
+        #new_t = t
         self.current_trajectory.append((self.current_state, action, new_r, new_s2, new_t))
 
         self.current_state = new_s2
