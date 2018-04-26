@@ -45,8 +45,8 @@ class GoalWrapper:
     def final_goal(self):
         pass
 
-    def step(self, action):
-        s2, r, t, info = self.env.step(action)
+    def step(self, action, action_converter):
+        s2, r, t, info = self.env.step(action_converter(action))
         new_s2 = self.obs_from_obs_part_and_goal(s2, self.final_goal())
         new_r = self.reward(s2, self.final_goal())
         if r > 0 and t and new_r != 100:
@@ -69,6 +69,8 @@ class GoalWrapper:
 
     def render(self):
         return self.env.render()
+
+
 
     def recompute_trajectory(self, trajectory):
         if not trajectory:

@@ -5,7 +5,7 @@ import gym
 from environment.pick_and_place import PickAndPlaceEnv
 from environment.arm2pos import Arm2PosEnv
 from gym import spaces
-from goal_wrapper import MountaincarGoalWrapper
+from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper
 import tensorflow as tf
 
 from sac.replay_buffer.replay_buffer import ReplayBuffer2
@@ -13,6 +13,7 @@ from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPol
 from sac.networks.value_function_mixins import MLPValueFunc
 from sac.networks.network_interface import AbstractSoftActorCritic
 from sac.chaser import ChaserEnv
+import pickle
 
 
 def build_agent(env):
@@ -30,6 +31,15 @@ def build_agent(env):
 
     return Agent(state_shape, action_shape)
 
+def inject_mimic_experiences(mimic_file, buffer, N=1):
+    with open(mimic_file, 'rb') as f:
+        mimic_trajectories = [pickle.load(f)]
+    for trajectory in mimic_trajectories:
+        for (s1, a, r, s2, t) in trajectory:
+            for _ in range(N):
+                buffer.append(s1, a, r, s2, t)
+
+
 
 def build_action_converter(env):
     def converter(a):
@@ -44,20 +54,23 @@ def build_action_converter(env):
 
 
 def string_to_env(env_name, buffer, reward_scaling):
+    using_hindsight = False
     if env_name == 'chaser':
         env = ChaserEnv()
     elif env_name == 'mountaincar-continuous-hindsight':
         env = MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'), buffer, reward_scaling=reward_scaling)
+        using_hindsight = True
     elif env_name == 'pick-and-place':
-        env = PickAndPlaceEnv(max_steps=500, neg_reward=False)
-    elif env_name == 'arm2pos':
-        env = Arm2PosEnv(continuous=True, max_steps=500)
+        env = PickAndPlaceGoalWrapper(PickAndPlaceEnv(max_steps=500, neg_reward=False), buffer, reward_scaling)
+        using_hindsight = True
     else:
         env = gym.make(env_name)
-    return env
+    return env, using_hindsight
 
 
-def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
+
+
+def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_hindsight=False):
     s1 = env.reset()
 
     agent = build_agent(env)
@@ -71,11 +84,15 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
     while True:
         a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))
         a = a[0]
-        s2, r, t, info = env.step(action_converter(a))
+        if using_hindsight:
+            s2, r, t, info = env.step(a, action_converter)
+        else:
+            s2, r, t, info = env.step(action_converter(a))
+
         time_steps += 1
 
         episode_reward += r
-        # env.render()
+        env.render()
         r /= reward_scale
         if not is_eval_period(episodes):
             buffer.append(s1, a, r, s2, t)
@@ -98,14 +115,18 @@ if __name__ == '__main__':
     parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--reward-scale', default=1 / 10., type=float)
+    parser.add_argument('--reward-scale', default=1/10., type=float)
+    parser.add_argument('--mimic-file', default=None, type=str)
     args = parser.parse_args()
 
     buffer = ReplayBuffer2(args.buffer_size)
-    env = string_to_env(args.env, buffer, args.reward_scale)
+    env, using_hindsight = string_to_env(args.env, buffer, args.reward_scale)
 
+    if args.mimic_file is not None:
+        inject_mimic_experiences(args.mimic_file, buffer, N=10)
     run_training(env=env,
                  buffer=buffer,
                  reward_scale=args.reward_scale,
                  batch_size=args.batch_size,
-                 num_train_steps=args.num_train_steps)
+                 num_train_steps=args.num_train_steps,
+                 using_hindsight=using_hindsight)
