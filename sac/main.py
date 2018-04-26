@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import gym
 from environment.pick_and_place import PickAndPlaceEnv
+from environment.arm2pos import Arm2PosEnv
 from gym import spaces
 from goal_wrapper import MountaincarGoalWrapper
 import tensorflow as tf
@@ -49,6 +50,8 @@ def string_to_env(env_name, buffer, reward_scaling):
         env = MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'), buffer, reward_scaling=reward_scaling)
     elif env_name == 'pick-and-place':
         env = PickAndPlaceEnv(max_steps=500, neg_reward=False)
+    elif env_name == 'arm2pos':
+        env = Arm2PosEnv(continuous=True, max_steps=500)
     else:
         env = gym.make(env_name)
     return env
