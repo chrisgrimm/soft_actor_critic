@@ -1,5 +1,6 @@
 import argparse
 
+import itertools
 import numpy as np
 import gym
 from environment.pick_and_place import PickAndPlaceEnv
@@ -70,18 +71,24 @@ def string_to_env(env_name, buffer, reward_scaling):
 
 
 
-def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_hindsight=False):
+def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_hindsight=False, logdir=None):
+    tb_writer = tf.summary.FileWriter(logdir) if logdir else None
+
     s1 = env.reset()
 
     agent = build_agent(env)
     action_converter = build_action_converter(env)
 
+    total_reward = 0
+    episode_v_loss = 0
+    episode_q_loss = 0
+    episode_pi_loss = 0
     episode_reward = 0
-    episodes = 0
     time_steps = 0
     evaluation_period = 10
     is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
-    while True:
+
+    for episodes in itertools.count():
         a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))
         a = a[0]
         if using_hindsight:
@@ -100,13 +107,25 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
                 for i in range(num_train_steps):
                     s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
                     [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                    episode_v_loss += v_loss
+                    episode_q_loss += q_loss
+                    episode_pi_loss += pi_loss
         s1 = s2
         if t:
             s1 = env.reset()
             print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(episodes) else 'TRAIN',
                                                                      episodes, time_steps, episode_reward))
-            episode_reward = 0
-            episodes += 1
+            if logdir:
+                summary = tf.Summary()
+                summary.value.add(tag='average reward', simple_value=total_reward / float(episodes))
+                summary.value.add(tag='V loss', simple_value=episode_v_loss)
+                summary.value.add(tag='Q loss', simple_value=episode_q_loss)
+                summary.value.add(tag='pi loss', simple_value=episode_pi_loss)
+                summary.value.add(tag='episode reward', simple_value=episode_reward)
+                tb_writer.add_summary(summary, episodes)
+                tb_writer.flush()
+
+            episode_v_loss = episode_q_loss = episode_pi_loss = episode_reward = 0
 
 
 if __name__ == '__main__':
@@ -117,6 +136,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1/10., type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
+    parser.add_argument('--logdir', default=None, type=str)
     args = parser.parse_args()
 
     buffer = ReplayBuffer2(args.buffer_size)
@@ -129,4 +149,5 @@ if __name__ == '__main__':
                  reward_scale=args.reward_scale,
                  batch_size=args.batch_size,
                  num_train_steps=args.num_train_steps,
-                 using_hindsight=using_hindsight)
+                 using_hindsight=using_hindsight,
+                 logdir=args.logdir)
