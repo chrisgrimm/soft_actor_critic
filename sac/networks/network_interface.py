@@ -72,7 +72,7 @@ class AbstractSoftActorCritic(object):
             actions = self.sess.run(self.A_sampled1, feed_dict={self.S1: S1})
         else:
             actions = self.sess.run(self.A_max_likelihood, feed_dict={self.S1: S1})
-        return actions
+        return actions[0]
 
     @abstractmethod
     def Q_network(self, s, a, name, reuse=None):

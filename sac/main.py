@@ -93,8 +93,6 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
 
     for time_steps in itertools.count():
         a = agent.get_actions([s1], sample=(not is_eval_period(count[EPISODE])))
-
-        a = a[0]
         s2, r, t, info = env.step(action_converter(a))
         if t:
             print('reward:', r)
