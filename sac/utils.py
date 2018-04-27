@@ -38,3 +38,5 @@ def component(function):
             variables = tf.get_variable_scope().get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
             return out, variables
     return wrapper
+
+

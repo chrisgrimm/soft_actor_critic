@@ -35,6 +35,7 @@ def build_agent(env):
 
     return Agent(state_shape, action_shape)
 
+
 def inject_mimic_experiences(mimic_file, buffer, N=1):
     with open(mimic_file, 'rb') as f:
         mimic_trajectories = [pickle.load(f)]
@@ -42,7 +43,6 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
         for (s1, a, r, s2, t) in trajectory:
             for _ in range(N):
                 buffer.append(s1, a, r, s2, t)
-
 
 
 def build_action_converter(env):
@@ -72,9 +72,13 @@ def string_to_env(env_name, buffer, reward_scaling):
     return env, using_hindsight
 
 
-
-
 def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_hindsight=False, logdir=None):
+    V_LOSS = "V loss"
+    Q_LOSS = "Q loss"
+    PI_LOSS = "pi loss"
+    EPISODE = 'episode'
+    REWARD = 'reward'
+
     tb_writer = tf.summary.FileWriter(logdir) if logdir else None
 
     s1 = env.reset()
@@ -83,12 +87,13 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
     action_converter = build_action_converter(env)
 
     count = Counter(reward=0, episode=0)
-    episode_count = Counter({'V loss': 0, 'Q loss': 0, 'pi loss': 0, 'reward': 0, 'timesteps': 0})
+    episode_count = Counter()
     evaluation_period = 10
     is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
 
     for time_steps in itertools.count():
-        a = agent.get_actions([s1], sample=(not is_eval_period(count['episode'])))
+        a = agent.get_actions([s1], sample=(not is_eval_period(count[EPISODE])))
+
         a = a[0]
         if using_hindsight:
             s2, r, t, info = env.step(a, action_converter)
@@ -101,29 +106,30 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
 
         episode_count += Counter(reward=r, timesteps=1)
         r /= reward_scale
-        if not is_eval_period(count['episode']):
+        if not is_eval_period(count[EPISODE]):
             buffer.append(s1, a, r, s2, t)
             if len(buffer) >= batch_size:
                 for i in range(num_train_steps):
                     s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
                     [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                    episode_count += Counter(v_loss=v_loss, q_loss=q_loss, pi_loss=pi_loss)
+                    episode_count += Counter({V_LOSS: v_loss, Q_LOSS: q_loss, PI_LOSS: pi_loss})
+                    print(episode_count)
         s1 = s2
         if t:
             s1 = env.reset()
-            episode_reward = episode_count['reward']
+            episode_reward = episode_count[REWARD]
             print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(
-                count['episode']) else 'TRAIN',
-                                                                     (count['episode']), time_steps, episode_reward))
+                count[EPISODE]) else 'TRAIN',
+                                                                     (count[EPISODE]), time_steps, episode_reward))
             count += Counter(reward=episode_reward, episode=1)
             fps = int(episode_count['timesteps'] / (time.time() - tick))
             if logdir:
                 summary = tf.Summary()
-                summary.value.add(tag='average reward', simple_value=count['reward'] / float(count['episode']))
+                summary.value.add(tag='average reward', simple_value=count[REWARD] / float(count[EPISODE]))
                 summary.value.add(tag='fps', simple_value=fps)
-                for k, v in episode_count.items():
-                    summary.value.add(tag=k, simple_value=v)
-                tb_writer.add_summary(summary, count['episode'])
+                for k in [V_LOSS, Q_LOSS, PI_LOSS, REWARD]:
+                    summary.value.add(tag=k, simple_value=episode_count[k])
+                tb_writer.add_summary(summary, count[EPISODE])
                 tb_writer.flush()
 
             for k in episode_count:
@@ -136,7 +142,7 @@ if __name__ == '__main__':
     parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--reward-scale', default=1/10., type=float)
+    parser.add_argument('--reward-scale', default=1 / 10., type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
     parser.add_argument('--logdir', default=None, type=str)
     args = parser.parse_args()
