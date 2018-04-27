@@ -72,8 +72,6 @@ class GoalWrapper:
     def render(self):
         return self.env.render()
 
-
-
     def recompute_trajectory(self, trajectory):
         if not trajectory:
             return
@@ -93,25 +91,26 @@ class GoalWrapper:
 
     def feed_new_trajectory_to_buffer(self, trajectory):
         for (s, a, r, sp, t) in self.recompute_trajectory(trajectory):
-            self.buffer.append(s, a, r / self.reward_scaling, sp ,t)
+            self.buffer.append(s, a, r / self.reward_scaling, sp, t)
 
 
 class MountaincarGoalWrapper(GoalWrapper):
     '''
     new obs is [pos, vel, goal_pos]
     '''
+
     def obs_part_to_goal(self, obs_part):
         return np.array([obs_part[0]])
 
     def reward(self, obs_part, goal):
         return 100 if obs_part[0] >= goal[0] else 0
-        #dist = np.abs(obs_part[0] - goal[0])
-        #return 100 if dist < 0.03 else 0
+        # dist = np.abs(obs_part[0] - goal[0])
+        # return 100 if dist < 0.03 else 0
 
     def terminal(self, obs_part, goal):
-        #dist = np.abs(obs_part[0] - goal[0])
+        # dist = np.abs(obs_part[0] - goal[0])
         return (obs_part[0] >= goal[0])
-        #return (dist < 0.03)
+        # return (dist < 0.03)
 
     def get_obs_part(self, obs):
         return obs[:2]
