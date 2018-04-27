@@ -1,6 +1,8 @@
 import argparse
 
 import itertools
+from collections import Counter
+
 import numpy as np
 import gym
 import time
@@ -80,18 +82,13 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
     agent = build_agent(env)
     action_converter = build_action_converter(env)
 
-    total_reward = 0
-    episode_v_loss = 0
-    episode_q_loss = 0
-    episode_pi_loss = 0
-    episode_reward = 0
-    episode_timesteps = 0
-    episodes = 0
+    count = Counter(reward=0, episode=0)
+    episode_count = Counter({'V loss': 0, 'Q loss': 0, 'pi loss': 0, 'reward': 0, 'timesteps': 0})
     evaluation_period = 10
     is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
 
     for time_steps in itertools.count():
-        a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))
+        a = agent.get_actions([s1], sample=(not is_eval_period(count['episode'])))
         a = a[0]
         if using_hindsight:
             s2, r, t, info = env.step(a, action_converter)
@@ -102,38 +99,35 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
 
         tick = time.time()
 
-        episode_reward += r
-        episode_timesteps += 1
+        episode_count += Counter(reward=r, timesteps=1)
         r /= reward_scale
-        if not is_eval_period(episodes):
+        if not is_eval_period(count['episode']):
             buffer.append(s1, a, r, s2, t)
             if len(buffer) >= batch_size:
                 for i in range(num_train_steps):
                     s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
                     [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                    episode_v_loss += v_loss
-                    episode_q_loss += q_loss
-                    episode_pi_loss += pi_loss
+                    episode_count += Counter(v_loss=v_loss, q_loss=q_loss, pi_loss=pi_loss)
         s1 = s2
         if t:
             s1 = env.reset()
-            print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(episodes) else 'TRAIN',
-                                                                     episodes, time_steps, episode_reward))
-
-            fps = int(episode_timesteps / (time.time() - tick))
-            episodes += 1
+            episode_reward = episode_count['reward']
+            print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(
+                count['episode']) else 'TRAIN',
+                                                                     (count['episode']), time_steps, episode_reward))
+            count += Counter(reward=episode_reward, episode=1)
+            fps = int(episode_count['timesteps'] / (time.time() - tick))
             if logdir:
                 summary = tf.Summary()
-                summary.value.add(tag='average reward', simple_value=total_reward / float(episodes))
-                summary.value.add(tag='V loss', simple_value=episode_v_loss)
-                summary.value.add(tag='Q loss', simple_value=episode_q_loss)
-                summary.value.add(tag='pi loss', simple_value=episode_pi_loss)
+                summary.value.add(tag='average reward', simple_value=count['reward'] / float(count['episode']))
                 summary.value.add(tag='fps', simple_value=fps)
-                summary.value.add(tag='episode reward', simple_value=episode_reward)
-                tb_writer.add_summary(summary, episodes)
+                for k, v in episode_count.items():
+                    summary.value.add(tag=k, simple_value=v)
+                tb_writer.add_summary(summary, count['episode'])
                 tb_writer.flush()
 
-            episode_v_loss = episode_q_loss = episode_pi_loss = episode_reward = episode_timesteps = 0
+            for k in episode_count:
+                episode_count[k] = 0
 
 
 if __name__ == '__main__':
