@@ -1,5 +1,7 @@
 .idea/
 **/__pycache__
+**/*.pyc
 .runsrc
 runs.yml
 .runs
+.ropeproject
