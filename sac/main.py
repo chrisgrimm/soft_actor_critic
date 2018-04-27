@@ -1,28 +1,25 @@
 import argparse
-
 import itertools
+import pickle
+import time
 from collections import Counter
 
-import numpy as np
 import gym
-import time
-
-from environment.pick_and_place import PickAndPlaceEnv
+import numpy as np
+import tensorflow as tf
 from gym import spaces
 from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
-import tensorflow as tf
-
-from sac.replay_buffer.replay_buffer import ReplayBuffer2
+from sac.chaser import ChaserEnv
+from sac.networks.network_interface import AbstractSoftActorCritic
 from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
 from sac.networks.value_function_mixins import MLPValueFunc
-from sac.networks.network_interface import AbstractSoftActorCritic
-from sac.chaser import ChaserEnv
-import pickle
+from environment.pick_and_place import PickAndPlaceEnv
+from sac.replay_buffer.replay_buffer import ReplayBuffer2
 
 
 def build_agent(env):
     state_shape = env.observation_space.shape
-    if type(env.action_space) is spaces.Discrete:
+    if isinstance(env.action_space, spaces.Discrete):
         action_shape = [env.action_space.n]
         PolicyType = CategoricalPolicy
     else:
@@ -47,12 +44,12 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 
 def build_action_converter(env):
     def converter(a):
-        if type(env.action_space) is spaces.Discrete:
+        if isinstance(env.action_space, spaces.Discrete):
             return np.argmax(a)
         else:
             a = np.tanh(a)
-            h, l = env.action_space.high, env.action_space.low
-            return ((a + 1) / 2) * (h - l) + l
+            high, low = env.action_space.high, env.action_space.low
+            return ((a + 1) / 2) * (high - low) + low
 
     return converter
 
@@ -89,7 +86,8 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
     total_count = Counter()
     episode_count = Counter()
     evaluation_period = 10
-    is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
+
+    def is_eval_period(episode_number): return episode_number % evaluation_period == 0
 
     for time_steps in itertools.count():
         a = agent.get_actions([s1], sample=(not is_eval_period(total_count[EPISODE])))
@@ -116,9 +114,8 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
                     buffer.append(s1, a, r * reward_scale, s2, t)
             s1 = env.reset()
             episode_reward = episode_count[REWARD]
-            print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(
-                total_count[EPISODE]) else 'TRAIN',
-                                                                     (total_count[EPISODE]), time_steps, episode_reward))
+            print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format('EVAL' if is_eval_period(
+                total_count[EPISODE]) else 'TRAIN', (total_count[EPISODE]), time_steps, episode_reward))
             total_count += Counter(reward=episode_reward, episode=1)
             fps = int(episode_count['timesteps'] / (time.time() - tick))
             if logdir:
