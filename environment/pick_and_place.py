@@ -135,7 +135,6 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def _compute_reward(self, goal, obs):
         if self._achieved_goal(goal, obs):
-            print('block height', self._block_pos()[2] - self._initial_block_pos[2])
             return 1
         elif self._neg_reward:
             return -.0001
@@ -143,8 +142,7 @@ class PickAndPlaceEnv(MujocoEnv):
             return 0
 
     def _obs_to_goal(self, obs):
-        qpos, block_lifted = obs
-        return self._gripper_pos(qpos), self._block_pos()
+        return self._gripper_pos(obs[0]), self._block_pos()
 
     def _gripper_pos(self, qpos=None):
         finger1, finger2 = [self.sim.get_body_xpos(name, qpos)

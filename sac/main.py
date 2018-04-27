@@ -102,7 +102,6 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
 
         episode_reward += r
         episode_timesteps += 1
-        env.render()
         r /= reward_scale
         if not is_eval_period(episodes):
             buffer.append(s1, a, r, s2, t)
@@ -120,6 +119,7 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
                                                                      episodes, time_steps, episode_reward))
 
             fps = int(episode_timesteps / (time.time() - tick))
+            episodes += 1
             if logdir:
                 summary = tf.Summary()
                 summary.value.add(tag='average reward', simple_value=total_reward / float(episodes))
@@ -131,7 +131,6 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
                 tb_writer.add_summary(summary, episodes)
                 tb_writer.flush()
 
-            episodes += 1
             episode_v_loss = episode_q_loss = episode_pi_loss = episode_reward = episode_timesteps = 0
 
 

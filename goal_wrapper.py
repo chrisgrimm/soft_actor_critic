@@ -49,9 +49,9 @@ class GoalWrapper:
         s2, r, t, info = self.env.step(action_converter(action))
         new_s2 = self.obs_from_obs_part_and_goal(s2, self.final_goal())
         new_r = self.reward(s2, self.final_goal())
-        if r > 0 and t and new_r != 100:
-            print(s2, r, t)
-            input('waiting...')
+        # if r > 0 and t and new_r != 100:
+        #     print(s2, r, t)
+        #     input('waiting...')
         #    raise Exception('This shouldnt be able to happen')
         new_t = self.terminal(s2, self.final_goal()) or t
         self.current_trajectory.append((self.current_state, action, new_r, new_s2, new_t))
@@ -130,13 +130,13 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
         super().__init__(env, buffer, reward_scaling)
 
     def obs_part_to_goal(self, obs_part):
-        return self.env._obs_to_goal(obs_part)
+        return self.env._obs_to_goal(obs_part[-1])
 
     def reward(self, obs_part, goal):
-        return self.env._compute_reward(goal, obs_part)
+        return sum(self.env._compute_reward(goal, obs) for obs in obs_part)
 
     def terminal(self, obs_part, goal):
-        return self.env._compute_terminal(goal, obs_part)
+        return any(self.env._compute_terminal(goal, obs) for obs in obs_part)
 
     def get_obs_part(self, obs):
         goal, obs_history = self.env.destructure_mlp_input(obs)
@@ -149,4 +149,4 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
         return self.env.mlp_input(goal, obs_part)
 
     def final_goal(self):
-        self.env._goal()
+        return self.env._goal()

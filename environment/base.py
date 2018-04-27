@@ -88,8 +88,7 @@ class BaseEnv(utils.EzPickle, Server):
             step += 1
 
         self._history_buffer.append(self._obs())
-        mlp_input = self.mlp_input(self._goal(), self._history_buffer)
-        return mlp_input, reward, done, {}
+        return self._history_buffer, reward, done, {}
 
 
     @staticmethod
