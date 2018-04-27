@@ -62,7 +62,7 @@ def string_to_env(env_name):
     if env_name == 'chaser':
         env = ChaserEnv()
     elif env_name == 'mountaincar-continuous-hindsight':
-        env = MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'))
+        env = MountaincarGoalWrapper()
         using_hindsight = True
     elif env_name == 'pick-and-place':
         env = PickAndPlaceGoalWrapper(PickAndPlaceEnv(max_steps=500, neg_reward=False))

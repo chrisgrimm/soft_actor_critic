@@ -1,69 +1,71 @@
 from abc import abstractmethod
+
+import gym as gym
 import numpy as np
+from gym.envs.classic_control import MountainCarEnv
+
 from environment.pick_and_place import PickAndPlaceEnv
 from gym.spaces import Box
 
 
-class GoalWrapper:
+class GoalWrapper(gym.Env):
+    def __init__(self):
+        self.trajectory = None
+        self.current_state = None
+        self.observation_space = Box(-1, 1, self.reset().shape)
 
-    def __init__(self, env):
-        self.env = env
-        self.action_space = self.env.action_space
-        s1 = env.reset()
-        new_s1 = self.obs_from_obs_part_and_goal(s1, self.final_goal())
-        self.observation_space = Box(-1, 1, new_s1.shape)
-        self.trajectory = []
-        self.current_state = new_s1
+    @abstractmethod
+    def _step(self, action):
+        raise NotImplemented
+
+    @abstractmethod
+    def _reset(self):
+        raise NotImplemented
 
     @abstractmethod
     def obs_part_to_goal(self, obs_part):
-        pass
+        raise NotImplemented
 
     @abstractmethod
     def reward(self, obs_part, goal):
-        pass
+        raise NotImplemented
 
     @abstractmethod
     def terminal(self, obs_part, goal):
-        pass
+        raise NotImplemented
 
     @abstractmethod
     def get_obs_part(self, obs):
-        pass
+        raise NotImplemented
 
     @abstractmethod
     def get_goal_part(self, obs):
-        pass
+        raise NotImplemented
 
     @abstractmethod
     def obs_from_obs_part_and_goal(self, obs_part, goal):
-        pass
+        raise NotImplemented
 
     @abstractmethod
     def final_goal(self):
-        pass
+        raise NotImplemented
 
     def step(self, action):
-        s2, r, t, info = self.env.step(action)
+        s2, r, t, info = self.step(action)
         new_s2 = self.obs_from_obs_part_and_goal(s2, self.final_goal())
         new_r = self.reward(s2, self.final_goal())
         new_t = self.terminal(s2, self.final_goal()) or t
-        if new_t:
-            print('goal_wrapper reward:', new_r)
         self.trajectory.append((self.current_state, action, new_r, new_s2, new_t))
 
         self.current_state = new_s2
         return new_s2, new_r, new_t, {'base_reward': r}
 
     def reset(self):
-        s1 = self.env.reset()
+        s1 = self._reset()
         new_s1 = self.obs_from_obs_part_and_goal(s1, self.final_goal())
         self.trajectory = []
         self.current_state = new_s1
         return new_s1
-
-    def render(self):
-        return self.env.render()
 
     def recompute_trajectory(self):
         if not self.trajectory:
@@ -83,10 +85,19 @@ class GoalWrapper:
                 break
 
 
-class MountaincarGoalWrapper(GoalWrapper):
+class MountaincarGoalWrapper(MountainCarEnv, GoalWrapper):
     """
     new obs is [pos, vel, goal_pos]
     """
+    def __init__(self):
+        MountainCarEnv.__init__(self)
+        GoalWrapper.__init__(self)
+
+    def _step(self, action):
+        return MountainCarEnv.step(self, action)
+
+    def _reset(self):
+        return MountainCarEnv.reset(self)
 
     def obs_part_to_goal(self, obs_part):
         return np.array([obs_part[0]])
