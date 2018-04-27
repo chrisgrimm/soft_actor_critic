@@ -91,7 +91,7 @@ class GoalWrapper:
 
     def feed_new_trajectory_to_buffer(self, trajectory):
         for (s, a, r, sp, t) in self.recompute_trajectory(trajectory):
-            self.buffer.append(s, a, r / self.reward_scaling, sp, t)
+            self.buffer.append(s, a, r * self.reward_scaling, sp, t)
 
 
 class MountaincarGoalWrapper(GoalWrapper):

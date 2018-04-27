@@ -73,9 +73,9 @@ def string_to_env(env_name, buffer, reward_scaling):
 
 
 def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_hindsight=False, logdir=None):
-    V_LOSS = "V loss"
-    Q_LOSS = "Q loss"
-    PI_LOSS = "pi loss"
+    V_LOSS = 'V loss'
+    Q_LOSS = 'Q loss'
+    PI_LOSS = 'pi loss'
     EPISODE = 'episode'
     REWARD = 'reward'
 
@@ -105,7 +105,7 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
         tick = time.time()
 
         episode_count += Counter(reward=r, timesteps=1)
-        r /= reward_scale
+        r *= reward_scale
         if not is_eval_period(count[EPISODE]):
             buffer.append(s1, a, r, s2, t)
             if len(buffer) >= batch_size:
@@ -142,7 +142,7 @@ if __name__ == '__main__':
     parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--reward-scale', default=1 / 10., type=float)
+    parser.add_argument('--reward-scale', default=10., type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
     parser.add_argument('--logdir', default=None, type=str)
     args = parser.parse_args()
