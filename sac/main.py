@@ -97,6 +97,8 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
             s2, r, t, info = env.step(a, action_converter)
         else:
             s2, r, t, info = env.step(action_converter(a))
+        if t:
+            print('reward:', r)
 
         tick = time.time()
 

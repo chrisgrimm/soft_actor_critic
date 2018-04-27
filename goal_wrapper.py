@@ -54,6 +54,8 @@ class GoalWrapper:
         #     input('waiting...')
         #    raise Exception('This shouldnt be able to happen')
         new_t = self.terminal(s2, self.final_goal()) or t
+        if new_t:
+            print('goal_wrapper reward:', new_r)
         self.current_trajectory.append((self.current_state, action, new_r, new_s2, new_t))
 
         self.current_state = new_s2
