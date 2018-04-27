@@ -9,7 +9,7 @@ import time
 
 from environment.pick_and_place import PickAndPlaceEnv
 from gym import spaces
-from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper
+from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
 import tensorflow as tf
 
 from sac.replay_buffer.replay_buffer import ReplayBuffer2
@@ -57,22 +57,22 @@ def build_action_converter(env):
     return converter
 
 
-def string_to_env(env_name, buffer, reward_scaling):
+def string_to_env(env_name):
     using_hindsight = False
     if env_name == 'chaser':
         env = ChaserEnv()
     elif env_name == 'mountaincar-continuous-hindsight':
-        env = MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'), buffer, reward_scaling=reward_scaling)
+        env = MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'))
         using_hindsight = True
     elif env_name == 'pick-and-place':
-        env = PickAndPlaceGoalWrapper(PickAndPlaceEnv(max_steps=500, neg_reward=False), buffer, reward_scaling)
+        env = PickAndPlaceGoalWrapper(PickAndPlaceEnv(max_steps=500, neg_reward=False))
         using_hindsight = True
     else:
         env = gym.make(env_name)
     return env, using_hindsight
 
 
-def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_hindsight=False, logdir=None):
+def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=None):
     V_LOSS = 'V loss'
     Q_LOSS = 'Q loss'
     PI_LOSS = 'pi loss'
@@ -112,6 +112,9 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
                     episode_count += Counter({V_LOSS: v_loss, Q_LOSS: q_loss, PI_LOSS: pi_loss})
         s1 = s2
         if t:
+            if isinstance(env, GoalWrapper):
+                for s1, a, r, s2, t in env.recompute_trajectory():
+                    buffer.append(s1, a, r * reward_scale, s2, t)
             s1 = env.reset()
             episode_reward = episode_count[REWARD]
             print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(
@@ -144,7 +147,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     buffer = ReplayBuffer2(args.buffer_size)
-    env, using_hindsight = string_to_env(args.env, buffer, args.reward_scale)
+    env, using_hindsight = string_to_env(args.env)
 
     if args.mimic_file is not None:
         inject_mimic_experiences(args.mimic_file, buffer, N=10)
@@ -153,5 +156,4 @@ if __name__ == '__main__':
                  reward_scale=args.reward_scale,
                  batch_size=args.batch_size,
                  num_train_steps=args.num_train_steps,
-                 using_hindsight=using_hindsight,
                  logdir=args.logdir)

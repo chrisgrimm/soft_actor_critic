@@ -1,11 +1,10 @@
 from os.path import join
-from typing import Tuple
 
 import numpy as np
 from gym import spaces
 from mujoco import ObjType
 
-from environment.base import BaseEnv, at_goal, print1, distance_between
+from environment.base import at_goal
 from environment.mujoco import MujocoEnv
 
 
@@ -20,7 +19,6 @@ def quaternion_multiply(quaternion1, quaternion0):
 
 def failed(resting_block_height, goal_block_height):
     return False
-    # return resting_block_height - goal_block_height > .02  #.029
 
 
 class PickAndPlaceEnv(MujocoEnv):

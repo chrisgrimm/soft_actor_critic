@@ -6,16 +6,14 @@ from gym.spaces import Box
 
 class GoalWrapper:
 
-    def __init__(self, env, buffer, reward_scaling):
+    def __init__(self, env):
         self.env = env
-        self.buffer = buffer
         self.action_space = self.env.action_space
         s1 = env.reset()
         new_s1 = self.obs_from_obs_part_and_goal(s1, self.final_goal())
         self.observation_space = Box(-1, 1, new_s1.shape)
-        self.current_trajectory = []
+        self.trajectory = []
         self.current_state = new_s1
-        self.reward_scaling = reward_scaling
 
     @abstractmethod
     def obs_part_to_goal(self, obs_part):
@@ -52,28 +50,27 @@ class GoalWrapper:
         new_t = self.terminal(s2, self.final_goal()) or t
         if new_t:
             print('goal_wrapper reward:', new_r)
-        self.current_trajectory.append((self.current_state, action, new_r, new_s2, new_t))
+        self.trajectory.append((self.current_state, action, new_r, new_s2, new_t))
 
         self.current_state = new_s2
         return new_s2, new_r, new_t, {'base_reward': r}
 
     def reset(self):
-        self.feed_new_trajectory_to_buffer(self.current_trajectory)
         s1 = self.env.reset()
         new_s1 = self.obs_from_obs_part_and_goal(s1, self.final_goal())
-        self.current_trajectory = []
+        self.trajectory = []
         self.current_state = new_s1
         return new_s1
 
     def render(self):
         return self.env.render()
 
-    def recompute_trajectory(self, trajectory):
-        if not trajectory:
+    def recompute_trajectory(self):
+        if not self.trajectory:
             return
-        (_, _, _, sp_final, _) = trajectory[-1]
+        (_, _, _, sp_final, _) = self.trajectory[-1]
         final_goal = self.obs_part_to_goal(self.get_obs_part(sp_final))
-        for (s, a, r, sp, t) in trajectory:
+        for (s, a, r, sp, t) in self.trajectory:
             s_obs_part = self.get_obs_part(s)
             sp_obs_part = self.get_obs_part(sp)
 
@@ -82,31 +79,23 @@ class GoalWrapper:
             new_r = self.reward(sp_obs_part, final_goal)
             new_t = self.terminal(sp_obs_part, final_goal) or t
             yield new_s, a, new_r, new_sp, new_t
-            if new_t == True:
+            if new_t:
                 break
-
-    def feed_new_trajectory_to_buffer(self, trajectory):
-        for (s, a, r, sp, t) in self.recompute_trajectory(trajectory):
-            self.buffer.append(s, a, r * self.reward_scaling, sp, t)
 
 
 class MountaincarGoalWrapper(GoalWrapper):
-    '''
+    """
     new obs is [pos, vel, goal_pos]
-    '''
+    """
 
     def obs_part_to_goal(self, obs_part):
         return np.array([obs_part[0]])
 
     def reward(self, obs_part, goal):
         return 100 if obs_part[0] >= goal[0] else 0
-        # dist = np.abs(obs_part[0] - goal[0])
-        # return 100 if dist < 0.03 else 0
 
     def terminal(self, obs_part, goal):
-        # dist = np.abs(obs_part[0] - goal[0])
-        return (obs_part[0] >= goal[0])
-        # return (dist < 0.03)
+        return obs_part[0] >= goal[0]
 
     def get_obs_part(self, obs):
         return obs[:2]
@@ -122,9 +111,9 @@ class MountaincarGoalWrapper(GoalWrapper):
 
 
 class PickAndPlaceGoalWrapper(GoalWrapper):
-    def __init__(self, env, buffer, reward_scaling):
+    def __init__(self, env):
         assert isinstance(env, PickAndPlaceEnv)
-        super().__init__(env, buffer, reward_scaling)
+        super().__init__(env)
 
     def obs_part_to_goal(self, obs_part):
         return self.env._obs_to_goal(obs_part[-1])
