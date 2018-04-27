@@ -95,10 +95,7 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
         a = agent.get_actions([s1], sample=(not is_eval_period(count[EPISODE])))
 
         a = a[0]
-        if using_hindsight:
-            s2, r, t, info = env.step(a, action_converter)
-        else:
-            s2, r, t, info = env.step(action_converter(a))
+        s2, r, t, info = env.step(action_converter(a))
         if t:
             print('reward:', r)
 
@@ -107,13 +104,12 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, using_h
         episode_count += Counter(reward=r, timesteps=1)
         r *= reward_scale
         if not is_eval_period(count[EPISODE]):
-            buffer.append(s1, a, r, s2, t)
+            buffer.append(s1, action_converter(a), r, s2, t)
             if len(buffer) >= batch_size:
                 for i in range(num_train_steps):
                     s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
                     [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
                     episode_count += Counter({V_LOSS: v_loss, Q_LOSS: q_loss, PI_LOSS: pi_loss})
-                    print(episode_count)
         s1 = s2
         if t:
             s1 = env.reset()
