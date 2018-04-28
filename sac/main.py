@@ -76,6 +76,9 @@ class Trainer:
     def reset(self):
         return self.env.reset()
 
+    def step(self, action):
+        return self.env.step(action)
+
     def __init__(self,
                  env,
                  buffer,
@@ -92,7 +95,7 @@ class Trainer:
 
         tb_writer = tf.summary.FileWriter(logdir) if logdir else None
 
-        s1 = env.reset()
+        self.s1 = s1 = env.reset()
 
         self.env = env
         self.buffer = buffer
@@ -112,7 +115,7 @@ class Trainer:
                 sample=(not is_eval_period(count[EPISODE])))
             if render:
                 env.render()
-            s2, r, t, info = env.step(self.action_converter(a))
+            s2, r, t, info = self.step(self.action_converter(a))
             if t:
                 print('reward:', r)
 
@@ -136,7 +139,7 @@ class Trainer:
                             Q_LOSS: q_loss,
                             PI_LOSS: pi_loss
                         })
-            s1 = s2
+            self.s1 = s1 = s2
             if t:
                 s1 = self.reset()
                 episode_reward = episode_count[REWARD]
@@ -160,7 +163,7 @@ class Trainer:
                     episode_count[k] = 0
 
 
-class HindsightTraner(Trainer):
+class HindsightTrainer(Trainer):
     def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps, logdir=None, render=False):
         self.trajectory = []
         assert isinstance(env, GoalWrapper)
@@ -168,6 +171,11 @@ class HindsightTraner(Trainer):
 
     def state_converter(self, state):
         return self.env.obs_from_obs_part_and_goal(state)
+
+    def step(self, action):
+        s2, r, t, i = super().step(action)
+        self.trajectory.append((self.s1, action, r, s2, t))
+        return s2, r, t, i
 
     def reset(self):
         for s1, a, r, s2, t in env.recompute_trajectory(self.trajectory):
@@ -196,7 +204,9 @@ if __name__ == '__main__':
 
     if args.mimic_file is not None:
         inject_mimic_experiences(args.mimic_file, buffer, N=10)
-    Trainer(
+
+    trainer = HindsightTrainer if isinstance(env, GoalWrapper) else Trainer
+    trainer(
         env=env,
         buffer=buffer,
         reward_scale=args.reward_scale,

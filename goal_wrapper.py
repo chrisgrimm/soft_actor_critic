@@ -42,8 +42,6 @@ class GoalWrapper(gym.Wrapper):
         new_s2 = State(s2, self.final_goal())
         new_r = self.reward(s2, self.final_goal())
         new_t = self.terminal(s2, self.final_goal()) or t
-        self.trajectory.append((self.current_state, action, new_r, new_s2,
-                                new_t))
         self.current_state = new_s2
         return new_s2, new_r, new_t, {'base_reward': r}
 
