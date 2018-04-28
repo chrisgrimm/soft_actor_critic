@@ -51,8 +51,8 @@ def build_action_converter(env):
             return np.argmax(a)
         else:
             a = np.tanh(a)
-            h, l = env.action_space.high, env.action_space.low
-            return ((a + 1) / 2) * (h - l) + l
+            hi, lo = env.action_space.high, env.action_space.low
+            return ((a + 1) / 2) * (hi - lo) + lo
 
     return converter
 
@@ -114,6 +114,7 @@ def run_training(env,
             agent.get_actions(
                 [state_converter(s1)],
                 sample=(not is_eval_period(count[EPISODE]))))
+        env.render()
         s2, r, t, info = env.step(a)
         if t:
             print('reward:', r)
