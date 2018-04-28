@@ -57,6 +57,15 @@ def build_action_converter(env):
     return converter
 
 
+def build_state_converter(env):
+    def converter(s):
+        if isinstance(env, GoalWrapper):
+            return env.concatenate(s)
+        return s
+
+    return converter
+
+
 def string_to_env(env_name):
     using_hindsight = False
     if env_name == 'chaser':
@@ -85,6 +94,7 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
 
     agent = build_agent(env)
     action_converter = build_action_converter(env)
+    state_converter = build_state_converter(env)
 
     count = Counter(reward=0, episode=0)
     episode_count = Counter()
@@ -92,8 +102,10 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
     is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
 
     for time_steps in itertools.count():
-        a = agent.get_actions([s1], sample=(not is_eval_period(count[EPISODE])))
-        s2, r, t, info = env.step(action_converter(a))
+        a = action_converter(agent.get_actions(
+            [state_converter(s1)],
+            sample=(not is_eval_period(count[EPISODE]))))
+        s2, r, t, info = env.step(a)
         if t:
             print('reward:', r)
 
@@ -102,10 +114,12 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
         episode_count += Counter(reward=r, timesteps=1)
         r *= reward_scale
         if not is_eval_period(count[EPISODE]):
-            buffer.append(s1, action_converter(a), r, s2, t)
+            buffer.append(s1, a, r, s2, t)
             if len(buffer) >= batch_size:
                 for i in range(num_train_steps):
                     s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
+                    s1_sample = list(map(state_converter, s1_sample))
+                    s2_sample = list(map(state_converter, s2_sample))
                     [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
                     episode_count += Counter({V_LOSS: v_loss, Q_LOSS: q_loss, PI_LOSS: pi_loss})
         s1 = s2
