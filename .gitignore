@@ -2,3 +2,5 @@
 **/__pycache__
 .runsrc
 runs.yml
+.runs/
+.ropeproject

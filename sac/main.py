@@ -57,13 +57,16 @@ def string_to_env(env_name, buffer, reward_scaling):
     return env
 
 
-def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
+def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir):
+    tb_writer = tf.summary.FileWriter(logdir) if logdir else None
+
     s1 = env.reset()
 
     agent = build_agent(env)
     action_converter = build_action_converter(env)
 
     episode_reward = 0
+    total_reward = 0
     episodes = 0
     time_steps = 0
     evaluation_period = 10
@@ -75,6 +78,7 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
         time_steps += 1
 
         episode_reward += r
+        total_reward += r
         # env.render()
         r /= reward_scale
         if not is_eval_period(episodes):
@@ -90,11 +94,21 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps):
                                                                      episodes, time_steps, episode_reward))
             episode_reward = 0
             episodes += 1
+            if logdir:
+                summary = tf.Summary()
+                summary.value.add(
+                    tag='average reward',
+                    simple_value=total_reward / float(episodes))
+                summary.value.add(
+                    tag='reward',
+                    simple_value=episode_reward)
+                tb_writer.flush()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
+    parser.add_argument('--logdir', default=None)
     parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
@@ -108,4 +122,5 @@ if __name__ == '__main__':
                  buffer=buffer,
                  reward_scale=args.reward_scale,
                  batch_size=args.batch_size,
-                 num_train_steps=args.num_train_steps)
+                 num_train_steps=args.num_train_steps,
+                 logdir=args.logdir)
