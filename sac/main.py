@@ -134,6 +134,7 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
+    parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
@@ -142,6 +143,8 @@ if __name__ == '__main__':
     parser.add_argument('--logdir', default=None, type=str)
     args = parser.parse_args()
 
+    np.random.seed(args.seed)
+    tf.set_random_seed(args.seed)
     buffer = ReplayBuffer2(args.buffer_size)
     env, using_hindsight = string_to_env(args.env)
 
