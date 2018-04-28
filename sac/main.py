@@ -156,9 +156,6 @@ class Trainer:
                         })
             s1 = s2
             if t:
-                if isinstance(env, GoalWrapper):
-                    for s1, a, r, s2, t in env.recompute_trajectory(env.trajectory):
-                        buffer.append(s1, a, r * reward_scale, s2, t)
                 s1 = self.reset()
                 episode_reward = episode_count[REWARD]
                 print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' %
@@ -194,6 +191,8 @@ class HindsightTrainer(Trainer):
         return s2, r, t, i
 
     def reset(self):
+        for s1, a, r, s2, t in env.recompute_trajectory(env.trajectory):
+            self.buffer.append(s1, a, r * self.reward_scale, s2, t)
         self.trajectory = []
         self.s1 = super().reset()
         return self.s1

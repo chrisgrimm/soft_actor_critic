@@ -55,6 +55,8 @@ class GoalWrapper(gym.Wrapper):
         return new_state
 
     def recompute_trajectory(self, trajectory):
+        if not trajectory:
+            return ()
         (_, _, _, sp_final, _) = trajectory[-1]
         achieved_goal = self.goal_from_obs_part(sp_final.obs)
         for (s, a, r, sp, t) in trajectory:
