@@ -102,7 +102,7 @@ def run_tests(env, obs):
     assert_equal(obs, env.change_goal(goal, obs))
     try:
         assert_equal(
-            env._gripper_pos(), env._gripper_pos(env.sim.qpos), atol=1e-2)
+            env.gripper_pos(), env.gripper_pos(env.sim.qpos), atol=1e-2)
     except AttributeError:
         pass
 

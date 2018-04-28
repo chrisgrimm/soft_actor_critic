@@ -35,7 +35,7 @@ class NavigateEnv(BaseEnv):
         self._set_new_goal()
         self._action_multiplier = action_multiplier
         self._continuous = continuous
-        obs_shape = history_len * np.size(self._obs()) + np.size(self._goal())
+        obs_shape = history_len * np.size(self._obs()) + np.size(self.goal())
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs_shape)
 
         if continuous:
@@ -56,7 +56,7 @@ class NavigateEnv(BaseEnv):
     def _obs(self):
         return [self.sim.qpos]
 
-    def _goal(self):
+    def goal(self):
         return [self.__goal]
 
     def goal_3d(self):
@@ -65,12 +65,12 @@ class NavigateEnv(BaseEnv):
     def _currently_failed(self):
         return False
 
-    def _compute_terminal(self, goal, obs):
+    def compute_terminal(self, goal, obs):
         goal, = goal
         qpos, = obs
         return at_goal(self._gripper_pos(qpos), goal, self._geofence)
 
-    def _compute_reward(self, goal, obs):
+    def compute_reward(self, goal, obs):
         goal_pos, = goal
         qpos, = obs
         if at_goal(self._gripper_pos(qpos), goal_pos, self._geofence):

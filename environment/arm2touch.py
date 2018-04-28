@@ -35,7 +35,7 @@ class Arm2TouchEnv(BaseEnv):
         self._set_new_goal()
         self._action_multiplier = action_multiplier
         self._continuous = continuous
-        obs_shape = history_len * np.size(self._obs()) + np.size(self._goal())
+        obs_shape = history_len * np.size(self._obs()) + np.size(self.goal())
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs_shape)
 
         if continuous:
@@ -82,7 +82,7 @@ class Arm2TouchEnv(BaseEnv):
     def _obs(self):
         return [self.sim.qpos]
 
-    def _goal(self):
+    def goal(self):
         return [self.__goal]
 
     def goal_3d(self):
@@ -101,12 +101,12 @@ class Arm2TouchEnv(BaseEnv):
         else:
             return self.are_positions_touching(block2, gripper)
 
-    def _compute_terminal(self, goal, obs):
+    def compute_terminal(self, goal, obs):
         goal, = goal
         qpos, = obs
         return self.at_goal(qpos, goal)
 
-    def _compute_reward(self, goal, obs):
+    def compute_reward(self, goal, obs):
         qpos, = obs
         if self.at_goal(qpos, goal):
             return 1
@@ -118,7 +118,7 @@ class Arm2TouchEnv(BaseEnv):
     def _obs_to_goal(self, obs):
         raise Exception('No promises here.')
         qpos, = obs
-        return [self._gripper_pos(qpos)]
+        return [self.gripper_pos(qpos)]
 
     def _gripper_pos(self, qpos=None):
         finger1, finger2 = [

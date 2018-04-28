@@ -52,7 +52,7 @@ class NavigateEnv(BaseEnv):
         cnn_space = Box(
             0, 1, shape=(list(image_dimensions) + [3 * history_len]))
         obs_size = history_len * \
-            sum(map(np.size, self._obs())) + sum(map(np.size, self._goal()))
+            sum(map(np.size, self._obs())) + sum(map(np.size, self.goal()))
         mlp_space = Box(
             np.min(self._world_lower_bound),
             np.min(self._world_upper_bound),
@@ -72,7 +72,7 @@ class NavigateEnv(BaseEnv):
                 pass
 
     def server_values(self):
-        return self.sim.qpos, self.sim.qvel, self._goal
+        return self.sim.qpos, self.sim.qvel, self.goal
 
     def reset_qpos(self):
         qpos = np.append(self._get_new_pos(), [0])
@@ -88,7 +88,7 @@ class NavigateEnv(BaseEnv):
             obs += [self.image()]
         return obs
 
-    def _goal(self):
+    def goal(self):
         return [self.__goal]
 
     def goal_3d(self):
@@ -106,12 +106,12 @@ class NavigateEnv(BaseEnv):
     def _pos(self):
         return self.sim.get_body_xpos(self._body_name)[:2]
 
-    def _compute_terminal(self, goal, obs):
+    def compute_terminal(self, goal, obs):
         goal, = goal
         pos = obs[0]
         return at_goal(pos, goal, self._geofence)
 
-    def _compute_reward(self, goal, obs):
+    def compute_reward(self, goal, obs):
         pos = obs[0]
         if at_goal(pos, goal, self._geofence):
             return 1

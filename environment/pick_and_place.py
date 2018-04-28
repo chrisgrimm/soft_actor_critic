@@ -45,14 +45,14 @@ class PickAndPlaceEnv(MujocoEnv):
             image_dimensions=None)
 
         self.initial_qpos = np.copy(self.init_qpos)
-        self._initial_block_pos = np.copy(self._block_pos())
+        self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [
             left_finger_name,
             left_finger_name.replace('_l_', '_r_')
         ]
         obs_size = history_len * sum(map(np.size, self._obs())) + sum(
-            map(np.size, self._goal()))
+            map(np.size, self.goal()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
@@ -115,23 +115,16 @@ class PickAndPlaceEnv(MujocoEnv):
     def _obs(self):
         return self.sim.qpos,
 
-    # def _fingers_touching(self):
-    #     return not np.allclose(self.sim.sensordata[1:], [0, 0], atol=1e-2)
-
-    # def _block_lifted(self):
-    # return self._block_pos()[2] > self._min_lift_height - self._geofence
-    # return np.allclose(self.sim.sensordata[:1], [0], atol=1e-2) and self._block_pos()[2] > self._min_lift_height
-
-    def _block_pos(self):
+    def block_pos(self):
         return self.sim.get_body_xpos(self._goal_block_name)
 
-    def _goal(self):
+    def goal(self):
         goal_pos = self._initial_block_pos + \
             np.array([0, 0, self._min_lift_height])
         return goal_pos, goal_pos
 
     def goal_3d(self):
-        return self._goal()[0]
+        return self.goal()[0]
 
     def _currently_failed(self):
         return False
@@ -139,28 +132,24 @@ class PickAndPlaceEnv(MujocoEnv):
     def _achieved_goal(self, goal, obs):
         gripper_goal_pos, block_goal_pos = goal
         gripper_at_goal = at_goal(
-            self._gripper_pos(obs[0]), gripper_goal_pos, self._geofence)
-        block_at_goal = at_goal(self._block_pos(), block_goal_pos,
+            self.gripper_pos(obs[0]), gripper_goal_pos, self._geofence)
+        block_at_goal = at_goal(self.block_pos(), block_goal_pos,
                                 self._geofence)
         return gripper_at_goal and block_at_goal
 
-    def _compute_terminal(self, goal, obs):
-        return False
-        # return self._achieved_goal(goal, obs)
+    def compute_terminal(self, goal, obs):
+        return self._achieved_goal(goal, obs)
 
-    def _compute_reward(self, goal, obs):
+    def compute_reward(self, goal, obs):
         if self._achieved_goal(goal, obs):
             print('Achieved goal')
-            return 1
+            return 100
         elif self._neg_reward:
             return -.0001
         else:
             return 0
 
-    def _obs_to_goal(self, obs):
-        return self._gripper_pos(obs[0]), self._block_pos()
-
-    def _gripper_pos(self, qpos=None):
+    def gripper_pos(self, qpos=None):
         finger1, finger2 = [
             self.sim.get_body_xpos(name, qpos) for name in self._finger_names
         ]

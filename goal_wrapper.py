@@ -19,7 +19,7 @@ class GoalWrapper(gym.Wrapper):
         self.observation_space = Box(-1, 1, concatenate.shape)
 
     @abstractmethod
-    def achieved_goal(self, obs_part):
+    def goal_from_obs_part(self, obs_part):
         raise NotImplementedError
 
     @abstractmethod
@@ -58,7 +58,7 @@ class GoalWrapper(gym.Wrapper):
         if not self.trajectory:
             return
         (_, _, _, sp_final, _) = self.trajectory[-1]
-        achieved_goal = self.achieved_goal(sp_final.obs)
+        achieved_goal = self.goal_from_obs_part(sp_final.obs)
         for (s, a, r, sp, t) in self.trajectory:
             new_s = s.obs, achieved_goal
             new_sp = sp.obs, achieved_goal
@@ -74,7 +74,7 @@ class MountaincarGoalWrapper(GoalWrapper):
     new obs is [pos, vel, goal_pos]
     """
 
-    def achieved_goal(self, obs_part):
+    def goal_from_obs_part(self, obs_part):
         return np.array([obs_part[0]])
 
     def reward(self, obs_part, goal):
@@ -92,24 +92,14 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
         assert isinstance(env, PickAndPlaceEnv)
         super().__init__(env)
 
-    def achieved_goal(self, obs_part):
-        return self.env._obs_to_goal(obs_part[-1])
+    def goal_from_obs_part(self, obs_part):
+        return self.env.gripper_pos(obs_part[0]), self.env.block_pos()
 
     def reward(self, obs_part, goal):
-        return sum(self.env._compute_reward(goal, obs) for obs in obs_part)
+        return sum(self.env.compute_reward(goal, obs) for obs in obs_part)
 
     def terminal(self, obs_part, goal):
-        return any(self.env._compute_terminal(goal, obs) for obs in obs_part)
-
-    def get_obs_part(self, obs):
-        goal, obs_history = self.env.destructure_mlp_input(obs)
-        return obs_history
-
-    def get_goal_part(self, obs):
-        return self.env.obs_to_goal(obs)
-
-    def obs_from_obs_part_and_goal(self, obs_part, goal):
-        return self.env.mlp_input(goal, obs_part)
+        return any(self.env.compute_terminal(goal, obs) for obs in obs_part)
 
     def desired_goal(self):
-        return self.env._goal()
+        return self.env.goal()
