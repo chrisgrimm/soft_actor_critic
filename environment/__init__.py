@@ -12,11 +12,9 @@ def fullpath(dir):
 register(
     id='Navigate-v0',
     entry_point='environment.hsr_gym:HSREnv',
-    kwargs={'xml_filepath': fullpath('navigate')}
-)
+    kwargs={'xml_filepath': fullpath('navigate')})
 
 register(
     id='PickAndPlace-v0',
     entry_point='environment.hsr_gym:HSREnv',
-    kwargs={'xml_filepath': fullpath('pick_and_place')}
-)
+    kwargs={'xml_filepath': fullpath('pick_and_place')})

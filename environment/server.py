@@ -11,7 +11,7 @@ def _serve_forever(port, queue):
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.bind(('', port))
         while True:
-            data, return_address = sock.recvfrom(2 ** 3)
+            data, return_address = sock.recvfrom(2**3)
             response = pickle.dumps(queue.get())
             sock.sendto(response, return_address)
 

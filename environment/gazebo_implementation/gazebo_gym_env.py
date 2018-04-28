@@ -20,10 +20,10 @@ class GazeboEnv(gym.Env):
         if launchfile.startswith("/"):
             fullpath = launchfile
         else:
-            fullpath = os.path.join(os.path.dirname(
-                __file__), "assets", "launch", launchfile)
+            fullpath = os.path.join(
+                os.path.dirname(__file__), "assets", "launch", launchfile)
         if not path.exists(fullpath):
-            raise IOError("File "+fullpath+" does not exist")
+            raise IOError("File " + fullpath + " does not exist")
 
         subprocess.Popen(["roslaunch", fullpath])
 
@@ -75,5 +75,6 @@ class GazeboEnv(gym.Env):
         # if roscore_count > 0:
         #     os.system("killall -9 roscore")
 
-        if (gzclient_count or gzserver_count or roscore_count or rosmaster_count > 0):
+        if (gzclient_count or gzserver_count or roscore_count
+                or rosmaster_count > 0):
             os.wait()

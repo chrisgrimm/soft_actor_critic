@@ -18,19 +18,18 @@ def horz_stack_images(*images, spacing=5, background_color=(0, 0, 0)):
     height = images[0].shape[0]
     width = images[0].shape[1]
     depth = images[0].shape[2]
-    canvas = np.ones([height, width*len(images) +
-                      spacing*(len(images) - 1), depth])
+    canvas = np.ones(
+        [height, width * len(images) + spacing * (len(images) - 1), depth])
     bg_color = np.reshape(background_color, [1, 1, depth])
     canvas *= bg_color
     width_pos = 0
     for image in images:
-        canvas[:, width_pos:width_pos+width, :] = image
+        canvas[:, width_pos:width_pos + width, :] = image
         width_pos += (width + spacing)
     return canvas
 
 
 def component(function):
-
     def wrapper(*args, **kwargs):
         reuse = kwargs.get('reuse', None)
         name = kwargs['name']
@@ -42,4 +41,5 @@ def component(function):
             variables = tf.get_variable_scope().get_collection(
                 tf.GraphKeys.TRAINABLE_VARIABLES)
             return out, variables
+
     return wrapper

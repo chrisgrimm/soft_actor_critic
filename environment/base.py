@@ -13,8 +13,8 @@ from abc import abstractmethod
 class BaseEnv(utils.EzPickle, Server):
     """ The environment """
 
-    def __init__(self, max_steps, history_len, image_dimensions,
-                 neg_reward, steps_per_action):
+    def __init__(self, max_steps, history_len, image_dimensions, neg_reward,
+                 steps_per_action):
         utils.EzPickle.__init__(self)
 
         self._history_buffer = deque(maxlen=history_len)

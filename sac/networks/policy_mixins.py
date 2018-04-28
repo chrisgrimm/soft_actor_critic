@@ -6,11 +6,10 @@ EPS = 1E-6
 
 
 def leaky_relu(x, alpha=0.2):
-    return tf.maximum(x, alpha*x)
+    return tf.maximum(x, alpha * x)
 
 
 class MLPPolicy(object):
-
     def input_processing(self, s):
         fc1 = tf.layers.dense(s, 128, tf.nn.relu, name='fc1')
         fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
@@ -32,7 +31,9 @@ class GaussianPolicy(object):
         (mu, sigma) = parameters
         log_prob = tf.distributions.Normal(mu, sigma).log_prob(u)
         # print(log_prob)
-        return tf.reduce_sum(log_prob, axis=1) - tf.reduce_sum(tf.log(1 - tf.square(tf.tanh(u)) + EPS), axis=1)
+        return tf.reduce_sum(
+            log_prob, axis=1) - tf.reduce_sum(
+                tf.log(1 - tf.square(tf.tanh(u)) + EPS), axis=1)
 
     def policy_parameters_to_max_likelihood_action(self, parameters):
         (mu, sigma) = parameters
@@ -47,7 +48,6 @@ class GaussianPolicy(object):
 
 
 class GaussianMixturePolicy(object):
-
     def produce_policy_parameters(self, a_shape, processed_s):
         pass
 
@@ -59,15 +59,14 @@ class GaussianMixturePolicy(object):
 
 
 class CategoricalPolicy(object):
-
     def produce_policy_parameters(self, a_shape, processed_s):
         logits = tf.layers.dense(processed_s, a_shape, name='logits')
         return logits
 
     def policy_parameters_to_log_prob(self, a, parameters):
         logits = parameters
-        out = tf.distributions.Categorical(
-            logits=logits).log_prob(tf.argmax(a, axis=1))
+        out = tf.distributions.Categorical(logits=logits).log_prob(
+            tf.argmax(a, axis=1))
         #out = tf.Print(out, [out], summarize=10)
         return out
 
@@ -75,8 +74,8 @@ class CategoricalPolicy(object):
         logits = parameters
         a_shape = logits.get_shape()[1].value
         #logits = tf.Print(logits, [tf.nn.softmax(logits)], message='logits are:', summarize=10)
-        out = tf.one_hot(tf.distributions.Categorical(
-            logits=logits).sample(), a_shape)
+        out = tf.one_hot(
+            tf.distributions.Categorical(logits=logits).sample(), a_shape)
         return out
 
     def policy_parameters_to_max_likelihood_action(self, parameters):

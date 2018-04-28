@@ -22,6 +22,7 @@ class HistoryBuffer(object):
 
     def reset(self):
         if self.shapes is not None:
+
             def initialize(shape):
                 return deque(
                     [np.zeros(shape) for _ in range(self._history_len)],

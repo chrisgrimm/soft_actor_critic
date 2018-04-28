@@ -3,7 +3,6 @@ from abc import abstractmethod
 
 
 class AbstractSoftActorCritic(object):
-
     def __init__(self, s_shape, a_shape):
         self.S1 = S1 = tf.placeholder(tf.float32, [None] + list(s_shape))
         self.S2 = S2 = tf.placeholder(tf.float32, [None] + list(s_shape))
@@ -12,7 +11,7 @@ class AbstractSoftActorCritic(object):
         self.T = T = tf.placeholder(tf.float32, [None])
         gamma = 0.99
         tau = 0.01
-        learning_rate = 3*10**-4
+        learning_rate = 3 * 10**-4
 
         # constructing V loss
 
@@ -35,18 +34,19 @@ class AbstractSoftActorCritic(object):
         log_pi_sampled2 = self.pi_network_log_prob(
             A_sampled2, S1, 'pi', reuse=True)
         self.V_loss = V_loss = tf.reduce_mean(
-            0.5*tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
+            0.5 * tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
 
         # constructing Q loss
         V_bar_S2 = self.V_network(S2, 'V_bar')
         Q = self.Q_network(
             S1, self.transform_action_sample(A), 'Q', reuse=True)
         self.Q_loss = Q_loss = tf.reduce_mean(
-            0.5*tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
+            0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
 
         # constructing pi loss
         self.pi_loss = pi_loss = tf.reduce_mean(
-            log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
+            log_pi_sampled2 *
+            tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
 
         # grabbing all the relevant variables
         phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
@@ -56,19 +56,25 @@ class AbstractSoftActorCritic(object):
             tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
 
         soft_update_xi_bar_ops = [
-            tf.assign(xbar, tau*x + (1 - tau)*xbar) for (xbar, x) in zip(xi_bar, xi)]
+            tf.assign(xbar, tau * x + (1 - tau) * xbar)
+            for (xbar, x) in zip(xi_bar, xi)
+        ]
         self.soft_update_xi_bar = soft_update_xi_bar = tf.group(
             *soft_update_xi_bar_ops)
         hard_update_xi_bar_ops = [
-            tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)]
+            tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
+        ]
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
 
         self.train_V = train_V = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(V_loss, var_list=xi)
+            learning_rate=learning_rate).minimize(
+                V_loss, var_list=xi)
         self.train_Q = train_Q = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(Q_loss, var_list=theta)
+            learning_rate=learning_rate).minimize(
+                Q_loss, var_list=theta)
         self.train_pi = train_pi = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(pi_loss, var_list=phi)
+            learning_rate=learning_rate).minimize(
+                pi_loss, var_list=phi)
         self.check = tf.add_check_numerics_ops()
 
         config = tf.ConfigProto(allow_soft_placement=True)
@@ -80,9 +86,17 @@ class AbstractSoftActorCritic(object):
 
     def train_step(self, S1, A, R, S2, T):
         [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
-            [self.train_V, self.train_Q, self.train_pi,
-                self.V_loss, self.Q_loss, self.pi_loss],
-            feed_dict={self.S1: S1, self.A: A, self.R: R, self.S2: S2, self.T: T})
+            [
+                self.train_V, self.train_Q, self.train_pi, self.V_loss,
+                self.Q_loss, self.pi_loss
+            ],
+            feed_dict={
+                self.S1: S1,
+                self.A: A,
+                self.R: R,
+                self.S2: S2,
+                self.T: T
+            })
         self.sess.run(self.soft_update_xi_bar)
         return V_loss, Q_loss, pi_loss
 

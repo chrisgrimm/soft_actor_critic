@@ -53,8 +53,10 @@ class NavigateEnv(BaseEnv):
             0, 1, shape=(list(image_dimensions) + [3 * history_len]))
         obs_size = history_len * \
             sum(map(np.size, self._obs())) + sum(map(np.size, self._goal()))
-        mlp_space = Box(np.min(self._world_lower_bound),
-                        np.min(self._world_upper_bound), shape=obs_size)
+        mlp_space = Box(
+            np.min(self._world_lower_bound),
+            np.min(self._world_upper_bound),
+            shape=obs_size)
 
         if use_camera:
             self.observation_space = Tuple([mlp_space, cnn_space])
@@ -139,7 +141,8 @@ class NavigateEnv(BaseEnv):
 
             forward, rotate = np.array(action)
             action = np.append(forward * self._orientation(), [rotate * .01])
-        obs, reward, done, meta = super().step(action * self._action_multiplier)
+        obs, reward, done, meta = super().step(
+            action * self._action_multiplier)
         if done:
             self._write_log_file()
         return obs, reward, done, meta
@@ -186,6 +189,7 @@ class NavigateEnv(BaseEnv):
     def _write_log_file(self):
         if self._goal_log_file is not None:
             values = np.concatenate([[self._step_num], self.log_start_pos,
-                                     self.goal(), self._pos()])
+                                     self.goal(),
+                                     self._pos()])
             with open(self._goal_log_file, 'a') as f:
                 f.write(' '.join(map(str, values)))

@@ -19,7 +19,9 @@ MODEL_XML = """
 """
 
 # TODO: Change to relative path
-with open('/home/bhairav/coding/zero_shot/environment/hsr_description/robots/hsrb4s.mjcf') as f:
+with open(
+        '/home/bhairav/coding/zero_shot/environment/hsr_description/robots/hsrb4s.mjcf'
+) as f:
     MODEL_XML = f.read()
 
 model = load_model_from_xml(MODEL_XML)
@@ -43,8 +45,8 @@ modelquat = np.zeros(4)
 roompos = np.ones(3)
 roomquat = np.array([1., 0., 1., 0.])
 
-functions.mjv_room2model(modelpos, modelquat, roompos,
-                         roomquat, sim.render_contexts[0].scn)
+functions.mjv_room2model(modelpos, modelquat, roompos, roomquat,
+                         sim.render_contexts[0].scn)
 
 print("\n\nAnother internal function, mjv_room2model:")
 print("modelpos = %s, modelquat = %s" % (str(modelpos), str(modelquat)))

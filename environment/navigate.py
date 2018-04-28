@@ -7,23 +7,31 @@ from environment.base import at_goal, BaseEnv
 
 
 class NavigateEnv(BaseEnv):
-    def __init__(self, continuous, max_steps, geofence=.08, history_len=1, neg_reward=True,
+    def __init__(self,
+                 continuous,
+                 max_steps,
+                 geofence=.08,
+                 history_len=1,
+                 neg_reward=True,
                  action_multiplier=1):
 
-        BaseEnv.__init__(self,
-                         geofence=geofence,
-                         max_steps=max_steps,
-                         xml_filepath=join('models', 'navigate', 'world.xml'),
-                         history_len=history_len,
-                         use_camera=False,  # TODO
-                         neg_reward=neg_reward,
-                         body_name="hand_palm_link",
-                         steps_per_action=10,
-                         image_dimensions=None)
+        BaseEnv.__init__(
+            self,
+            geofence=geofence,
+            max_steps=max_steps,
+            xml_filepath=join('models', 'navigate', 'world.xml'),
+            history_len=history_len,
+            use_camera=False,  # TODO
+            neg_reward=neg_reward,
+            body_name="hand_palm_link",
+            steps_per_action=10,
+            image_dimensions=None)
 
         left_finger_name = 'hand_l_distal_link'
-        self._finger_names = [left_finger_name,
-                              left_finger_name.replace('_l_', '_r_')]
+        self._finger_names = [
+            left_finger_name,
+            left_finger_name.replace('_l_', '_r_')
+        ]
         self._set_new_goal()
         self._action_multiplier = action_multiplier
         self._continuous = continuous
@@ -40,7 +48,7 @@ class NavigateEnv(BaseEnv):
 
     def _set_new_goal(self):
         low = np.array([-1.62502012, -1.62177551, 0.878])
-        high = np.array([1.64253711, 1.59272938,  0.878])
+        high = np.array([1.64253711, 1.59272938, 0.878])
         goal = np.random.uniform(low, high)
         assert np.all(low <= goal) and np.all(goal <= high)
         self.__goal = goal
@@ -77,16 +85,17 @@ class NavigateEnv(BaseEnv):
         return [self._gripper_pos(qpos)]
 
     def _gripper_pos(self, qpos=None):
-        finger1, finger2 = [self.sim.get_body_xpos(name, qpos)
-                            for name in self._finger_names]
+        finger1, finger2 = [
+            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
+        ]
         return (finger1 + finger2) / 2.
 
     def step(self, action):
         if not self._continuous:
             ctrl = np.zeros(self.sim.nu)
             if action != 0:
-                ctrl[(action - 1) // 2] = (1 if action %
-                                           2 else -1) * self._action_multiplier
+                ctrl[(action - 1) // 2] = (
+                    1 if action % 2 else -1) * self._action_multiplier
             return BaseEnv.step(self, ctrl)
         else:
             action = np.clip(action * self._action_multiplier, -1, 1)

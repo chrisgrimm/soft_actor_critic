@@ -4,11 +4,10 @@ import numpy as np
 
 
 def leaky_relu(x, alpha=0.2):
-    return tf.maximum(x, alpha*x)
+    return tf.maximum(x, alpha * x)
 
 
 class MLPValueFunc(object):
-
     def Q_network(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)

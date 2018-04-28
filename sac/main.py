@@ -82,7 +82,12 @@ def string_to_env(env_name):
     return env, using_hindsight
 
 
-def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=None):
+def run_training(env,
+                 buffer,
+                 reward_scale,
+                 batch_size,
+                 num_train_steps,
+                 logdir=None):
     V_LOSS = 'V loss'
     Q_LOSS = 'Q loss'
     PI_LOSS = 'pi loss'
@@ -101,13 +106,14 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
     episode_count = Counter()
     evaluation_period = 10
 
-    def is_eval_period(
-        episode_number): return episode_number % evaluation_period == 0
+    def is_eval_period(episode_number):
+        return episode_number % evaluation_period == 0
 
     for time_steps in itertools.count():
-        a = action_converter(agent.get_actions(
-            [state_converter(s1)],
-            sample=(not is_eval_period(count[EPISODE]))))
+        a = action_converter(
+            agent.get_actions(
+                [state_converter(s1)],
+                sample=(not is_eval_period(count[EPISODE]))))
         s2, r, t, info = env.step(a)
         if t:
             print('reward:', r)
@@ -126,8 +132,11 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
                     s2_sample = list(map(state_converter, s2_sample))
                     [v_loss, q_loss, pi_loss] = agent.train_step(
                         s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                    episode_count += Counter({V_LOSS: v_loss,
-                                              Q_LOSS: q_loss, PI_LOSS: pi_loss})
+                    episode_count += Counter({
+                        V_LOSS: v_loss,
+                        Q_LOSS: q_loss,
+                        PI_LOSS: pi_loss
+                    })
         s1 = s2
         if t:
             if isinstance(env, GoalWrapper):
@@ -135,15 +144,16 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
                     buffer.append(s1, a, r * reward_scale, s2, t)
             s1 = env.reset()
             episode_reward = episode_count[REWARD]
-            print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(
-                count[EPISODE]) else 'TRAIN',
-                (count[EPISODE]), time_steps, episode_reward))
+            print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' %
+                  ('EVAL' if is_eval_period(count[EPISODE]) else 'TRAIN',
+                   (count[EPISODE]), time_steps, episode_reward))
             count += Counter(reward=episode_reward, episode=1)
             fps = int(episode_count['timesteps'] / (time.time() - tick))
             if logdir:
                 summary = tf.Summary()
                 summary.value.add(
-                    tag='average reward', simple_value=count[REWARD] / float(count[EPISODE]))
+                    tag='average reward',
+                    simple_value=count[REWARD] / float(count[EPISODE]))
                 summary.value.add(tag='fps', simple_value=fps)
                 for k in [V_LOSS, Q_LOSS, PI_LOSS, REWARD]:
                     summary.value.add(tag=k, simple_value=episode_count[k])
@@ -158,7 +168,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
+    parser.add_argument('--buffer-size', default=int(10**7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=10., type=float)
@@ -173,9 +183,10 @@ if __name__ == '__main__':
 
     if args.mimic_file is not None:
         inject_mimic_experiences(args.mimic_file, buffer, N=10)
-    run_training(env=env,
-                 buffer=buffer,
-                 reward_scale=args.reward_scale,
-                 batch_size=args.batch_size,
-                 num_train_steps=args.num_train_steps,
-                 logdir=args.logdir)
+    run_training(
+        env=env,
+        buffer=buffer,
+        reward_scale=args.reward_scale,
+        batch_size=args.batch_size,
+        num_train_steps=args.num_train_steps,
+        logdir=args.logdir)

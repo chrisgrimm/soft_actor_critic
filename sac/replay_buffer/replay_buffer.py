@@ -3,7 +3,6 @@ from collections import deque
 
 
 class ReplayBuffer(object):
-
     def __init__(self, maxlen):
         self.S1 = deque(maxlen=maxlen)
         self.S2 = deque(maxlen=maxlen)
@@ -38,7 +37,6 @@ class ReplayBuffer(object):
 
 
 class RollingBuffer(object):
-
     def __init__(self, maxlen):
         self.maxlen = maxlen
         self.rolling_buffer = [None for _ in range(maxlen)]
@@ -66,7 +64,6 @@ class RollingBuffer(object):
 
 
 class ReplayBuffer2(object):
-
     def __init__(self, maxlen):
         self.buffer = RollingBuffer(maxlen)
 

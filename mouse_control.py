@@ -47,10 +47,10 @@ def run(port, value_tensor=None, sess=None):
         if moving:
             action[i] += env.env.sim.get_mouse_dy()
         # else:
-            # for name in ['wrist_roll_motor']:
-            # for name in ['slide_x_motor', 'slide_y_motor']:
-            # k = env.sim.name2id(ObjType.ACTUATOR, name)
-            # action[:] = 0
+        # for name in ['wrist_roll_motor']:
+        # for name in ['slide_x_motor', 'slide_y_motor']:
+        # k = env.sim.name2id(ObjType.ACTUATOR, name)
+        # action[:] = 0
 
         if lastkey is 'R':
             env.reset()
@@ -96,13 +96,13 @@ def run_tests(env, obs):
     goal, obs_history = env.destructure_mlp_input(obs)
     assert_equal(env._goal(), goal)
     assert_equal(env._obs(), obs_history[-1])
-    assert_equal((goal, obs_history), env.destructure_mlp_input(
-        env.mlp_input(goal, obs_history)))
+    assert_equal((goal, obs_history),
+                 env.destructure_mlp_input(env.mlp_input(goal, obs_history)))
     assert_equal(obs, env.mlp_input(*env.destructure_mlp_input(obs)))
     assert_equal(obs, env.change_goal(goal, obs))
     try:
-        assert_equal(env._gripper_pos(), env._gripper_pos(
-            env.sim.qpos), atol=1e-2)
+        assert_equal(
+            env._gripper_pos(), env._gripper_pos(env.sim.qpos), atol=1e-2)
     except AttributeError:
         pass
 

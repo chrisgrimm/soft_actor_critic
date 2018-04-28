@@ -7,23 +7,31 @@ from environment.base import BaseEnv
 
 
 class Arm2TouchEnv(BaseEnv):
-    def __init__(self, continuous, max_steps, geofence=.08, history_len=1, neg_reward=True,
+    def __init__(self,
+                 continuous,
+                 max_steps,
+                 geofence=.08,
+                 history_len=1,
+                 neg_reward=True,
                  action_multiplier=1):
 
-        BaseEnv.__init__(self,
-                         geofence=geofence,
-                         max_steps=max_steps,
-                         xml_filepath=join('models', 'arm2touch', 'world.xml'),
-                         history_len=history_len,
-                         use_camera=False,  # TODO
-                         neg_reward=neg_reward,
-                         body_name="hand_palm_link",
-                         steps_per_action=10,
-                         image_dimensions=None)
+        BaseEnv.__init__(
+            self,
+            geofence=geofence,
+            max_steps=max_steps,
+            xml_filepath=join('models', 'arm2touch', 'world.xml'),
+            history_len=history_len,
+            use_camera=False,  # TODO
+            neg_reward=neg_reward,
+            body_name="hand_palm_link",
+            steps_per_action=10,
+            image_dimensions=None)
 
         left_finger_name = 'hand_l_distal_link'
-        self._finger_names = [left_finger_name,
-                              left_finger_name.replace('_l_', '_r_')]
+        self._finger_names = [
+            left_finger_name,
+            left_finger_name.replace('_l_', '_r_')
+        ]
         self._set_new_goal()
         self._action_multiplier = action_multiplier
         self._continuous = continuous
@@ -42,27 +50,27 @@ class Arm2TouchEnv(BaseEnv):
 
     def get_block_position(self, qpos, name):
         idx = self.sim.jnt_qposadr(name)
-        position = qpos[idx:idx+3]
+        position = qpos[idx:idx + 3]
         return np.copy(position)
 
     def set_block_position(self, qpos, name, position):
         idx = self.sim.jnt_qposadr(name)
         qpos = np.copy(qpos)
-        qpos[idx:idx+3] = position
+        qpos[idx:idx + 3] = position
         return qpos
 
     def are_positions_touching(self, pos1, pos2):
         touching_threshold = 0.05
         weighting = np.array([1, 1, 0.1])
-        dist = np.sqrt(np.sum(weighting*np.square(pos1 - pos2)))
+        dist = np.sqrt(np.sum(weighting * np.square(pos1 - pos2)))
         return dist < touching_threshold
 
     def reset_qpos(self):
         qpos = self.init_qpos
-        qpos = self.set_block_position(
-            self.sim.qpos, 'block1joint', self.generate_valid_block_position())
-        qpos = self.set_block_position(
-            self.sim.qpos, 'block2joint', self.generate_valid_block_position())
+        qpos = self.set_block_position(self.sim.qpos, 'block1joint',
+                                       self.generate_valid_block_position())
+        qpos = self.set_block_position(self.sim.qpos, 'block2joint',
+                                       self.generate_valid_block_position())
         return qpos
 
     def _set_new_goal(self):
@@ -113,16 +121,17 @@ class Arm2TouchEnv(BaseEnv):
         return [self._gripper_pos(qpos)]
 
     def _gripper_pos(self, qpos=None):
-        finger1, finger2 = [self.sim.get_body_xpos(name, qpos)
-                            for name in self._finger_names]
+        finger1, finger2 = [
+            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
+        ]
         return (finger1 + finger2) / 2.
 
     def step(self, action):
         if not self._continuous:
             ctrl = np.zeros(self.sim.nu)
             if action != 0:
-                ctrl[(action - 1) // 2] = (1 if action %
-                                           2 else -1) * self._action_multiplier
+                ctrl[(action - 1) // 2] = (
+                    1 if action % 2 else -1) * self._action_multiplier
             return BaseEnv.step(self, ctrl)
         else:
             action = np.clip(action * self._action_multiplier, -1, 1)

@@ -21,7 +21,6 @@ from cv_bridge import CvBridge, CvBridgeError
 
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
-
 EPSILON = 1e-4
 MIN_MOVEMENT_TO_ACTION_RATIO = 0.01
 MAX_GOAL_QUERIES = int(1e5)
@@ -74,8 +73,8 @@ class HSRGazeboEnv(GazeboEnv):
 
         self.unpause_srv = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.pause_srv = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
-        self.reset_proxy_srv = rospy.ServiceProxy(
-            '/gazebo/reset_simulation', Empty)
+        self.reset_proxy_srv = rospy.ServiceProxy('/gazebo/reset_simulation',
+                                                  Empty)
 
         self.world_lower_bound = np.array([0.0, 0.0])
         self.world_upper_bound = np.array([0.0, 0.0])
@@ -94,7 +93,8 @@ class HSRGazeboEnv(GazeboEnv):
             if rel_to is None:
 
                 pos = np.random.uniform(
-                    self.world_lower_bound + self.world_size * 1/5, self.world_upper_bound - self.world_size * 1/5)
+                    self.world_lower_bound + self.world_size * 1 / 5,
+                    self.world_upper_bound - self.world_size * 1 / 5)
 
             else:
                 coord, radius = rel_to
@@ -124,13 +124,14 @@ class HSRGazeboEnv(GazeboEnv):
 
     @property
     def orientation(self):
-        return np.array([np.cos(self.robot_pose[2]), np.sin(self.robot_pose[2])])
+        return np.array(
+            [np.cos(self.robot_pose[2]),
+             np.sin(self.robot_pose[2])])
 
     @property
     def _at_goal(self):
         try:
-            distance_to_goal = self.distance_between(self.pos,
-                                                     self.goal)
+            distance_to_goal = self.distance_between(self.pos, self.goal)
             return distance_to_goal < self._geofence_size
         except AttributeError:
             return False
@@ -147,8 +148,7 @@ class HSRGazeboEnv(GazeboEnv):
         frontal_movement = abs(self._prev_action[0])
         if frontal_movement > EPSILON:
             assert self._prev_action is not None
-            distance_traveled = self.distance_between(self._prev_pos,
-                                                      self.pos)
+            distance_traveled = self.distance_between(self._prev_pos, self.pos)
             movement_to_action_ratio = distance_traveled / frontal_movement
             if movement_to_action_ratio < MIN_MOVEMENT_TO_ACTION_RATIO:
                 self._timesteps_stuck += 1
@@ -160,8 +160,8 @@ class HSRGazeboEnv(GazeboEnv):
 
     @property
     def obs(self):
-        msg = rospy.wait_for_message(
-            '/hsrb/head_rgbd_sensor/rgb/image_raw', Image)
+        msg = rospy.wait_for_message('/hsrb/head_rgbd_sensor/rgb/image_raw',
+                                     Image)
 
         dimensions = msg.height, msg.width
         obs = self.resize_image(msg)
@@ -297,7 +297,7 @@ class HSRGazeboEnv(GazeboEnv):
         vel_cmd.linear.y = 0.0
 
         while True:
-            if abs(new_q.dot(self.current_q)) > 1-0.001:
+            if abs(new_q.dot(self.current_q)) > 1 - 0.001:
                 break
 
             self.get_hsrb_state()
@@ -448,16 +448,18 @@ class HSRGazeboEnv(GazeboEnv):
             self.ros_first = rospy.Time.now()
 
             self.sim_first = rospy.wait_for_message('/clock', Clock, timeout=5)
-            self.sim_first = rospy.Time(
-                self.sim_first.clock.secs, self.sim_first.clock.nsecs)
+            self.sim_first = rospy.Time(self.sim_first.clock.secs,
+                                        self.sim_first.clock.nsecs)
 
         ros_now = rospy.Time.now() - self.ros_first
         sim_actual = rospy.wait_for_message('/clock', Clock, timeout=5)
         sim_now = rospy.Time(sim_actual.clock.secs,
                              sim_actual.clock.nsecs) - self.sim_first
 
-        rospy.loginfo('Current ROS Time: {}, Current Sim Time: {}, Real time factor: {}'.format(
-            ros_now.to_sec(), sim_now.to_sec(), sim_now.to_sec() / ros_now.to_sec()))
+        rospy.loginfo(
+            'Current ROS Time: {}, Current Sim Time: {}, Real time factor: {}'.
+            format(ros_now.to_sec(), sim_now.to_sec(),
+                   sim_now.to_sec() / ros_now.to_sec()))
 
         with self.lock:
             if not self.objects_initialized:
@@ -533,6 +535,6 @@ class ObsBuffer(object):
         assert len(self.xy_buffer) == self.hl
         assert len(self.img_buffer) == self.hl
         xy = np.concatenate(self.xy_buffer, axis=0)
-        img = np.concatenate([np.reshape(x, self.image_shape)
-                              for x in self.img_buffer], axis=2)
+        img = np.concatenate(
+            [np.reshape(x, self.image_shape) for x in self.img_buffer], axis=2)
         return xy, img

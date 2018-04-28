@@ -11,10 +11,14 @@ from environment.mujoco import MujocoEnv
 def quaternion_multiply(quaternion1, quaternion0):
     w0, x0, y0, z0 = quaternion0
     w1, x1, y1, z1 = quaternion1
-    return np.array([-x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0,
-                     x1 * w0 + y1 * z0 - z1 * y0 + w1 * x0,
-                     -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0,
-                     x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0], dtype=np.float64)
+    return np.array(
+        [
+            -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0,
+            x1 * w0 + y1 * z0 - z1 * y0 + w1 * x0,
+            -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0,
+            x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0
+        ],
+        dtype=np.float64)
 
 
 def failed(resting_block_height, goal_block_height):
@@ -22,7 +26,12 @@ def failed(resting_block_height, goal_block_height):
 
 
 class PickAndPlaceEnv(MujocoEnv):
-    def __init__(self, max_steps, min_lift_height=.02, geofence=.06, neg_reward=False, history_len=1):
+    def __init__(self,
+                 max_steps,
+                 min_lift_height=.02,
+                 geofence=.06,
+                 neg_reward=False,
+                 history_len=1):
         self._goal_block_name = 'block1'
         self._min_lift_height = min_lift_height + geofence
         self._geofence = geofence
@@ -38,15 +47,17 @@ class PickAndPlaceEnv(MujocoEnv):
         self.initial_qpos = np.copy(self.init_qpos)
         self._initial_block_pos = np.copy(self._block_pos())
         left_finger_name = 'hand_l_distal_link'
-        self._finger_names = [left_finger_name,
-                              left_finger_name.replace('_l_', '_r_')]
+        self._finger_names = [
+            left_finger_name,
+            left_finger_name.replace('_l_', '_r_')
+        ]
         obs_size = history_len * sum(map(np.size, self._obs())) + sum(
             map(np.size, self._goal()))
         assert obs_size != 0
-        self.observation_space = spaces.Box(-np.inf,
-                                            np.inf, shape=(obs_size,), dtype=np.float32)
-        self.action_space = spaces.Box(-1, 1,
-                                       shape=(self.sim.nu - 1,), dtype=np.float32)
+        self.observation_space = spaces.Box(
+            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
+        self.action_space = spaces.Box(
+            -1, 1, shape=(self.sim.nu - 1, ), dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
 
@@ -127,10 +138,10 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def _achieved_goal(self, goal, obs):
         gripper_goal_pos, block_goal_pos = goal
-        gripper_at_goal = at_goal(self._gripper_pos(
-            obs[0]), gripper_goal_pos, self._geofence)
-        block_at_goal = at_goal(
-            self._block_pos(), block_goal_pos, self._geofence)
+        gripper_at_goal = at_goal(
+            self._gripper_pos(obs[0]), gripper_goal_pos, self._geofence)
+        block_at_goal = at_goal(self._block_pos(), block_goal_pos,
+                                self._geofence)
         return gripper_at_goal and block_at_goal
 
     def _compute_terminal(self, goal, obs):
@@ -150,8 +161,9 @@ class PickAndPlaceEnv(MujocoEnv):
         return self._gripper_pos(obs[0]), self._block_pos()
 
     def _gripper_pos(self, qpos=None):
-        finger1, finger2 = [self.sim.get_body_xpos(name, qpos)
-                            for name in self._finger_names]
+        finger1, finger2 = [
+            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
+        ]
         return (finger1 + finger2) / 2.
 
     def step(self, action):
