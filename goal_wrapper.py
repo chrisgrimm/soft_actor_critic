@@ -13,9 +13,8 @@ State = namedtuple('State', 'obs goal')
 class GoalWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        self.current_state = None
-        concatenate = self.obs_from_obs_part_and_goal(self.reset())
-        self.observation_space = Box(-1, 1, concatenate.shape)
+        s1 = self.obs_from_obs_part_and_goal(self.reset())
+        self.observation_space = Box(-1, 1, s1.shape)
 
     @abstractmethod
     def goal_from_obs_part(self, obs_part):
@@ -42,13 +41,10 @@ class GoalWrapper(gym.Wrapper):
         new_s2 = State(s2, self.final_goal())
         new_r = self.reward(s2, self.final_goal())
         new_t = self.terminal(s2, self.final_goal()) or t
-        self.current_state = new_s2
         return new_s2, new_r, new_t, {'base_reward': r}
 
     def reset(self):
-        new_state = State(self.env.reset(), self.final_goal())
-        self.current_state = new_state
-        return new_state
+        return State(self.env.reset(), self.final_goal())
 
     def recompute_trajectory(self, trajectory):
         (_, _, _, sp_final, _) = trajectory[-1]
