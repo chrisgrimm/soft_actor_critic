@@ -45,27 +45,6 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
                 buffer.append(s1, a, r, s2, t)
 
 
-def build_action_converter(env):
-    def converter(a):
-        if isinstance(env.action_space, spaces.Discrete):
-            return np.argmax(a)
-        else:
-            a = np.tanh(a)
-            hi, lo = env.action_space.high, env.action_space.low
-            return ((a + 1) / 2) * (hi - lo) + lo
-
-    return converter
-
-
-def build_state_converter(env):
-    def converter(s):
-        if isinstance(env, GoalWrapper):
-            return env.obs_from_obs_part_and_goal(s)
-        return s
-
-    return converter
-
-
 def string_to_env(env_name):
     using_hindsight = False
     if env_name == 'chaser':
@@ -82,101 +61,126 @@ def string_to_env(env_name):
     return env, using_hindsight
 
 
-def run_training(env,
+class Trainer:
+    def action_converter(self, a):
+        if isinstance(self.env.action_space, spaces.Discrete):
+            return np.argmax(a)
+        else:
+            a = np.tanh(a)
+            hi, lo = env.action_space.high, env.action_space.low
+            return ((a + 1) / 2) * (hi - lo) + lo
+
+    def state_converter(self, state):
+        return state
+
+    def reset(self):
+        return self.env.reset()
+
+    def __init__(self,
+                 env,
                  buffer,
                  reward_scale,
                  batch_size,
                  num_train_steps,
                  logdir=None,
                  render=False):
-    V_LOSS = 'V loss'
-    Q_LOSS = 'Q loss'
-    PI_LOSS = 'pi loss'
-    EPISODE = 'episode'
-    REWARD = 'reward'
+        V_LOSS = 'V loss'
+        Q_LOSS = 'Q loss'
+        PI_LOSS = 'pi loss'
+        EPISODE = 'episode'
+        REWARD = 'reward'
 
-    tb_writer = tf.summary.FileWriter(logdir) if logdir else None
+        tb_writer = tf.summary.FileWriter(logdir) if logdir else None
 
-    s1 = env.reset()
+        s1 = env.reset()
 
-    agent = build_agent(env)
-    action_converter = build_action_converter(env)
-    state_converter = build_state_converter(env)
+        self.env = env
+        self.buffer = buffer
+        self.reward_scale = reward_scale
+        agent = build_agent(env)
 
-    count = Counter(reward=0, episode=0)
-    episode_count = Counter()
-    evaluation_period = 10
+        count = Counter(reward=0, episode=0)
+        episode_count = Counter()
+        evaluation_period = 10
 
-    def is_eval_period(episode_number):
-        return episode_number % evaluation_period == 0
+        def is_eval_period(episode_number):
+            return episode_number % evaluation_period == 0
 
-    for time_steps in itertools.count():
-        a = action_converter(agent.get_actions(
-            [state_converter(s1)],
-            sample=(not is_eval_period(count[EPISODE]))))
-        if render:
-            env.render()
-        s2, r, t, info = env.step(a)
-        if t:
-            print('reward:', r)
+        for time_steps in itertools.count():
+            a = agent.get_actions(
+                [self.state_converter(s1)],
+                sample=(not is_eval_period(count[EPISODE])))
+            if render:
+                env.render()
+            s2, r, t, info = env.step(self.action_converter(a))
+            if t:
+                print('reward:', r)
 
-        tick = time.time()
+            tick = time.time()
 
-        episode_count += Counter(reward=r, timesteps=1)
-        r *= reward_scale
-        if not is_eval_period(count[EPISODE]):
-            buffer.append(s1, a, r, s2, t)
-            if len(buffer) >= batch_size:
-                for i in range(num_train_steps):
-                    s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(
-                        batch_size)
-                    if isinstance(env.action_space, spaces.Discrete):
-                        n_batch = np.size(a_sample)
-                        one_hots = np.zeros((n_batch, env.action_space.n))
-                        one_hots[np.arange(n_batch), a_sample]
-                        a_sample = one_hots
+            episode_count += Counter(reward=r, timesteps=1)
+            r *= reward_scale
+            if not is_eval_period(count[EPISODE]):
+                buffer.append(s1, a, r, s2, t)
+                if len(buffer) >= batch_size:
+                    for i in range(num_train_steps):
+                        s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(
+                            batch_size)
 
-                    s1_sample = list(map(state_converter, s1_sample))
-                    s2_sample = list(map(state_converter, s2_sample))
-                    [v_loss, q_loss, pi_loss] = agent.train_step(
-                        s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                    episode_count += Counter({
-                        V_LOSS: v_loss,
-                        Q_LOSS: q_loss,
-                        PI_LOSS: pi_loss
-                    })
-        s1 = s2
-        if t:
-            if isinstance(env, GoalWrapper):
-                for s1, a, r, s2, t in env.recompute_trajectory():
-                    buffer.append(s1, a, r * reward_scale, s2, t)
-            s1 = env.reset()
-            episode_reward = episode_count[REWARD]
-            print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' %
-                  ('EVAL' if is_eval_period(count[EPISODE]) else 'TRAIN',
-                   (count[EPISODE]), time_steps, episode_reward))
-            count += Counter(reward=episode_reward, episode=1)
-            fps = int(episode_count['timesteps'] / (time.time() - tick))
-            if logdir:
-                summary = tf.Summary()
-                summary.value.add(
-                    tag='average reward',
-                    simple_value=count[REWARD] / float(count[EPISODE]))
-                summary.value.add(tag='fps', simple_value=fps)
-                for k in [V_LOSS, Q_LOSS, PI_LOSS, REWARD]:
-                    summary.value.add(tag=k, simple_value=episode_count[k])
-                tb_writer.add_summary(summary, count[EPISODE])
-                tb_writer.flush()
+                        s1_sample = list(map(self.state_converter, s1_sample))
+                        s2_sample = list(map(self.state_converter, s2_sample))
+                        [v_loss, q_loss, pi_loss] = agent.train_step(
+                            s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                        episode_count += Counter({
+                            V_LOSS: v_loss,
+                            Q_LOSS: q_loss,
+                            PI_LOSS: pi_loss
+                        })
+            s1 = s2
+            if t:
+                s1 = self.reset()
+                episode_reward = episode_count[REWARD]
+                print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' %
+                      ('EVAL' if is_eval_period(count[EPISODE]) else 'TRAIN',
+                       (count[EPISODE]), time_steps, episode_reward))
+                count += Counter(reward=episode_reward, episode=1)
+                fps = int(episode_count['timesteps'] / (time.time() - tick))
+                if logdir:
+                    summary = tf.Summary()
+                    summary.value.add(
+                        tag='average reward',
+                        simple_value=count[REWARD] / float(count[EPISODE]))
+                    summary.value.add(tag='fps', simple_value=fps)
+                    for k in [V_LOSS, Q_LOSS, PI_LOSS, REWARD]:
+                        summary.value.add(tag=k, simple_value=episode_count[k])
+                    tb_writer.add_summary(summary, count[EPISODE])
+                    tb_writer.flush()
 
-            for k in episode_count:
-                episode_count[k] = 0
+                for k in episode_count:
+                    episode_count[k] = 0
+
+
+class HindsightTraner(Trainer):
+    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps, logdir=None, render=False):
+        self.trajectory = []
+        assert isinstance(env, GoalWrapper)
+        super().__init__(env, buffer, reward_scale, batch_size, num_train_steps, logdir, render)
+
+    def state_converter(self, state):
+        return self.env.obs_from_obs_part_and_goal(state)
+
+    def reset(self):
+        for s1, a, r, s2, t in env.recompute_trajectory(self.trajectory):
+            self.buffer.append(s1, a, r * self.reward_scale, s2, t)
+        self.trajectory = []
+        return self.env.reset()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--buffer-size', default=int(10**7), type=int)
+    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=10., type=float)
@@ -192,7 +196,7 @@ if __name__ == '__main__':
 
     if args.mimic_file is not None:
         inject_mimic_experiences(args.mimic_file, buffer, N=10)
-    run_training(
+    Trainer(
         env=env,
         buffer=buffer,
         reward_scale=args.reward_scale,
