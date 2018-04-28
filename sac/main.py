@@ -157,7 +157,7 @@ class Trainer:
             s1 = s2
             if t:
                 if isinstance(env, GoalWrapper):
-                    for s1, a, r, s2, t in env.recompute_trajectory():
+                    for s1, a, r, s2, t in env.recompute_trajectory(env.trajectory):
                         buffer.append(s1, a, r * reward_scale, s2, t)
                 s1 = env.reset()
                 episode_reward = episode_count[REWARD]
