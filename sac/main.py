@@ -22,7 +22,7 @@ import pickle
 
 def build_agent(env):
     state_shape = env.observation_space.shape
-    if type(env.action_space) is spaces.Discrete:
+    if isinstance(env.action_space, spaces.Discrete):
         action_shape = [env.action_space.n]
         PolicyType = CategoricalPolicy
     else:
@@ -47,7 +47,7 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 
 def build_action_converter(env):
     def converter(a):
-        if type(env.action_space) is spaces.Discrete:
+        if isinstance(env.action_space, spaces.Discrete):
             return np.argmax(a)
         else:
             a = np.tanh(a)
@@ -87,7 +87,8 @@ def run_training(env,
                  reward_scale,
                  batch_size,
                  num_train_steps,
-                 logdir=None):
+                 logdir=None,
+                 render=False):
     V_LOSS = 'V loss'
     Q_LOSS = 'Q loss'
     PI_LOSS = 'pi loss'
@@ -110,12 +111,12 @@ def run_training(env,
         return episode_number % evaluation_period == 0
 
     for time_steps in itertools.count():
-        a = action_converter(
-            agent.get_actions(
-                [state_converter(s1)],
-                sample=(not is_eval_period(count[EPISODE]))))
-        # env.render()
-        s2, r, t, info = env.step(a)
+        a = agent.get_actions(
+            [state_converter(s1)],
+            sample=(not is_eval_period(count[EPISODE])))
+        if render:
+            env.render()
+        s2, r, t, info = env.step(action_converter(a))
         if t:
             print('reward:', r)
 
@@ -129,6 +130,12 @@ def run_training(env,
                 for i in range(num_train_steps):
                     s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(
                         batch_size)
+                    if isinstance(env.action_space, spaces.Discrete):
+                        n_batch = np.size(a_sample)
+                        one_hots = np.zeros((n_batch, env.action_space.n))
+                        one_hots[np.arange(n_batch), a_sample]
+                        a_sample = one_hots
+
                     s1_sample = list(map(state_converter, s1_sample))
                     s2_sample = list(map(state_converter, s2_sample))
                     [v_loss, q_loss, pi_loss] = agent.train_step(
@@ -174,6 +181,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=10., type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
+    parser.add_argument('--render', action='store_true')
     parser.add_argument('--logdir', default=None, type=str)
     args = parser.parse_args()
 
@@ -190,4 +198,6 @@ if __name__ == '__main__':
         reward_scale=args.reward_scale,
         batch_size=args.batch_size,
         num_train_steps=args.num_train_steps,
-        logdir=args.logdir)
+        logdir=args.logdir,
+        render=args.render
+    )
