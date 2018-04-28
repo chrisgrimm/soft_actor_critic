@@ -15,7 +15,7 @@ class GoalWrapper(gym.Wrapper):
         super().__init__(env)
         self.trajectory = None
         self.current_state = None
-        concatenate = self.concatenate(self.reset())
+        concatenate = self.obs_from_obs_part_and_goal(self.reset())
         self.observation_space = Box(-1, 1, concatenate.shape)
 
     @abstractmethod
@@ -31,25 +31,25 @@ class GoalWrapper(gym.Wrapper):
         raise NotImplementedError
 
     @abstractmethod
-    def desired_goal(self):
-        pass
+    def final_goal(self):
+        raise NotImplementedError
 
     @staticmethod
-    def concatenate(state):
+    def obs_from_obs_part_and_goal(state):
         return np.concatenate(state)
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
-        new_s2 = State(s2, self.desired_goal())
-        new_r = self.reward(s2, self.desired_goal())
-        new_t = self.terminal(s2, self.desired_goal()) or t
+        new_s2 = State(s2, self.final_goal())
+        new_r = self.reward(s2, self.final_goal())
+        new_t = self.terminal(s2, self.final_goal()) or t
         self.trajectory.append((self.current_state, action, new_r, new_s2,
                                 new_t))
         self.current_state = new_s2
         return new_s2, new_r, new_t, {'base_reward': r}
 
     def reset(self):
-        new_state = State(self.env.reset(), self.desired_goal())
+        new_state = State(self.env.reset(), self.final_goal())
         self.trajectory = []
         self.current_state = new_state
         return new_state
@@ -83,7 +83,7 @@ class MountaincarGoalWrapper(GoalWrapper):
     def terminal(self, obs_part, goal):
         return obs_part[0] >= goal[0]
 
-    def desired_goal(self):
+    def final_goal(self):
         return np.array([0.45])
 
 
@@ -102,11 +102,11 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
     def terminal(self, obs_part, goal):
         return any(self.env.compute_terminal(goal, obs) for obs in obs_part)
 
-    def desired_goal(self):
+    def final_goal(self):
         return self.env.goal()
 
     @staticmethod
-    def concatenate(state):
+    def obs_from_obs_part_and_goal(state):
         state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
         return np.concatenate([np.concatenate(state_history),
