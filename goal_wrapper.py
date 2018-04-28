@@ -3,7 +3,6 @@ from collections import namedtuple
 
 import gym
 import numpy as np
-from gym import spaces
 
 from environment.pick_and_place import PickAndPlaceEnv
 from gym.spaces import Box
@@ -22,15 +21,15 @@ class GoalWrapper(gym.Wrapper):
 
     @abstractmethod
     def achieved_goal(self, obs_part):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def reward(self, obs_part, goal):
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def terminal(self, obs_part, goal):
-        raise NotImplemented
+        raise NotImplementedError
 
     @abstractmethod
     def desired_goal(self):
@@ -70,20 +69,10 @@ class GoalWrapper(gym.Wrapper):
                 break
 
 
-class MountaincarGoalWrapper(MountainCarEnv, GoalWrapper):
+class MountaincarGoalWrapper(GoalWrapper):
     """
     new obs is [pos, vel, goal_pos]
     """
-    def __init__(self):
-        MountainCarEnv.__init__(self)
-        GoalWrapper.__init__(self)
-
-    def _step(self, action):
-        return MountainCarEnv.step(self, action)
-
-    def _reset(self):
-        return MountainCarEnv.reset(self)
-
     def achieved_goal(self, obs_part):
         return np.array([obs_part[0]])
 

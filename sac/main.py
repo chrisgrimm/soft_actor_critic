@@ -1,25 +1,28 @@
 import argparse
+
 import itertools
-import pickle
-import time
 from collections import Counter
 
-import gym
 import numpy as np
-import tensorflow as tf
+import gym
+import time
+
+from environment.pick_and_place import PickAndPlaceEnv
 from gym import spaces
 from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
-from sac.chaser import ChaserEnv
-from sac.networks.network_interface import AbstractSoftActorCritic
+import tensorflow as tf
+
+from sac.replay_buffer.replay_buffer import ReplayBuffer2
 from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
 from sac.networks.value_function_mixins import MLPValueFunc
-from environment.pick_and_place import PickAndPlaceEnv
-from sac.replay_buffer.replay_buffer import ReplayBuffer2
+from sac.networks.network_interface import AbstractSoftActorCritic
+from sac.chaser import ChaserEnv
+import pickle
 
 
 def build_agent(env):
     state_shape = env.observation_space.shape
-    if isinstance(env.action_space, spaces.Discrete):
+    if type(env.action_space) is spaces.Discrete:
         action_shape = [env.action_space.n]
         PolicyType = CategoricalPolicy
     else:
@@ -44,12 +47,12 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 
 def build_action_converter(env):
     def converter(a):
-        if isinstance(env.action_space, spaces.Discrete):
+        if type(env.action_space) is spaces.Discrete:
             return np.argmax(a)
         else:
             a = np.tanh(a)
-            high, low = env.action_space.high, env.action_space.low
-            return ((a + 1) / 2) * (high - low) + low
+            h, l = env.action_space.high, env.action_space.low
+            return ((a + 1) / 2) * (h - l) + l
 
     return converter
 
@@ -68,7 +71,7 @@ def string_to_env(env_name):
     if env_name == 'chaser':
         env = ChaserEnv()
     elif env_name == 'mountaincar-continuous-hindsight':
-        env = MountaincarGoalWrapper()
+        env = MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'))
         using_hindsight = True
     elif env_name == 'pick-and-place':
         env = PickAndPlaceGoalWrapper(PickAndPlaceEnv(max_steps=500, neg_reward=False))
@@ -93,11 +96,10 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
     action_converter = build_action_converter(env)
     state_converter = build_state_converter(env)
 
-    total_count = Counter()
+    count = Counter(reward=0, episode=0)
     episode_count = Counter()
     evaluation_period = 10
-
-    def is_eval_period(episode_number): return episode_number % evaluation_period == 0
+    is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
 
     for time_steps in itertools.count():
         a = action_converter(agent.get_actions(
@@ -127,17 +129,18 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
                     buffer.append(s1, a, r * reward_scale, s2, t)
             s1 = env.reset()
             episode_reward = episode_count[REWARD]
-            print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format('EVAL' if is_eval_period(
-                total_count[EPISODE]) else 'TRAIN', (total_count[EPISODE]), time_steps, episode_reward))
-            total_count += Counter(reward=episode_reward, episode=1)
+            print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(
+                count[EPISODE]) else 'TRAIN',
+                                                                     (count[EPISODE]), time_steps, episode_reward))
+            count += Counter(reward=episode_reward, episode=1)
             fps = int(episode_count['timesteps'] / (time.time() - tick))
             if logdir:
                 summary = tf.Summary()
-                summary.value.add(tag='average reward', simple_value=total_count[REWARD] / float(total_count[EPISODE]))
+                summary.value.add(tag='average reward', simple_value=count[REWARD] / float(count[EPISODE]))
                 summary.value.add(tag='fps', simple_value=fps)
                 for k in [V_LOSS, Q_LOSS, PI_LOSS, REWARD]:
                     summary.value.add(tag=k, simple_value=episode_count[k])
-                tb_writer.add_summary(summary, total_count[EPISODE])
+                tb_writer.add_summary(summary, count[EPISODE])
                 tb_writer.flush()
 
             for k in episode_count:
