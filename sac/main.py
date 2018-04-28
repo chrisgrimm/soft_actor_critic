@@ -114,7 +114,7 @@ class Trainer:
         self.buffer = buffer
         self.reward_scale = reward_scale
 
-        s1 = env.reset()
+        s1 = self.reset()
 
         agent = build_agent(env)
 
@@ -159,7 +159,7 @@ class Trainer:
                 if isinstance(env, GoalWrapper):
                     for s1, a, r, s2, t in env.recompute_trajectory(env.trajectory):
                         buffer.append(s1, a, r * reward_scale, s2, t)
-                s1 = env.reset()
+                s1 = self.reset()
                 episode_reward = episode_count[REWARD]
                 print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' %
                       ('EVAL' if is_eval_period(count[EPISODE]) else 'TRAIN',
@@ -194,7 +194,6 @@ class HindsightTrainer(Trainer):
         return s2, r, t, i
 
     def reset(self):
-        self.env.recompute_trajectory()
         self.trajectory = []
         self.s1 = super().reset()
         return self.s1
