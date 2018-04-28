@@ -54,12 +54,10 @@ class GoalWrapper(gym.Wrapper):
         self.current_state = new_state
         return new_state
 
-    def recompute_trajectory(self):
-        if not self.trajectory:
-            return
-        (_, _, _, sp_final, _) = self.trajectory[-1]
+    def recompute_trajectory(self, trajectory):
+        (_, _, _, sp_final, _) = trajectory[-1]
         achieved_goal = self.goal_from_obs_part(sp_final.obs)
-        for (s, a, r, sp, t) in self.trajectory:
+        for (s, a, r, sp, t) in trajectory:
             new_s = s.obs, achieved_goal
             new_sp = sp.obs, achieved_goal
             new_r = self.reward(sp.obs, achieved_goal)
