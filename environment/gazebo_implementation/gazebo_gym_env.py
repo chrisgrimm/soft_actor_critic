@@ -12,35 +12,33 @@ from std_srvs.srv import Empty
 class GazeboEnv(gym.Env):
     """Superclass for all Gazebo environments.
     """
-    
+
     def __init__(self, launchfile):
-        #start roscore
+        # start roscore
         subprocess.Popen("roscore")
 
         if launchfile.startswith("/"):
             fullpath = launchfile
         else:
-            fullpath = os.path.join(os.path.dirname(__file__), "assets","launch", launchfile)
+            fullpath = os.path.join(os.path.dirname(
+                __file__), "assets", "launch", launchfile)
         if not path.exists(fullpath):
             raise IOError("File "+fullpath+" does not exist")
 
-        subprocess.Popen(["roslaunch",fullpath])
+        subprocess.Popen(["roslaunch", fullpath])
 
         self.gzclient_pid = 0
-
 
     def _step(self, action):
         # Perform a step in Gazebo
         raise NotImplementedError
 
-
     def _reset(self):
         # Reset environment
         raise NotImplementedError
 
-
     def _render(self, close=True):
-        pass # Now done in launch file
+        pass  # Now done in launch file
 
         # # Opens Gazebo and shows robot
         # if close:
@@ -60,7 +58,6 @@ class GazeboEnv(gym.Env):
         # else:
         #     self.gzclient_pid = 0
 
-
     def _close(self):
         # Kill gzclient, gzserver and roscore
         tmp = os.popen("ps -Af").read()
@@ -78,5 +75,5 @@ class GazeboEnv(gym.Env):
         # if roscore_count > 0:
         #     os.system("killall -9 roscore")
 
-        if (gzclient_count or gzserver_count or roscore_count or rosmaster_count >0):
+        if (gzclient_count or gzserver_count or roscore_count or rosmaster_count > 0):
             os.wait()

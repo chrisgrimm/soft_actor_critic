@@ -12,12 +12,12 @@ class Arm2PosEnv(MujocoEnv):
                  action_multiplier=1, geofence=.03):
 
         super().__init__(
-                         max_steps=max_steps,
-                         xml_filepath=join('models', 'arm2pos', 'world.xml'),
-                         history_len=history_len,
-                         neg_reward=neg_reward,
-                         steps_per_action=10,
-                         image_dimensions=None)
+            max_steps=max_steps,
+            xml_filepath=join('models', 'arm2pos', 'world.xml'),
+            history_len=history_len,
+            neg_reward=neg_reward,
+            steps_per_action=10,
+            image_dimensions=None)
 
         self._geofence = geofence
         left_finger_name = 'hand_l_distal_link'
@@ -85,7 +85,8 @@ class Arm2PosEnv(MujocoEnv):
         if not self._continuous:
             ctrl = np.zeros(self.sim.nu)
             if action != 0:
-                ctrl[(action - 1) // 2] = (1 if action % 2 else -1) * self._action_multiplier
+                ctrl[(action - 1) // 2] = (1 if action %
+                                           2 else -1) * self._action_multiplier
             return BaseEnv.step(self, ctrl)
         else:
             action = np.clip(action * self._action_multiplier, -1, 1)

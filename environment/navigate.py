@@ -22,7 +22,8 @@ class NavigateEnv(BaseEnv):
                          image_dimensions=None)
 
         left_finger_name = 'hand_l_distal_link'
-        self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
+        self._finger_names = [left_finger_name,
+                              left_finger_name.replace('_l_', '_r_')]
         self._set_new_goal()
         self._action_multiplier = action_multiplier
         self._continuous = continuous
@@ -84,7 +85,8 @@ class NavigateEnv(BaseEnv):
         if not self._continuous:
             ctrl = np.zeros(self.sim.nu)
             if action != 0:
-                ctrl[(action - 1) // 2] = (1 if action % 2 else -1) * self._action_multiplier
+                ctrl[(action - 1) // 2] = (1 if action %
+                                           2 else -1) * self._action_multiplier
             return BaseEnv.step(self, ctrl)
         else:
             action = np.clip(action * self._action_multiplier, -1, 1)

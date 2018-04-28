@@ -51,7 +51,8 @@ class NavigateEnv(BaseEnv):
 
         cnn_space = Box(
             0, 1, shape=(list(image_dimensions) + [3 * history_len]))
-        obs_size = history_len * sum(map(np.size, self._obs())) + sum(map(np.size, self._goal()))
+        obs_size = history_len * \
+            sum(map(np.size, self._obs())) + sum(map(np.size, self._goal()))
         mlp_space = Box(np.min(self._world_lower_bound),
                         np.min(self._world_upper_bound), shape=obs_size)
 
@@ -188,4 +189,3 @@ class NavigateEnv(BaseEnv):
                                      self.goal(), self._pos()])
             with open(self._goal_log_file, 'a') as f:
                 f.write(' '.join(map(str, values)))
-

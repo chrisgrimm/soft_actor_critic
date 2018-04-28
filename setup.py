@@ -17,4 +17,4 @@ setup(name='soft-actor-critic',
           'tensorflow==1.6.0',
           'gym==0.10.4',
           'pygame==1.9.3',
-          ])
+      ])

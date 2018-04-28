@@ -90,7 +90,6 @@ class BaseEnv(utils.EzPickle, Server):
         self._history_buffer.append(self._obs())
         return self._history_buffer, reward, done, {}
 
-
     @staticmethod
     def seed(seed):
         np.random.seed(seed)
@@ -201,7 +200,7 @@ def at_goal(pos, goal, geofence):
 def escaped(pos, world_upper_bound, world_lower_bound):
     # noinspection PyTypeChecker
     return np.any(pos > world_upper_bound) \
-           or np.any(pos < world_lower_bound)
+        or np.any(pos < world_lower_bound)
 
 
 def get_limits(pos, size):

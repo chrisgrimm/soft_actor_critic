@@ -43,8 +43,10 @@ class PickAndPlaceEnv(MujocoEnv):
         obs_size = history_len * sum(map(np.size, self._obs())) + sum(
             map(np.size, self._goal()))
         assert obs_size != 0
-        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
-        self.action_space = spaces.Box(-1, 1, shape=(self.sim.nu - 1,), dtype=np.float32)
+        self.observation_space = spaces.Box(-np.inf,
+                                            np.inf, shape=(obs_size,), dtype=np.float32)
+        self.action_space = spaces.Box(-1, 1,
+                                       shape=(self.sim.nu - 1,), dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
 
@@ -113,7 +115,8 @@ class PickAndPlaceEnv(MujocoEnv):
         return self.sim.get_body_xpos(self._goal_block_name)
 
     def _goal(self):
-        goal_pos = self._initial_block_pos + np.array([0, 0, self._min_lift_height])
+        goal_pos = self._initial_block_pos + \
+            np.array([0, 0, self._min_lift_height])
         return goal_pos, goal_pos
 
     def goal_3d(self):
@@ -124,8 +127,10 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def _achieved_goal(self, goal, obs):
         gripper_goal_pos, block_goal_pos = goal
-        gripper_at_goal = at_goal(self._gripper_pos(obs[0]), gripper_goal_pos, self._geofence)
-        block_at_goal = at_goal(self._block_pos(), block_goal_pos, self._geofence)
+        gripper_at_goal = at_goal(self._gripper_pos(
+            obs[0]), gripper_goal_pos, self._geofence)
+        block_at_goal = at_goal(
+            self._block_pos(), block_goal_pos, self._geofence)
         return gripper_at_goal and block_at_goal
 
     def _compute_terminal(self, goal, obs):

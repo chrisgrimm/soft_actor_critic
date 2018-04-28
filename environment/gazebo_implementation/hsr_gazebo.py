@@ -26,6 +26,7 @@ EPSILON = 1e-4
 MIN_MOVEMENT_TO_ACTION_RATIO = 0.01
 MAX_GOAL_QUERIES = int(1e5)
 
+
 class HSRGazeboEnv(GazeboEnv):
     """ The environment """
 
@@ -61,17 +62,20 @@ class HSRGazeboEnv(GazeboEnv):
 
         self.lock = Lock()
 
-        self.excluded_collisions = ['lawn'] # TODO: Check name
+        self.excluded_collisions = ['lawn']  # TODO: Check name
         self.objects_initialized = False
 
-        self.robot_pose = [0.0, 0.0, 0.0] # Pos X, Pos Y, Angular Z
+        self.robot_pose = [0.0, 0.0, 0.0]  # Pos X, Pos Y, Angular Z
 
-        self.vel_pub = rospy.Publisher('/hsrb/command_velocity', Twist, queue_size=5)
-        self.set_state = rospy.Publisher('/gazebo/set_model_state', ModelState, queue_size=5)
+        self.vel_pub = rospy.Publisher(
+            '/hsrb/command_velocity', Twist, queue_size=5)
+        self.set_state = rospy.Publisher(
+            '/gazebo/set_model_state', ModelState, queue_size=5)
 
         self.unpause_srv = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.pause_srv = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
-        self.reset_proxy_srv = rospy.ServiceProxy('/gazebo/reset_simulation', Empty)
+        self.reset_proxy_srv = rospy.ServiceProxy(
+            '/gazebo/reset_simulation', Empty)
 
         self.world_lower_bound = np.array([0.0, 0.0])
         self.world_upper_bound = np.array([0.0, 0.0])
@@ -85,11 +89,10 @@ class HSRGazeboEnv(GazeboEnv):
         self.ros_first = None
         self.sim_first = None
 
-
     def _get_new_pos(self, rel_to=None, bound=None):
         for _ in range(MAX_GOAL_QUERIES):
             if rel_to is None:
-                
+
                 pos = np.random.uniform(
                     self.world_lower_bound + self.world_size * 1/5, self.world_upper_bound - self.world_size * 1/5)
 
@@ -107,7 +110,6 @@ class HSRGazeboEnv(GazeboEnv):
 
         return pos
 
-
     @property
     def pos_buffer(self):
         if self._use_frame_history:
@@ -116,31 +118,26 @@ class HSRGazeboEnv(GazeboEnv):
         else:
             return self.pos
 
-
     @property
     def pos(self):
         return [self.robot_pose[0], self.robot_pose[1]]  # ignore z-axis
-
 
     @property
     def orientation(self):
         return np.array([np.cos(self.robot_pose[2]), np.sin(self.robot_pose[2])])
 
-
     @property
     def _at_goal(self):
         try:
             distance_to_goal = self.distance_between(self.pos,
-                                                self.goal)
+                                                     self.goal)
             return distance_to_goal < self._geofence_size
         except AttributeError:
             return False
 
-
     @property
     def normalized_goal(self):
         return (self.goal) / self._world_size
-
 
     @property
     def _stuck(self):
@@ -151,7 +148,7 @@ class HSRGazeboEnv(GazeboEnv):
         if frontal_movement > EPSILON:
             assert self._prev_action is not None
             distance_traveled = self.distance_between(self._prev_pos,
-                                                 self.pos)
+                                                      self.pos)
             movement_to_action_ratio = distance_traveled / frontal_movement
             if movement_to_action_ratio < MIN_MOVEMENT_TO_ACTION_RATIO:
                 self._timesteps_stuck += 1
@@ -161,29 +158,27 @@ class HSRGazeboEnv(GazeboEnv):
                 return True
         return False
 
-
     @property
     def obs(self):
-        msg = rospy.wait_for_message('/hsrb/head_rgbd_sensor/rgb/image_raw', Image)
+        msg = rospy.wait_for_message(
+            '/hsrb/head_rgbd_sensor/rgb/image_raw', Image)
 
         dimensions = msg.height, msg.width
         obs = self.resize_image(msg)
-        
+
         if self._use_frame_history:
             self._frame_buffer.update(self.pos, obs)
             xy, obs = self._frame_buffer.get()
 
         return obs
 
-
     @property
     def _escaped(self):
         try:
             return np.any(self.pos > self.world_upper_bound) \
-                   or np.any(self.pos < self.world_lower_bound)
+                or np.any(self.pos < self.world_lower_bound)
         except AttributeError:
             return False
-
 
     def _step(self, action):
         # assert action.shape == self.action_space.shape
@@ -204,19 +199,19 @@ class HSRGazeboEnv(GazeboEnv):
         print('Reward: ', reward, 'Done: ', done)
         return self.obs, reward, done, {}
 
-
     def _step_inner(self, action):
         rospy.wait_for_service('/gazebo/unpause_physics')
         try:
             self.unpause_srv()
         except rospy.ServiceException, e:
-            print ("/gazebo/unpause_physics service call failed")
+            print("/gazebo/unpause_physics service call failed")
 
         msg = None
 
         while msg is None:
             try:
-                msg = rospy.wait_for_message('/hsrb/base_scan', LaserScan, timeout=5)
+                msg = rospy.wait_for_message(
+                    '/hsrb/base_scan', LaserScan, timeout=5)
             except:
                 pass
 
@@ -248,7 +243,7 @@ class HSRGazeboEnv(GazeboEnv):
         self._prev_action = action
 
         # action
-        forward, rotate = action # * self._max_speed
+        forward, rotate = action  # * self._max_speed
         action = np.append(forward * self.orientation, [rotate])
 
         reset_cmd = Twist()
@@ -272,19 +267,18 @@ class HSRGazeboEnv(GazeboEnv):
         #         if 180 - abs(old_pose - self.robot_pose[2]) < 1.0:
         #             print('Broke 1, turned around')
         #             break
-    
+
         #         self.vel_pub.publish(vel_cmd)
         #         self.get_hsrb_state()
 
         #         self.vel_pub.publish(reset_cmd)
 
-
         #     # self.rate.sleep()
 
-        # self.vel_pub.publish(reset_cmd)    
+        # self.vel_pub.publish(reset_cmd)
         # self.get_hsrb_state()
         # old_pose = self.robot_pose[2]
-        
+
         self.get_hsrb_state()
 
         euler = euler_from_quaternion(self.current_q)
@@ -293,7 +287,7 @@ class HSRGazeboEnv(GazeboEnv):
         pitch = euler[1]
         yaw = euler[2]
 
-        yaw += rotate   
+        yaw += rotate
 
         new_q = quaternion_from_euler(roll, pitch, yaw)
 
@@ -321,7 +315,7 @@ class HSRGazeboEnv(GazeboEnv):
         while self.distance_between(self.pos, self._prev_pos) < 0.25:
             vel_cmd.linear.y = forward * np.sin(rotate)
             vel_cmd.linear.x = forward * np.cos(rotate)
-            
+
             self.vel_pub.publish(vel_cmd)
 
             msg = None
@@ -330,7 +324,8 @@ class HSRGazeboEnv(GazeboEnv):
 
             while msg is None:
                 try:
-                    msg = rospy.wait_for_message('/hsrb/base_scan', LaserScan, timeout=5)
+                    msg = rospy.wait_for_message(
+                        '/hsrb/base_scan', LaserScan, timeout=5)
                 except:
                     pass
 
@@ -355,13 +350,11 @@ class HSRGazeboEnv(GazeboEnv):
         try:
             self.pause_srv()
         except rospy.ServiceException, e:
-            print ("/gazebo/pause_physics service call failed")
+            print("/gazebo/pause_physics service call failed")
 
-                
         assert done is not None
         return reward, done
 
-    
     def _reset(self):
         self._step_num = 0
         self.ros_first = None
@@ -370,22 +363,21 @@ class HSRGazeboEnv(GazeboEnv):
         if self._use_frame_history:
             self._frame_buffer.reset()
         self._prev_action, self._prev_pos = None, None
-        
+
         rospy.wait_for_service('/gazebo/reset_simulation')
 
         try:
             self.reset_proxy_srv()
         except rospy.ServiceException, e:
-            print ("/gazebo/reset_simulation service call failed")
+            print("/gazebo/reset_simulation service call failed")
 
         return self.obs
-
 
     def initialize_objects(self, msg):
         self.objects = list()
         self.robot_idx = 0
 
-        for i, name in enumerate(msg.name):          
+        for i, name in enumerate(msg.name):
             x = msg.pose[i].position.x
             y = msg.pose[i].position.y
             z = msg.pose[i].position.z
@@ -403,10 +395,10 @@ class HSRGazeboEnv(GazeboEnv):
                 w = msg.pose[self.robot_idx]._orientation.w
 
                 x, y, self.robot_pose[2] = self.quaternion2euler(w, x, y, z)
-            
+
             if name in self.excluded_collisions:
                 continue
-            
+
             if x > self.world_upper_bound[0]:
                 self.world_upper_bound[0] = x
 
@@ -424,10 +416,8 @@ class HSRGazeboEnv(GazeboEnv):
 
         self.goal = self._get_new_pos(bound=0)
 
-
     def check_collisions(self, msg):
         return self.collisions(msg)
-
 
     def collisions(self, msg):
         ranges = np.array(msg.ranges)
@@ -438,32 +428,36 @@ class HSRGazeboEnv(GazeboEnv):
         indices = np.linspace(0, len(ranges), num=40)
 
         for i, val in enumerate(indices):
-            if i == 0: continue
+            if i == 0:
+                continue
 
             ind_tuple = (int(indices[i - 1]), int(val))
 
             mean = np.mean(ranges[ind_tuple[0]:ind_tuple[1]])
 
-            if mean < 0.15: # Less than 15 Centimeters mean distance away 
+            if mean < 0.15:  # Less than 15 Centimeters mean distance away
                 return True
 
         return False
 
-
     def get_hsrb_state(self):
-        msg = rospy.wait_for_message('/gazebo/model_states', ModelStates, timeout=5)
+        msg = rospy.wait_for_message(
+            '/gazebo/model_states', ModelStates, timeout=5)
 
         if self.ros_first == None:
             self.ros_first = rospy.Time.now()
 
             self.sim_first = rospy.wait_for_message('/clock', Clock, timeout=5)
-            self.sim_first = rospy.Time(self.sim_first.clock.secs, self.sim_first.clock.nsecs)
+            self.sim_first = rospy.Time(
+                self.sim_first.clock.secs, self.sim_first.clock.nsecs)
 
         ros_now = rospy.Time.now() - self.ros_first
         sim_actual = rospy.wait_for_message('/clock', Clock, timeout=5)
-        sim_now = rospy.Time(sim_actual.clock.secs, sim_actual.clock.nsecs) - self.sim_first
+        sim_now = rospy.Time(sim_actual.clock.secs,
+                             sim_actual.clock.nsecs) - self.sim_first
 
-        rospy.loginfo('Current ROS Time: {}, Current Sim Time: {}, Real time factor: {}'.format(ros_now.to_sec(), sim_now.to_sec(), sim_now.to_sec() / ros_now.to_sec()))
+        rospy.loginfo('Current ROS Time: {}, Current Sim Time: {}, Real time factor: {}'.format(
+            ros_now.to_sec(), sim_now.to_sec(), sim_now.to_sec() / ros_now.to_sec()))
 
         with self.lock:
             if not self.objects_initialized:
@@ -481,7 +475,6 @@ class HSRGazeboEnv(GazeboEnv):
 
                 self.robot_pose[0] = msg.pose[self.robot_idx].position.x
                 self.robot_pose[1] = msg.pose[self.robot_idx].position.y
-
 
     def quaternion2euler(self, w, x, y, z):
         ysqr = y * y
@@ -501,12 +494,10 @@ class HSRGazeboEnv(GazeboEnv):
 
         return euler_x, euler_y, euler_z
 
-
     def distance_between(self, pos1, pos2):
         pos1 = np.array(pos1)
         pos2 = np.array(pos2)
         return np.sqrt(np.sum(np.square(pos1 - pos2)))
-
 
     def resize_image(self, img):
         try:
@@ -520,7 +511,7 @@ class HSRGazeboEnv(GazeboEnv):
         if not self.save_img:
             scipy.misc.imsave('test.png', img)
             self.save_img = True
-        
+
         return img
 
 

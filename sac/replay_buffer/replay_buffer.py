@@ -1,6 +1,7 @@
 import numpy as np
 from collections import deque
 
+
 class ReplayBuffer(object):
 
     def __init__(self, maxlen):
@@ -83,5 +84,3 @@ class ReplayBuffer2(object):
 
     def __len__(self):
         return len(self.buffer)
-
-

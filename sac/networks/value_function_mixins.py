@@ -6,6 +6,7 @@ import numpy as np
 def leaky_relu(x, alpha=0.2):
     return tf.maximum(x, alpha*x)
 
+
 class MLPValueFunc(object):
 
     def Q_network(self, s, a, name, reuse=None):
@@ -22,5 +23,3 @@ class MLPValueFunc(object):
             fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
             v = tf.reshape(tf.layers.dense(fc2, 1, name='v'), [-1])
         return v
-
-

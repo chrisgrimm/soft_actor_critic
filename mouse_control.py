@@ -96,11 +96,13 @@ def run_tests(env, obs):
     goal, obs_history = env.destructure_mlp_input(obs)
     assert_equal(env._goal(), goal)
     assert_equal(env._obs(), obs_history[-1])
-    assert_equal((goal, obs_history), env.destructure_mlp_input(env.mlp_input(goal, obs_history)))
+    assert_equal((goal, obs_history), env.destructure_mlp_input(
+        env.mlp_input(goal, obs_history)))
     assert_equal(obs, env.mlp_input(*env.destructure_mlp_input(obs)))
     assert_equal(obs, env.change_goal(goal, obs))
     try:
-        assert_equal(env._gripper_pos(), env._gripper_pos(env.sim.qpos), atol=1e-2)
+        assert_equal(env._gripper_pos(), env._gripper_pos(
+            env.sim.qpos), atol=1e-2)
     except AttributeError:
         pass
 
@@ -110,7 +112,8 @@ def assert_equal(val1, val2, atol=1e-5):
         for a, b in zip(val1, val2):
             assert_equal(a, b, atol=atol)
     except TypeError:
-        assert np.allclose(val1, val2, atol=atol), "{} vs. {}".format(val1, val2)
+        assert np.allclose(
+            val1, val2, atol=atol), "{} vs. {}".format(val1, val2)
 
 
 if __name__ == '__main__':

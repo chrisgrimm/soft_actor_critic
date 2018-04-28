@@ -22,7 +22,8 @@ class Arm2TouchEnv(BaseEnv):
                          image_dimensions=None)
 
         left_finger_name = 'hand_l_distal_link'
-        self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
+        self._finger_names = [left_finger_name,
+                              left_finger_name.replace('_l_', '_r_')]
         self._set_new_goal()
         self._action_multiplier = action_multiplier
         self._continuous = continuous
@@ -33,7 +34,6 @@ class Arm2TouchEnv(BaseEnv):
             self.action_space = spaces.Box(-1, 1, shape=self.sim.nu)
         else:
             self.action_space = spaces.Discrete(self.sim.nu * 2 + 1)
-
 
     def generate_valid_block_position(self):
         low_range = np.array([-0.15, -0.25, 0.49])
@@ -57,21 +57,19 @@ class Arm2TouchEnv(BaseEnv):
         dist = np.sqrt(np.sum(weighting*np.square(pos1 - pos2)))
         return dist < touching_threshold
 
-
     def reset_qpos(self):
         qpos = self.init_qpos
-        qpos = self.set_block_position(self.sim.qpos, 'block1joint', self.generate_valid_block_position())
-        qpos = self.set_block_position(self.sim.qpos, 'block2joint', self.generate_valid_block_position())
+        qpos = self.set_block_position(
+            self.sim.qpos, 'block1joint', self.generate_valid_block_position())
+        qpos = self.set_block_position(
+            self.sim.qpos, 'block2joint', self.generate_valid_block_position())
         return qpos
 
     def _set_new_goal(self):
         goal_block = np.random.randint(0, 2)
-        onehot = np.zeros([2],dtype=np.float32)
+        onehot = np.zeros([2], dtype=np.float32)
         onehot[goal_block] = 1
         self.__goal = onehot
-
-
-
 
     def _obs(self):
         return [self.sim.qpos]
@@ -80,7 +78,7 @@ class Arm2TouchEnv(BaseEnv):
         return [self.__goal]
 
     def goal_3d(self):
-        return [0,0,0]
+        return [0, 0, 0]
 
     def _currently_failed(self):
         return False
@@ -123,7 +121,8 @@ class Arm2TouchEnv(BaseEnv):
         if not self._continuous:
             ctrl = np.zeros(self.sim.nu)
             if action != 0:
-                ctrl[(action - 1) // 2] = (1 if action % 2 else -1) * self._action_multiplier
+                ctrl[(action - 1) // 2] = (1 if action %
+                                           2 else -1) * self._action_multiplier
             return BaseEnv.step(self, ctrl)
         else:
             action = np.clip(action * self._action_multiplier, -1, 1)

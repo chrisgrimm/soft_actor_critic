@@ -12,31 +12,33 @@ class ChaserEnv(Env):
         self.visual = visual
         self.no_prey = no_prey
         self.agent_pos = self.get_position()
-        self.prey_pos = self.get_position(positions_to_avoid=set(self.agent_pos))
+        self.prey_pos = self.get_position(
+            positions_to_avoid=set(self.agent_pos))
         self.action_space = spaces.Discrete(4)
         #self.action_space = spaces.Box(-1, 1, shape=[2])
         self.agent_color = (255, 0, 0)
         self.prey_color = (0, 255, 0)
         self.overlap_color = (0, 0, 255)
-        self.background_color = (255,255,255)
+        self.background_color = (255, 255, 255)
         self.max_steps = max_steps
         self.step_num = 0
 
         self.action_dict = {
-            #0: (0, 0),
+            # 0: (0, 0),
             0: (1, 0),
             1: (-1, 0),
             2: (0, 1),
             3: (0, -1)
         }
-        self.surface = pygame.Surface((self.size * self.block_pixels, self.size * self.block_pixels))
+        self.surface = pygame.Surface(
+            (self.size * self.block_pixels, self.size * self.block_pixels))
 
         if self.visual:
-            self.observation_space = spaces.Box(0, 1, shape=[self.size * self.block_pixels, self.size * self.block_pixels, 3])
+            self.observation_space = spaces.Box(
+                0, 1, shape=[self.size * self.block_pixels, self.size * self.block_pixels, 3])
         else:
             # position of agent and position of prey.
             self.observation_space = spaces.Box(0, 1, shape=[4])
-
 
     def get_position(self, positions_to_avoid=None):
         while True:
@@ -44,22 +46,27 @@ class ChaserEnv(Env):
             if (positions_to_avoid is None) or (position not in positions_to_avoid):
                 return position
 
-
     def get_obs(self, agent_pos, prey_pos, visual):
         if visual:
             self.surface.fill(self.background_color)
-            agent_pos = (agent_pos[0]*self.block_pixels, agent_pos[1]*self.block_pixels)
+            agent_pos = (agent_pos[0]*self.block_pixels,
+                         agent_pos[1]*self.block_pixels)
 
-            prey_pos = (prey_pos[0]*self.block_pixels, prey_pos[1]*self.block_pixels)
-            agent_rect = pygame.Rect(agent_pos, (self.block_pixels, self.block_pixels))
+            prey_pos = (prey_pos[0]*self.block_pixels,
+                        prey_pos[1]*self.block_pixels)
+            agent_rect = pygame.Rect(
+                agent_pos, (self.block_pixels, self.block_pixels))
             if self.no_prey:
                 pygame.draw.rect(self.surface, self.agent_color, agent_rect)
             else:
-                prey_rect = pygame.Rect(prey_pos, (self.block_pixels, self.block_pixels))
+                prey_rect = pygame.Rect(
+                    prey_pos, (self.block_pixels, self.block_pixels))
                 if self.agent_pos == self.prey_pos:
-                    pygame.draw.rect(self.surface, self.overlap_color, agent_rect)
+                    pygame.draw.rect(
+                        self.surface, self.overlap_color, agent_rect)
                 else:
-                    pygame.draw.rect(self.surface, self.agent_color, agent_rect)
+                    pygame.draw.rect(
+                        self.surface, self.agent_color, agent_rect)
                     pygame.draw.rect(self.surface, self.prey_color, prey_rect)
             return pygame.surfarray.array3d(self.surface)
         else:
@@ -73,31 +80,32 @@ class ChaserEnv(Env):
         new_pos_y = np.clip((old_pos[1] + delta[1]), 0, self.size)
         return (new_pos_x, new_pos_y)
 
-
     def reset(self):
         self.agent_pos = self.get_position()
         self.step_num = 0
-        self.prey_pos = self.get_position(positions_to_avoid=set(self.agent_pos))
+        self.prey_pos = self.get_position(
+            positions_to_avoid=set(self.agent_pos))
         return self.get_obs(self.agent_pos, self.prey_pos, self.visual)
-
 
     def step(self, action):
         #dx, dy = action[0], action[1]
-        #if dx >= 0 and dy >= 0:
+        # if dx >= 0 and dy >= 0:
         #    action = 0
-        #elif dx >= 0 and dy < 0:
+        # elif dx >= 0 and dy < 0:
         #    action = 1
-        #elif dx < 0 and dy < 0:
+        # elif dx < 0 and dy < 0:
         #    action = 2
-        #else:
+        # else:
         #    action = 3
         #action = np.argmax(action)
         terminal = False
         reward = -0.01
         self.step_num += 1
-        self.agent_pos = self.update_position(self.agent_pos, self.action_dict[action])
+        self.agent_pos = self.update_position(
+            self.agent_pos, self.action_dict[action])
 
-        norm_agent, norm_prey = np.array(self.agent_pos) / self.size, np.array(self.prey_pos) / self.size
+        norm_agent, norm_prey = np.array(
+            self.agent_pos) / self.size, np.array(self.prey_pos) / self.size
         dist = np.sqrt(np.sum(np.square(norm_agent - norm_prey)))
         reward = -dist
 
@@ -106,18 +114,18 @@ class ChaserEnv(Env):
             #reward = 1
             return self.get_obs(self.agent_pos, self.prey_pos, self.visual), reward, terminal, {}
 
-
         #self.prey_pos = self.update_position(self.prey_pos, np.random.randint(-1, 2, size=2))
 
         #reward = 1 if self.prey_pos == self.agent_pos and not self.no_prey else -0.01
-        terminal = ((self.prey_pos == self.agent_pos) and (not self.no_prey)) or (self.step_num >= self.max_steps)
+        terminal = ((self.prey_pos == self.agent_pos) and (
+            not self.no_prey)) or (self.step_num >= self.max_steps)
         return self.get_obs(self.agent_pos, self.prey_pos, self.visual), reward, terminal, {}
-
 
     def get_random_batch(self, batch_size):
         batch = []
         for i in range(batch_size):
-            sample = self.get_obs(self.get_position(), self.get_position(), self.visual)
+            sample = self.get_obs(self.get_position(),
+                                  self.get_position(), self.visual)
             batch.append(sample)
         return np.array(batch)
 
@@ -129,9 +137,9 @@ class ChaserEnv(Env):
 
 env = ChaserEnv()
 
+
 def get_batch_chaser(batch_size):
     return env.get_random_batch(batch_size)
-
 
 
 if __name__ == '__main__':
@@ -146,8 +154,4 @@ if __name__ == '__main__':
             env.reset()
         print(s)
         #cv2.imshow('game', s)
-        #cv2.waitKey(1)
-
-
-
-
+        # cv2.waitKey(1)

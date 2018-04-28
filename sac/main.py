@@ -74,7 +74,8 @@ def string_to_env(env_name):
         env = MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'))
         using_hindsight = True
     elif env_name == 'pick-and-place':
-        env = PickAndPlaceGoalWrapper(PickAndPlaceEnv(max_steps=500, neg_reward=False))
+        env = PickAndPlaceGoalWrapper(
+            PickAndPlaceEnv(max_steps=500, neg_reward=False))
         using_hindsight = True
     else:
         env = gym.make(env_name)
@@ -99,7 +100,9 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
     count = Counter(reward=0, episode=0)
     episode_count = Counter()
     evaluation_period = 10
-    is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
+
+    def is_eval_period(
+        episode_number): return episode_number % evaluation_period == 0
 
     for time_steps in itertools.count():
         a = action_converter(agent.get_actions(
@@ -117,11 +120,14 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
             buffer.append(s1, a, r, s2, t)
             if len(buffer) >= batch_size:
                 for i in range(num_train_steps):
-                    s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
+                    s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(
+                        batch_size)
                     s1_sample = list(map(state_converter, s1_sample))
                     s2_sample = list(map(state_converter, s2_sample))
-                    [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                    episode_count += Counter({V_LOSS: v_loss, Q_LOSS: q_loss, PI_LOSS: pi_loss})
+                    [v_loss, q_loss, pi_loss] = agent.train_step(
+                        s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                    episode_count += Counter({V_LOSS: v_loss,
+                                              Q_LOSS: q_loss, PI_LOSS: pi_loss})
         s1 = s2
         if t:
             if isinstance(env, GoalWrapper):
@@ -131,12 +137,13 @@ def run_training(env, buffer, reward_scale, batch_size, num_train_steps, logdir=
             episode_reward = episode_count[REWARD]
             print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(
                 count[EPISODE]) else 'TRAIN',
-                                                                     (count[EPISODE]), time_steps, episode_reward))
+                (count[EPISODE]), time_steps, episode_reward))
             count += Counter(reward=episode_reward, episode=1)
             fps = int(episode_count['timesteps'] / (time.time() - tick))
             if logdir:
                 summary = tf.Summary()
-                summary.value.add(tag='average reward', simple_value=count[REWARD] / float(count[EPISODE]))
+                summary.value.add(
+                    tag='average reward', simple_value=count[REWARD] / float(count[EPISODE]))
                 summary.value.add(tag='fps', simple_value=fps)
                 for k in [V_LOSS, Q_LOSS, PI_LOSS, REWARD]:
                     summary.value.add(tag=k, simple_value=episode_count[k])

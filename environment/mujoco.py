@@ -12,7 +12,8 @@ class MujocoEnv(BaseEnv):
                  neg_reward, steps_per_action, frames_per_step=20):
         fullpath = os.path.join(os.path.dirname(__file__), xml_filepath)
         if not fullpath.startswith("/"):
-            fullpath = os.path.join(os.path.dirname(__file__), "assets", fullpath)
+            fullpath = os.path.join(
+                os.path.dirname(__file__), "assets", fullpath)
         self.sim = mujoco.Sim(fullpath)
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
@@ -49,7 +50,7 @@ class MujocoEnv(BaseEnv):
         self._set_new_goal()
         qpos = self.reset_qpos()
         qvel = self.init_qvel + \
-               np.random.uniform(size=self.sim.nv, low=-0.01, high=0.01)
+            np.random.uniform(size=self.sim.nv, low=-0.01, high=0.01)
         assert qpos.shape == (self.sim.nq,) and qvel.shape == (self.sim.nv,)
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = qvel.copy()
@@ -65,4 +66,3 @@ class MujocoEnv(BaseEnv):
 
     def __exit__(self, *args):
         self.sim.__exit__()
-
