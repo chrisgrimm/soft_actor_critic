@@ -92,8 +92,9 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
         assert isinstance(env, PickAndPlaceEnv)
         super().__init__(env)
 
-    def goal_from_obs_part(self, obs_part):
-        return self.env.gripper_pos(obs_part[0]), self.env.block_pos()
+    def goal_from_obs_part(self, history):
+        last_obs, = history[-1]
+        return self.env.gripper_pos(last_obs), self.env.block_pos()
 
     def reward(self, obs_part, goal):
         return sum(self.env.compute_reward(goal, obs) for obs in obs_part)
@@ -103,3 +104,10 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
 
     def desired_goal(self):
         return self.env.goal()
+
+    @staticmethod
+    def concatenate(state):
+        state = State(*state)
+        state_history = list(map(np.concatenate, state.obs))
+        return np.concatenate([np.concatenate(state_history),
+                               np.concatenate(state.goal)])
