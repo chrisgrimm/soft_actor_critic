@@ -60,7 +60,7 @@ def build_action_converter(env):
 def build_state_converter(env):
     def converter(s):
         if isinstance(env, GoalWrapper):
-            return env.concatenate(s)
+            return env.obs_from_obs_part_and_goal(s)
         return s
 
     return converter
@@ -114,7 +114,7 @@ def run_training(env,
             agent.get_actions(
                 [state_converter(s1)],
                 sample=(not is_eval_period(count[EPISODE]))))
-        env.render()
+        # env.render()
         s2, r, t, info = env.step(a)
         if t:
             print('reward:', r)

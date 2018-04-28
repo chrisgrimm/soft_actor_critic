@@ -203,7 +203,7 @@ class HSRGazeboEnv(GazeboEnv):
         rospy.wait_for_service('/gazebo/unpause_physics')
         try:
             self.unpause_srv()
-        except rospy.ServiceException, e:
+        except rospy.ServiceException as e:
             print("/gazebo/unpause_physics service call failed")
 
         msg = None
@@ -349,7 +349,7 @@ class HSRGazeboEnv(GazeboEnv):
         rospy.wait_for_service('/gazebo/pause_physics')
         try:
             self.pause_srv()
-        except rospy.ServiceException, e:
+        except rospy.ServiceException as e:
             print("/gazebo/pause_physics service call failed")
 
         assert done is not None
@@ -368,7 +368,7 @@ class HSRGazeboEnv(GazeboEnv):
 
         try:
             self.reset_proxy_srv()
-        except rospy.ServiceException, e:
+        except rospy.ServiceException as e:
             print("/gazebo/reset_simulation service call failed")
 
         return self.obs
