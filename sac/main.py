@@ -111,12 +111,12 @@ def run_training(env,
         return episode_number % evaluation_period == 0
 
     for time_steps in itertools.count():
-        a = agent.get_actions(
+        a = action_converter(agent.get_actions(
             [state_converter(s1)],
-            sample=(not is_eval_period(count[EPISODE])))
+            sample=(not is_eval_period(count[EPISODE]))))
         if render:
             env.render()
-        s2, r, t, info = env.step(action_converter(a))
+        s2, r, t, info = env.step(a)
         if t:
             print('reward:', r)
 
