@@ -45,15 +45,6 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
                 buffer.append(s1, a, r, s2, t)
 
 
-def build_state_converter(env):
-    def converter(s):
-        if isinstance(env, GoalWrapper):
-            return env.obs_from_obs_part_and_goal(s)
-        return s
-
-    return converter
-
-
 def string_to_env(env_name):
     using_hindsight = False
     if env_name == 'chaser':
@@ -78,9 +69,7 @@ class Trainer:
         return self.env.reset()
 
     def action_converter(self, action):
-        """
-        Preprocess action before feeding to env
-        """
+        """ Preprocess action before feeding to env """
         if type(self.env.action_space) is spaces.Discrete:
             return np.argmax(action)
         else:
@@ -89,9 +78,7 @@ class Trainer:
             return ((action + 1) / 2) * (hi - lo) + lo
 
     def state_converter(self, state):
-        """
-        Preprocess state before feeding to network
-        """
+        """ Preprocess state before feeding to network """
         return state
 
     def __init__(self,
