@@ -181,8 +181,8 @@ class Trainer:
 class HindsightTrainer(Trainer):
     def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps, logdir, render):
         assert isinstance(env, GoalWrapper)
-        super().__init__(env, buffer, reward_scale, batch_size, num_train_steps, logdir, render)
         self.trajectory = []
+        super().__init__(env, buffer, reward_scale, batch_size, num_train_steps, logdir, render)
         self.s1 = self.reset()
 
     def step(self, action):
@@ -193,7 +193,7 @@ class HindsightTrainer(Trainer):
         return s2, r, t, i
 
     def reset(self):
-        for s1, a, r, s2, t in env.recompute_trajectory(env.trajectory):
+        for s1, a, r, s2, t in env.recompute_trajectory(self.trajectory):
             self.buffer.append(s1, a, r * self.reward_scale, s2, t)
         self.trajectory = []
         self.s1 = super().reset()
