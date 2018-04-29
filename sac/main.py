@@ -22,7 +22,7 @@ import pickle
 
 def build_agent(env):
     state_shape = env.observation_space.shape
-    if type(env.action_space) is spaces.Discrete:
+    if isinstance(env.action_space, spaces.Discrete):
         action_shape = [env.action_space.n]
         PolicyType = CategoricalPolicy
     else:
@@ -45,15 +45,6 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
                 buffer.append(s1, a, r, s2, t)
 
 
-def build_state_converter(env):
-    def converter(s):
-        if isinstance(env, GoalWrapper):
-            return env.obs_from_obs_part_and_goal(s)
-        return s
-
-    return converter
-
-
 def string_to_env(env_name):
     using_hindsight = False
     if env_name == 'chaser':
@@ -71,28 +62,22 @@ def string_to_env(env_name):
 
 
 class Trainer:
-    def step(self, action):
-        return self.env.step(action)
+    def action_converter(self, a):
+        if isinstance(self.env.action_space, spaces.Discrete):
+            return np.argmax(a)
+        else:
+            a = np.tanh(a)
+            hi, lo = env.action_space.high, env.action_space.low
+            return ((a + 1) / 2) * (hi - lo) + lo
+
+    def state_converter(self, state):
+        return state
 
     def reset(self):
         return self.env.reset()
 
-    def action_converter(self, action):
-        """
-        Preprocess action before feeding to env
-        """
-        if type(self.env.action_space) is spaces.Discrete:
-            return np.argmax(action)
-        else:
-            action = np.tanh(action)
-            hi, lo = self.env.action_space.high, self.env.action_space.low
-            return ((action + 1) / 2) * (hi - lo) + lo
-
-    def state_converter(self, state):
-        """
-        Preprocess state before feeding to network
-        """
-        return state
+    def step(self, action):
+        return self.env.step(action)
 
     def __init__(self,
                  env,
@@ -100,8 +85,8 @@ class Trainer:
                  reward_scale,
                  batch_size,
                  num_train_steps,
-                 logdir,
-                 render):
+                 logdir=None,
+                 render=False):
         V_LOSS = 'V loss'
         Q_LOSS = 'Q loss'
         PI_LOSS = 'pi loss'
@@ -110,12 +95,11 @@ class Trainer:
 
         tb_writer = tf.summary.FileWriter(logdir) if logdir else None
 
+        self.s1 = s1 = env.reset()
+
         self.env = env
         self.buffer = buffer
         self.reward_scale = reward_scale
-
-        s1 = env.reset()
-
         agent = build_agent(env)
 
         count = Counter(reward=0, episode=0)
@@ -131,7 +115,7 @@ class Trainer:
                 sample=(not is_eval_period(count[EPISODE])))
             if render:
                 env.render()
-            s2, r, t, info = env.step(self.action_converter(a))
+            s2, r, t, info = self.step(self.action_converter(a))
             if t:
                 print('reward:', r)
 
@@ -145,6 +129,7 @@ class Trainer:
                     for i in range(num_train_steps):
                         s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(
                             batch_size)
+
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
                         [v_loss, q_loss, pi_loss] = agent.train_step(
@@ -154,12 +139,9 @@ class Trainer:
                             Q_LOSS: q_loss,
                             PI_LOSS: pi_loss
                         })
-            s1 = s2
+            self.s1 = s1 = s2
             if t:
-                # if isinstance(env, GoalWrapper):
-                #     for s1, a, r, s2, t in env.recompute_trajectory():
-                #         buffer.append(s1, a, r * reward_scale, s2, t)
-                s1 = env.reset()
+                s1 = self.reset()
                 episode_reward = episode_count[REWARD]
                 print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' %
                       ('EVAL' if is_eval_period(count[EPISODE]) else 'TRAIN',
@@ -182,11 +164,13 @@ class Trainer:
 
 
 class HindsightTrainer(Trainer):
-    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps, logdir, render):
+    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps, logdir=None, render=False):
+        self.trajectory = []
         assert isinstance(env, GoalWrapper)
         super().__init__(env, buffer, reward_scale, batch_size, num_train_steps, logdir, render)
-        self.trajectory = []
-        self.s1 = self.reset()
+
+    def state_converter(self, state):
+        return self.env.obs_from_obs_part_and_goal(state)
 
     def step(self, action):
         s2, r, t, i = super().step(action)
@@ -194,14 +178,10 @@ class HindsightTrainer(Trainer):
         return s2, r, t, i
 
     def reset(self):
-        for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
+        for s1, a, r, s2, t in env.recompute_trajectory(self.trajectory):
             self.buffer.append(s1, a, r * self.reward_scale, s2, t)
         self.trajectory = []
-        self.s1 = super().reset()
-        return self.s1
-
-    def state_converter(self, state):
-        return self.env.obs_from_obs_part_and_goal(state)
+        return self.env.reset()
 
 
 if __name__ == '__main__':
@@ -213,6 +193,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=10., type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
+    parser.add_argument('--render', action='store_true')
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
@@ -224,6 +205,7 @@ if __name__ == '__main__':
 
     if args.mimic_file is not None:
         inject_mimic_experiences(args.mimic_file, buffer, N=10)
+
     trainer = HindsightTrainer if isinstance(env, GoalWrapper) else Trainer
     trainer(
         env=env,
@@ -232,4 +214,5 @@ if __name__ == '__main__':
         batch_size=args.batch_size,
         num_train_steps=args.num_train_steps,
         logdir=args.logdir,
-        render=args.render)
+        render=args.render
+    )

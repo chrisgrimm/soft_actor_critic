@@ -4,12 +4,12 @@ from abc import abstractmethod
 
 class AbstractSoftActorCritic(object):
     def __init__(self, s_shape, a_shape):
-        self.S1 = S1 = tf.placeholder(tf.float32, [None] + list(s_shape))
-        self.S2 = S2 = tf.placeholder(tf.float32, [None] + list(s_shape))
-        self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape))
-        self.R = R = tf.placeholder(tf.float32, [None])
-        self.T = T = tf.placeholder(tf.float32, [None])
-        gamma = 0.99
+        self.S1 = S1 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S1')
+        self.S2 = S2 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S2')
+        self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')
+        self.R = R = tf.placeholder(tf.float32, [None], name='R')
+        self.T = T = tf.placeholder(tf.float32, [None], name='T')
+        gamma = 0.9
         tau = 0.01
         learning_rate = 3 * 10**-4
 
@@ -21,7 +21,7 @@ class AbstractSoftActorCritic(object):
             self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
         print(a_shape, S1)
 
-        self.A_max_likelihood = A_max_likelihood = tf.stop_gradient(
+        self.A_max_likelihood = tf.stop_gradient(
             self.get_best_action(a_shape[0], S1, 'pi', reuse=True))
 
         V_S1 = self.V_network(S1, 'V')
@@ -59,20 +59,20 @@ class AbstractSoftActorCritic(object):
             tf.assign(xbar, tau * x + (1 - tau) * xbar)
             for (xbar, x) in zip(xi_bar, xi)
         ]
-        self.soft_update_xi_bar = soft_update_xi_bar = tf.group(
+        self.soft_update_xi_bar = tf.group(
             *soft_update_xi_bar_ops)
         hard_update_xi_bar_ops = [
             tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
         ]
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
 
-        self.train_V = train_V = tf.train.AdamOptimizer(
+        self.train_V = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(
                 V_loss, var_list=xi)
-        self.train_Q = train_Q = tf.train.AdamOptimizer(
+        self.train_Q = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(
                 Q_loss, var_list=theta)
-        self.train_pi = train_pi = tf.train.AdamOptimizer(
+        self.train_pi = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(
                 pi_loss, var_list=phi)
         self.check = tf.add_check_numerics_ops()
