@@ -4,9 +4,12 @@ from abc import abstractmethod
 
 class AbstractSoftActorCritic(object):
     def __init__(self, s_shape, a_shape):
-        self.S1 = S1 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S1')
-        self.S2 = S2 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S2')
-        self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')
+        self.S1 = S1 = tf.placeholder(
+            tf.float32, [None] + list(s_shape), name='S1')
+        self.S2 = S2 = tf.placeholder(
+            tf.float32, [None] + list(s_shape), name='S2')
+        self.A = A = tf.placeholder(
+            tf.float32, [None] + list(a_shape), name='A')
         self.R = R = tf.placeholder(tf.float32, [None], name='R')
         self.T = T = tf.placeholder(tf.float32, [None], name='T')
         gamma = 0.9
@@ -59,8 +62,7 @@ class AbstractSoftActorCritic(object):
             tf.assign(xbar, tau * x + (1 - tau) * xbar)
             for (xbar, x) in zip(xi_bar, xi)
         ]
-        self.soft_update_xi_bar = tf.group(
-            *soft_update_xi_bar_ops)
+        self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
         hard_update_xi_bar_ops = [
             tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
         ]

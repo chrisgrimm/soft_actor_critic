@@ -81,20 +81,8 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def __init__(self,
-                 env,
-                 buffer,
-                 reward_scale,
-                 batch_size,
-                 num_train_steps,
-                 logdir,
-                 render):
-        V_LOSS = 'V loss'
-        Q_LOSS = 'Q loss'
-        PI_LOSS = 'pi loss'
-        EPISODE = 'episode'
-        REWARD = 'reward'
-
+    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps,
+                 logdir, render):
         tb_writer = tf.summary.FileWriter(logdir) if logdir else None
 
         self.env = env
@@ -115,7 +103,7 @@ class Trainer:
         for time_steps in itertools.count():
             a = agent.get_actions(
                 [self.state_converter(s1)],
-                sample=(not is_eval_period(count[EPISODE])))
+                sample=(not is_eval_period(count['episode'])))
             if render:
                 env.render()
             s2, r, t, info = self.step(self.action_converter(a))
@@ -126,7 +114,7 @@ class Trainer:
 
             episode_count += Counter(reward=r, timesteps=1)
             r *= reward_scale
-            if not is_eval_period(count[EPISODE]):
+            if not is_eval_period(count['episode']):
                 buffer.append(s1, a, r, s2, t)
                 if len(buffer) >= batch_size:
                     for i in range(num_train_steps):
@@ -137,28 +125,28 @@ class Trainer:
                         [v_loss, q_loss, pi_loss] = agent.train_step(
                             s1_sample, a_sample, r_sample, s2_sample, t_sample)
                         episode_count += Counter({
-                            V_LOSS: v_loss,
-                            Q_LOSS: q_loss,
-                            PI_LOSS: pi_loss
+                            'V loss': v_loss,
+                            'Q loss': q_loss,
+                            'pi loss': pi_loss
                         })
             s1 = s2
             if t:
                 s1 = self.reset()
-                episode_reward = episode_count[REWARD]
+                episode_reward = episode_count['reward']
                 print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' %
-                      ('EVAL' if is_eval_period(count[EPISODE]) else 'TRAIN',
-                       (count[EPISODE]), time_steps, episode_reward))
+                      ('EVAL' if is_eval_period(count['episode']) else 'TRAIN',
+                       (count['episode']), time_steps, episode_reward))
                 count += Counter(reward=episode_reward, episode=1)
                 fps = int(episode_count['timesteps'] / (time.time() - tick))
                 if logdir:
                     summary = tf.Summary()
                     summary.value.add(
                         tag='average reward',
-                        simple_value=count[REWARD] / float(count[EPISODE]))
+                        simple_value=count['reward'] / float(count['episode']))
                     summary.value.add(tag='fps', simple_value=fps)
-                    for k in [V_LOSS, Q_LOSS, PI_LOSS, REWARD]:
+                    for k in ['V loss', 'Q loss', 'pi loss', 'reward']:
                         summary.value.add(tag=k, simple_value=episode_count[k])
-                    tb_writer.add_summary(summary, count[EPISODE])
+                    tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
 
                 for k in episode_count:
@@ -166,10 +154,12 @@ class Trainer:
 
 
 class HindsightTrainer(Trainer):
-    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps, logdir, render):
+    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps,
+                 logdir, render):
         assert isinstance(env, GoalWrapper)
         self.trajectory = []
-        super().__init__(env, buffer, reward_scale, batch_size, num_train_steps, logdir, render)
+        super().__init__(env, buffer, reward_scale, batch_size,
+                         num_train_steps, logdir, render)
         self.s1 = self.reset()
 
     def step(self, action):
@@ -193,7 +183,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
+    parser.add_argument('--buffer-size', default=int(10**7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)

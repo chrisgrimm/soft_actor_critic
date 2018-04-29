@@ -32,7 +32,6 @@ class BaseEnv(utils.EzPickle, Server):
         self.reward_range = -np.inf, np.inf
         self.spec = None
 
-
     def step(self, action):
         self._step_num += 1
         step = 0
@@ -110,7 +109,6 @@ class BaseEnv(utils.EzPickle, Server):
     @abstractmethod
     def compute_reward(self, goal, obs):
         raise NotImplementedError
-
 
 
 def quaternion2euler(w, x, y, z):

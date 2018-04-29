@@ -101,5 +101,6 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
     def obs_from_obs_part_and_goal(state):
         state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
-        return np.concatenate([np.concatenate(state_history),
-                               np.concatenate(state.goal)])
+        return np.concatenate(
+            [np.concatenate(state_history),
+             np.concatenate(state.goal)])
