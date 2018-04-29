@@ -131,7 +131,7 @@ class Trainer:
                 sample=(not is_eval_period(count[EPISODE])))
             if render:
                 env.render()
-            s2, r, t, info = env.step(self.action_converter(a))
+            s2, r, t, info = self.step(self.action_converter(a))
             if t:
                 print('reward:', r)
 
