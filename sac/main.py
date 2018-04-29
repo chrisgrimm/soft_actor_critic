@@ -22,7 +22,7 @@ import pickle
 
 def build_agent(env):
     state_shape = env.observation_space.shape
-    if type(env.action_space) is spaces.Discrete:
+    if isinstance(env.action_space, spaces.Discrete):
         action_shape = [env.action_space.n]
         PolicyType = CategoricalPolicy
     else:
@@ -211,6 +211,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
+    parser.add_argument('--render', action='store_true')
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
