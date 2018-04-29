@@ -188,6 +188,8 @@ class HindsightTrainer(Trainer):
     def step(self, action):
         s2, r, t, i = super().step(action)
         self.trajectory.append((self.s1, action, r, s2, t))
+        env.trajectory.append((self.s1, action, r, s2, t))
+        self.s1 = s2
         return s2, r, t, i
 
     def reset(self):
