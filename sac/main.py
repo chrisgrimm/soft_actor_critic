@@ -92,13 +92,11 @@ class Trainer:
         episode_count = Counter()
         evaluation_period = 10
 
-        def is_eval_period(episode_number):
-            return episode_number % evaluation_period == 0
-
         for time_steps in itertools.count():
+            is_eval_period = count['episode'] % evaluation_period == 0
             a = agent.get_actions(
                 [self.state_converter(s1)],
-                sample=(not is_eval_period(count['episode'])))
+                sample=(not is_eval_period))
             if render:
                 env.render()
             s2, r, t, info = self.step(self.action_converter(a))
@@ -108,7 +106,7 @@ class Trainer:
             tick = time.time()
 
             episode_count += Counter(reward=r, timesteps=1)
-            if not is_eval_period(count['episode']):
+            if not is_eval_period:
                 buffer.append(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
                 if len(buffer) >= batch_size:
                     for i in range(num_train_steps):
@@ -128,11 +126,11 @@ class Trainer:
                 s1 = self.reset()
                 episode_reward = episode_count['reward']
                 print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' %
-                      ('EVAL' if is_eval_period(count['episode']) else 'TRAIN',
+                      ('EVAL' if is_eval_period else 'TRAIN',
                        (count['episode']), time_steps, episode_reward))
                 count += Counter(reward=episode_reward, episode=1)
                 fps = int(episode_count['timesteps'] / (time.time() - tick))
-                if logdir:
+                if logdir and is_eval_period:
                     summary = tf.Summary()
                     summary.value.add(
                         tag='average reward',
