@@ -12,7 +12,7 @@ class AbstractSoftActorCritic(object):
             tf.float32, [None] + list(a_shape), name='A')
         self.R = R = tf.placeholder(tf.float32, [None], name='R')
         self.T = T = tf.placeholder(tf.float32, [None], name='T')
-        gamma = 0.9
+        gamma = 0.99
         tau = 0.01
         learning_rate = 3 * 10**-4
 
