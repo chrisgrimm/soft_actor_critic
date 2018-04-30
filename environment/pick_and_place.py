@@ -25,7 +25,9 @@ def quaternion_multiply(quaternion1, quaternion0):
 def failed(resting_block_height, goal_block_height):
     return False
 
+
 Goal = namedtuple('Goal', 'gripper block')
+
 
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
@@ -71,22 +73,22 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
-        if np.random.uniform(0, 1) < .5:
-            self.init_qpos = np.array([
-                7.450e-05,
-                -3.027e-03,
-                4.385e-01,
-                1.000e+00,
-                0,
-                0,
-                -6.184e-04,
-                -1.101e+00,
-                0,
-                3.573e-01,
-                3.574e-01,
-            ])
-        else:
-            self.init_qpos = self.initial_qpos
+        # if np.random.uniform(0, 1) < .5:
+        self.init_qpos = np.array([
+            7.450e-05,
+            -3.027e-03,
+            4.385e-01,
+            1.000e+00,
+            0,
+            0,
+            -6.184e-04,
+            -1.101e+00,
+            0,
+            3.573e-01,
+            3.574e-01,
+        ])
+        # else:
+            # self.init_qpos = self.initial_qpos
 
         # block_joint = self.sim.jnt_qposadr('block1joint')
 
@@ -132,10 +134,9 @@ class PickAndPlaceEnv(MujocoEnv):
         return False
 
     def _achieved_goal(self, goal, obs):
-        gripper_at_goal = at_goal(self.gripper_pos(obs[0]), goal.gripper,
-                                  self._geofence)
-        block_at_goal = at_goal(self.block_pos(), goal.block,
-                                self._geofence)
+        gripper_at_goal = at_goal(
+            self.gripper_pos(obs[0]), goal.gripper, self._geofence)
+        block_at_goal = at_goal(self.block_pos(), goal.block, self._geofence)
         return gripper_at_goal and block_at_goal
 
     def compute_terminal(self, goal, obs):
