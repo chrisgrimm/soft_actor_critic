@@ -86,7 +86,7 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
 
     def goal_from_obs_part(self, history):
         last_obs, = history[-1]
-        return Goal(gipper=self.env.gripper_pos(last_obs),
+        return Goal(gripper=self.env.gripper_pos(last_obs),
                     block=self.env.block_pos())
 
     def reward(self, obs_part, goal):
