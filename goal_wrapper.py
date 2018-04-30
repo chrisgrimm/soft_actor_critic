@@ -4,7 +4,7 @@ from collections import namedtuple
 import gym
 import numpy as np
 
-from environment.pick_and_place import PickAndPlaceEnv
+from environment.pick_and_place import PickAndPlaceEnv, Goal
 from gym.spaces import Box
 
 State = namedtuple('State', 'obs goal')
@@ -38,13 +38,13 @@ class GoalWrapper(gym.Wrapper):
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
-        new_s2 = State(s2, self.final_goal())
+        new_s2 = State(obs=s2, goal=self.final_goal())
         new_r = self.reward(s2, self.final_goal())
         new_t = self.terminal(s2, self.final_goal()) or t
         return new_s2, new_r, new_t, {'base_reward': r}
 
     def reset(self):
-        return State(self.env.reset(), self.final_goal())
+        return State(state=self.env.reset(), goal=self.final_goal())
 
     def recompute_trajectory(self, trajectory):
         if not trajectory:
@@ -86,7 +86,8 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
 
     def goal_from_obs_part(self, history):
         last_obs, = history[-1]
-        return self.env.gripper_pos(last_obs), self.env.block_pos()
+        return Goal(gipper=self.env.gripper_pos(last_obs),
+                    block=self.env.block_pos())
 
     def reward(self, obs_part, goal):
         return sum(self.env.compute_reward(goal, obs) for obs in obs_part)

@@ -1,3 +1,4 @@
+from collections import namedtuple
 from os.path import join
 
 import numpy as np
@@ -24,6 +25,7 @@ def quaternion_multiply(quaternion1, quaternion0):
 def failed(resting_block_height, goal_block_height):
     return False
 
+Goal = namedtuple('Goal', 'gripper block')
 
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
@@ -121,7 +123,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def goal(self):
         goal_pos = self._initial_block_pos + \
             np.array([0, 0, self._min_lift_height])
-        return goal_pos, goal_pos
+        return Goal(gripper=goal_pos, block=goal_pos)
 
     def goal_3d(self):
         return self.goal()[0]
@@ -130,10 +132,9 @@ class PickAndPlaceEnv(MujocoEnv):
         return False
 
     def _achieved_goal(self, goal, obs):
-        gripper_goal_pos, block_goal_pos = goal
-        gripper_at_goal = at_goal(
-            self.gripper_pos(obs[0]), gripper_goal_pos, self._geofence)
-        block_at_goal = at_goal(self.block_pos(), block_goal_pos,
+        gripper_at_goal = at_goal(self.gripper_pos(obs[0]), goal.gripper,
+                                  self._geofence)
+        block_at_goal = at_goal(self.block_pos(), goal.block,
                                 self._geofence)
         return gripper_at_goal and block_at_goal
 

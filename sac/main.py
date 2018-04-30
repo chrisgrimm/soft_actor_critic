@@ -42,23 +42,18 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
     for trajectory in mimic_trajectories:
         for (s1, a, r, s2, t) in trajectory:
             for _ in range(N):
-                buffer.append(s1, a, r, s2, t)
+                buffer.append(s1=s1, a=a, r=r, s2=s2, t=t)
 
 
 def string_to_env(env_name):
-    using_hindsight = False
     if env_name == 'chaser':
-        env = ChaserEnv()
+        return ChaserEnv()
     elif env_name == 'mountaincar-continuous-hindsight':
-        env = MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'))
-        using_hindsight = True
+        return MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'))
     elif env_name == 'pick-and-place':
-        env = PickAndPlaceGoalWrapper(
+        return PickAndPlaceGoalWrapper(
             PickAndPlaceEnv(max_steps=500, neg_reward=False))
-        using_hindsight = True
-    else:
-        env = gym.make(env_name)
-    return env, using_hindsight
+    return gym.make(env_name)
 
 
 class Trainer:
@@ -113,9 +108,8 @@ class Trainer:
             tick = time.time()
 
             episode_count += Counter(reward=r, timesteps=1)
-            r *= reward_scale
             if not is_eval_period(count['episode']):
-                buffer.append(s1, a, r, s2, t)
+                buffer.append(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
                 if len(buffer) >= batch_size:
                     for i in range(num_train_steps):
                         s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(
@@ -170,7 +164,7 @@ class HindsightTrainer(Trainer):
 
     def reset(self):
         for s1, a, r, s2, t in env.recompute_trajectory(self.trajectory):
-            self.buffer.append(s1, a, r * self.reward_scale, s2, t)
+            self.buffer.append(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t)
         self.trajectory = []
         self.s1 = super().reset()
         return self.s1
@@ -196,7 +190,7 @@ if __name__ == '__main__':
     np.random.seed(args.seed)
     tf.set_random_seed(args.seed)
     buffer = ReplayBuffer2(args.buffer_size)
-    env, using_hindsight = string_to_env(args.env)
+    env = string_to_env(args.env)
 
     if args.mimic_file is not None:
         inject_mimic_experiences(args.mimic_file, buffer, N=10)
