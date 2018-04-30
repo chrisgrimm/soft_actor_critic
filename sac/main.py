@@ -182,7 +182,6 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
-    parser.add_argument('--render', action='store_true')
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()

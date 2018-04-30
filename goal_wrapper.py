@@ -44,7 +44,7 @@ class GoalWrapper(gym.Wrapper):
         return new_s2, new_r, new_t, {'base_reward': r}
 
     def reset(self):
-        return State(state=self.env.reset(), goal=self.final_goal())
+        return State(obs=self.env.reset(), goal=self.final_goal())
 
     def recompute_trajectory(self, trajectory):
         if not trajectory:
