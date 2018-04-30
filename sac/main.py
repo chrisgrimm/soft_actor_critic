@@ -48,7 +48,7 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 def string_to_env(env_name):
     if env_name == 'chaser':
         return ChaserEnv()
-    elif env_name == 'mountaincar-continuous-hindsight':
+    elif env_name == 'mountaincar':
         return MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0'))
     elif env_name == 'pick-and-place':
         return PickAndPlaceGoalWrapper(
