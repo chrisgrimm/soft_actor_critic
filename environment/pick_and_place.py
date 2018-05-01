@@ -45,7 +45,7 @@ class PickAndPlaceEnv(MujocoEnv):
             xml_filepath=join('models', 'pick-and-place', 'world.xml'),
             history_len=history_len,
             neg_reward=neg_reward,
-            steps_per_action=10,
+            steps_per_action=20,
             image_dimensions=None)
 
         self.initial_qpos = np.copy(self.init_qpos)
