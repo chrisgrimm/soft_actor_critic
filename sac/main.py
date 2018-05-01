@@ -124,20 +124,21 @@ class Trainer:
             s1 = s2
             if t:
                 s1 = self.reset()
-                episode_reward = episode_count['reward']
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                     'EVAL' if is_eval_period else 'TRAIN',
-                    (count['episode']), time_steps, episode_reward))
-                count += Counter(reward=episode_reward, episode=1)
+                    (count['episode']), time_steps, episode_count['reward']))
+                count += Counter(reward=(episode_count['reward']), episode=1)
                 fps = int(episode_count['timesteps'] / (time.time() - tick))
                 if logdir:
                     summary = tf.Summary()
                     if is_eval_period:
-                        summary.value.add(tag='average eval reward', simple_value=count['reward'])
-                        summary.value.add(tag='eval reward', simple_value=episode_reward)
+                        n_eval_periods = count['episode'] / float(evaluation_period)
+                        summary.value.add(tag='average eval reward', simple_value=(
+                                count['reward'] / n_eval_periods))
+                        summary.value.add(tag='eval reward', simple_value=(episode_count['reward']))
                     summary.value.add(
                         tag='average reward',
-                        simple_value=count['reward'] / float(count['episode']))
+                        simple_value=(count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
                     for k in ['V loss', 'Q loss', 'pi loss', 'reward']:
                         summary.value.add(tag=k, simple_value=episode_count[k])
