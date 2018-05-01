@@ -132,9 +132,6 @@ class Trainer:
                 if logdir:
                     summary = tf.Summary()
                     if is_eval_period:
-                        n_eval_periods = count['episode'] / float(evaluation_period)
-                        summary.value.add(tag='average eval reward', simple_value=(
-                                count['reward'] / n_eval_periods))
                         summary.value.add(tag='eval reward', simple_value=(episode_count['reward']))
                     summary.value.add(
                         tag='average reward',
