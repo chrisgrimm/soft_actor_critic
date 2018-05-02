@@ -175,7 +175,7 @@ class HindsightTrainer(Trainer):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
-    parser.add_argument('--seed', default=0, type=int)
+    parser.add_argument('--seed', default=None, type=int)
     parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
@@ -185,10 +185,13 @@ if __name__ == '__main__':
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
 
-    np.random.seed(args.seed)
-    tf.set_random_seed(args.seed)
     buffer = ReplayBuffer2(args.buffer_size)
     env = string_to_env(args.env)
+
+    if args.seed is not None:
+        np.random.seed(args.seed)
+        tf.set_random_seed(args.seed)
+        env.seed(args.seed)
 
     if args.mimic_file is not None:
         inject_mimic_experiences(args.mimic_file, buffer, N=10)
