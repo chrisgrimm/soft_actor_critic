@@ -163,5 +163,4 @@ class AbstractSoftActorCritic(object):
             parameters = self.produce_policy_parameters(a_shape, processed_s)
             actions = self.policy_parameters_to_max_likelihood_action(
                 parameters)
-        print(actions)
         return actions
