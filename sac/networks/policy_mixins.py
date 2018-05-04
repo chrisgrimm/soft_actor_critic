@@ -11,9 +11,9 @@ def leaky_relu(x, alpha=0.2):
 
 class MLPPolicy(object):
     def input_processing(self, s):
-        fc1 = tf.layers.dense(s, 256, tf.nn.relu, name='fc1', kernel_initializer=tf.constant_initializer(.001))
-        fc2 = tf.layers.dense(fc1, 256, tf.nn.relu, name='fc2', kernel_initializer=tf.constant_initializer(.001))
-        fc3 = tf.layers.dense(fc2, 256, tf.nn.relu, name='fc3', kernel_initializer=tf.constant_initializer(.001))
+        fc1 = tf.layers.dense(s, 256, tf.nn.relu, name='fc1', kernel_initializer=tf.constant_initializer(np.random.uniform()))
+        fc2 = tf.layers.dense(fc1, 256, tf.nn.relu, name='fc2', kernel_initializer=tf.constant_initializer(np.random.uniform()))
+        fc3 = tf.layers.dense(fc2, 256, tf.nn.relu, name='fc3', kernel_initializer=tf.constant_initializer(np.random.uniform()))
         return fc3
 
 
@@ -23,9 +23,9 @@ class GaussianPolicy(object):
     '''
 
     def produce_policy_parameters(self, a_shape, processed_s):
-        mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params', kernel_initializer=tf.constant_initializer(.001))
+        mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params', kernel_initializer=tf.constant_initializer(np.random.uniform()))
         sigma_params = tf.layers.dense(
-            processed_s, a_shape, tf.nn.sigmoid, name='sigma_params', kernel_initializer=tf.constant_initializer(.001))
+            processed_s, a_shape, tf.nn.sigmoid, name='sigma_params', kernel_initializer=tf.constant_initializer(np.random.uniform()))
         return (mu_params, sigma_params + 0.0001)
 
     def policy_parameters_to_log_prob(self, u, parameters):
@@ -61,7 +61,7 @@ class GaussianMixturePolicy(object):
 
 class CategoricalPolicy(object):
     def produce_policy_parameters(self, a_shape, processed_s):
-        logits = tf.layers.dense(processed_s, a_shape, name='logits', kernel_initializer=tf.constant_initializer(.001))
+        logits = tf.layers.dense(processed_s, a_shape, name='logits', kernel_initializer=tf.constant_initializer(np.random.uniform()))
         return logits
 
     def policy_parameters_to_log_prob(self, a, parameters):
