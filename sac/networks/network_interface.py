@@ -69,15 +69,15 @@ class AbstractSoftActorCritic(object):
         ]
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
 
-        self.train_V = tf.train.GradientDescentOptimizer(
+        self.train_V = tf.train.AdamOptimizer(
             learning_rate=learning_rate, use_locking=True).minimize(
                 V_loss, var_list=xi)
         with tf.control_dependencies([self.train_V]):
-            self.train_Q = tf.train.GradientDescentOptimizer(
+            self.train_Q = tf.train.AdamOptimizer(
                 learning_rate=learning_rate, use_locking=True).minimize(
                     Q_loss, var_list=theta)
             with tf.control_dependencies([self.train_Q]):
-                self.train_pi = tf.train.GradientDescentOptimizer(
+                self.train_pi = tf.train.AdamOptimizer(
                     learning_rate=learning_rate, use_locking=True).minimize(
                         pi_loss, var_list=phi)
         self.check = tf.add_check_numerics_ops()
