@@ -4,92 +4,90 @@ from abc import abstractmethod
 
 class AbstractSoftActorCritic(object):
     def __init__(self, s_shape, a_shape):
-        tf.reset_default_graph()
-        with tf.Graph().as_default():
-            tf.set_random_seed(0)
-            self.S1 = S1 = tf.placeholder(
-                tf.float32, [None] + list(s_shape), name='S1')
-            self.S2 = S2 = tf.placeholder(
-                tf.float32, [None] + list(s_shape), name='S2')
-            self.A = A = tf.placeholder(
-                tf.float32, [None] + list(a_shape), name='A')
-            self.R = R = tf.placeholder(tf.float32, [None], name='R')
-            self.T = T = tf.placeholder(tf.float32, [None], name='T')
-            gamma = 0.99
-            tau = 0.01
-            learning_rate = 3 * 10**-4
+        tf.set_random_seed(0)
+        self.S1 = S1 = tf.placeholder(
+            tf.float32, [None] + list(s_shape), name='S1')
+        self.S2 = S2 = tf.placeholder(
+            tf.float32, [None] + list(s_shape), name='S2')
+        self.A = A = tf.placeholder(
+            tf.float32, [None] + list(a_shape), name='A')
+        self.R = R = tf.placeholder(tf.float32, [None], name='R')
+        self.T = T = tf.placeholder(tf.float32, [None], name='T')
+        gamma = 0.99
+        tau = 0.01
+        learning_rate = 3 * 10**-4
 
-            # constructing V loss
+        # constructing V loss
 
-            self.A_sampled1 = A_sampled1 = tf.stop_gradient(
-                self.sample_pi_network(a_shape[0], S1, 'pi'))
-            self.A_sampled2 = A_sampled2 = tf.stop_gradient(
-                self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
-            print(a_shape, S1)
+        self.A_sampled1 = A_sampled1 = tf.stop_gradient(
+            self.sample_pi_network(a_shape[0], S1, 'pi'))
+        self.A_sampled2 = A_sampled2 = tf.stop_gradient(
+            self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
+        print(a_shape, S1)
 
-            self.A_max_likelihood = tf.stop_gradient(
-                self.get_best_action(a_shape[0], S1, 'pi', reuse=True))
+        self.A_max_likelihood = tf.stop_gradient(
+            self.get_best_action(a_shape[0], S1, 'pi', reuse=True))
 
-            V_S1 = self.V_network(S1, 'V')
-            Q_sampled1 = self.Q_network(
-                S1, self.transform_action_sample(A_sampled1), 'Q')
-            log_pi_sampled1 = self.pi_network_log_prob(
-                A_sampled1, S1, 'pi', reuse=True)
-            Q_sampled2 = self.Q_network(
-                S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
-            log_pi_sampled2 = self.pi_network_log_prob(
-                A_sampled2, S1, 'pi', reuse=True)
-            self.V_loss = V_loss = tf.reduce_mean(
-                0.5 * tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
+        V_S1 = self.V_network(S1, 'V')
+        Q_sampled1 = self.Q_network(
+            S1, self.transform_action_sample(A_sampled1), 'Q')
+        log_pi_sampled1 = self.pi_network_log_prob(
+            A_sampled1, S1, 'pi', reuse=True)
+        Q_sampled2 = self.Q_network(
+            S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
+        log_pi_sampled2 = self.pi_network_log_prob(
+            A_sampled2, S1, 'pi', reuse=True)
+        self.V_loss = V_loss = tf.reduce_mean(
+            0.5 * tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
 
-            # constructing Q loss
-            V_bar_S2 = self.V_network(S2, 'V_bar')
-            Q = self.Q_network(
-                S1, self.transform_action_sample(A), 'Q', reuse=True)
-            self.Q_loss = Q_loss = tf.reduce_mean(
-                0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
+        # constructing Q loss
+        V_bar_S2 = self.V_network(S2, 'V_bar')
+        Q = self.Q_network(
+            S1, self.transform_action_sample(A), 'Q', reuse=True)
+        self.Q_loss = Q_loss = tf.reduce_mean(
+            0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
 
-            # constructing pi loss
-            self.pi_loss = pi_loss = tf.reduce_mean(
-                log_pi_sampled2 *
-                tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
+        # constructing pi loss
+        self.pi_loss = pi_loss = tf.reduce_mean(
+            log_pi_sampled2 *
+            tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
 
-            # grabbing all the relevant variables
-            phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
-            theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Q/')
-            xi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V/')
-            xi_bar = tf.get_collection(
-                tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
+        # grabbing all the relevant variables
+        phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
+        theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Q/')
+        xi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V/')
+        xi_bar = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
 
-            soft_update_xi_bar_ops = [
-                tf.assign(xbar, tau * x + (1 - tau) * xbar)
-                for (xbar, x) in zip(xi_bar, xi)
-            ]
-            self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
-            hard_update_xi_bar_ops = [
-                tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
-            ]
-            hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
+        soft_update_xi_bar_ops = [
+            tf.assign(xbar, tau * x + (1 - tau) * xbar)
+            for (xbar, x) in zip(xi_bar, xi)
+        ]
+        self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
+        hard_update_xi_bar_ops = [
+            tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
+        ]
+        hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
 
-            self.train_V = tf.train.GradientDescentOptimizer(
+        self.train_V = tf.train.GradientDescentOptimizer(
+            learning_rate=learning_rate, use_locking=True).minimize(
+                V_loss, var_list=xi)
+        with tf.control_dependencies([self.train_V]):
+            self.train_Q = tf.train.GradientDescentOptimizer(
                 learning_rate=learning_rate, use_locking=True).minimize(
-                    V_loss, var_list=xi)
-            with tf.control_dependencies([self.train_V]):
-                self.train_Q = tf.train.GradientDescentOptimizer(
+                    Q_loss, var_list=theta)
+            with tf.control_dependencies([self.train_Q]):
+                self.train_pi = tf.train.GradientDescentOptimizer(
                     learning_rate=learning_rate, use_locking=True).minimize(
-                        Q_loss, var_list=theta)
-                with tf.control_dependencies([self.train_Q]):
-                    self.train_pi = tf.train.GradientDescentOptimizer(
-                        learning_rate=learning_rate, use_locking=True).minimize(
-                            pi_loss, var_list=phi)
-            self.check = tf.add_check_numerics_ops()
+                        pi_loss, var_list=phi)
+        self.check = tf.add_check_numerics_ops()
 
-            config = tf.ConfigProto(allow_soft_placement=True)
-            config.gpu_options.allow_growth = True
-            self.sess = sess = tf.Session(config=config)
-            sess.run(tf.global_variables_initializer())
-            # ensure that xi and xi_bar are the same at initialization
-            sess.run(hard_update_xi_bar)
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
+        self.sess = sess = tf.Session(config=config)
+        sess.run(tf.global_variables_initializer())
+        # ensure that xi and xi_bar are the same at initialization
+        sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
         [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
