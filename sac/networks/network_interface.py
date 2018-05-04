@@ -71,7 +71,6 @@ class AbstractSoftActorCritic(object):
             ]
             hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
 
-            tf.set_random_seed(0)
             self.train_V = tf.train.GradientDescentOptimizer(
                 learning_rate=learning_rate, use_locking=True).minimize(
                     V_loss, var_list=xi)
