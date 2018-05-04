@@ -75,12 +75,13 @@ class AbstractSoftActorCritic(object):
             self.train_V = tf.train.GradientDescentOptimizer(
                 learning_rate=learning_rate, use_locking=True).minimize(
                     V_loss, var_list=xi)
-            self.train_Q = tf.train.GradientDescentOptimizer(
-                learning_rate=learning_rate, use_locking=True).minimize(
-                    Q_loss, var_list=theta)
-            self.train_pi = tf.train.GradientDescentOptimizer(
-                learning_rate=learning_rate, use_locking=True).minimize(
-                    pi_loss, var_list=phi)
+            with tf.control_dependencies([self.train_V]):
+                self.train_Q = tf.train.GradientDescentOptimizer(
+                    learning_rate=learning_rate, use_locking=True).minimize(
+                        Q_loss, var_list=theta)
+                self.train_pi = tf.train.GradientDescentOptimizer(
+                    learning_rate=learning_rate, use_locking=True).minimize(
+                        pi_loss, var_list=phi)
             tf.set_random_seed(0)
             self.check = tf.add_check_numerics_ops()
 
@@ -93,9 +94,9 @@ class AbstractSoftActorCritic(object):
 
     def train_step(self, S1, A, R, S2, T):
         tf.set_random_seed(0)
-        [_, _, V_loss, Q_loss, pi_loss] = self.sess.run(
+        [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                # self.train_V,
+                self.train_V,
                 self.train_Q,
                 self.train_pi,
                 self.V_loss, self.Q_loss, self.pi_loss
