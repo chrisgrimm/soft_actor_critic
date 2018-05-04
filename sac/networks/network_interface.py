@@ -83,7 +83,6 @@ class AbstractSoftActorCritic(object):
                     self.train_pi = tf.train.GradientDescentOptimizer(
                         learning_rate=learning_rate, use_locking=True).minimize(
                             pi_loss, var_list=phi)
-            tf.set_random_seed(0)
             self.check = tf.add_check_numerics_ops()
 
             config = tf.ConfigProto(allow_soft_placement=True)
@@ -94,7 +93,6 @@ class AbstractSoftActorCritic(object):
             sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
-        tf.set_random_seed(0)
         [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
                 self.train_V,
