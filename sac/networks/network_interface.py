@@ -15,6 +15,7 @@ class AbstractSoftActorCritic(object):
         gamma = 0.99
         tau = 0.01
         learning_rate = 3 * 10**-4
+        learning_rate = 0
 
         # constructing V loss
 
@@ -87,11 +88,11 @@ class AbstractSoftActorCritic(object):
         sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
-        [_, V_loss, Q_loss, pi_loss] = self.sess.run(
+        [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
                 self.train_V,
-                # self.train_Q,
-                # self.train_pi,
+                self.train_Q,
+                self.train_pi,
                 self.V_loss, self.Q_loss, self.pi_loss
             ],
             feed_dict={
