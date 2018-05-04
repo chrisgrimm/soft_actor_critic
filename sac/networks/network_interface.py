@@ -71,12 +71,14 @@ class AbstractSoftActorCritic(object):
         self.train_V = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(
                 V_loss, var_list=xi)
-        self.train_Q = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(
-                Q_loss, var_list=theta)
-        self.train_pi = tf.train.AdamOptimizer(
-            learning_rate=learning_rate).minimize(
-                pi_loss, var_list=phi)
+        with tf.control_dependencies([self.train_V]):
+            self.train_Q = tf.train.AdamOptimizer(
+                learning_rate=learning_rate).minimize(
+                    Q_loss, var_list=theta)
+            with tf.control_dependencies([self.train_Q]):
+                self.train_pi = tf.train.AdamOptimizer(
+                    learning_rate=learning_rate).minimize(
+                        pi_loss, var_list=phi)
         self.check = tf.add_check_numerics_ops()
 
         config = tf.ConfigProto(allow_soft_placement=True)
