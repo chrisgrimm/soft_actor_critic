@@ -93,9 +93,9 @@ class AbstractSoftActorCritic(object):
 
     def train_step(self, S1, A, R, S2, T):
         tf.set_random_seed(0)
-        [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
+        [_, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.train_V,
+                # self.train_V,
                 self.train_Q,
                 self.train_pi,
                 self.V_loss, self.Q_loss, self.pi_loss
