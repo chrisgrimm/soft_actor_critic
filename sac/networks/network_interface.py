@@ -92,10 +92,8 @@ class AbstractSoftActorCritic(object):
     def train_step(self, S1, A, R, S2, T):
         [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.train_V,
-                self.train_Q,
-                self.train_pi,
-                self.V_loss, self.Q_loss, self.pi_loss
+                self.train_V, self.train_Q, self.train_pi, self.V_loss,
+                self.Q_loss, self.pi_loss
             ],
             feed_dict={
                 self.S1: S1,
