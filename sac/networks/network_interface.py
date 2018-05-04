@@ -79,9 +79,10 @@ class AbstractSoftActorCritic(object):
                 self.train_Q = tf.train.GradientDescentOptimizer(
                     learning_rate=learning_rate, use_locking=True).minimize(
                         Q_loss, var_list=theta)
-                self.train_pi = tf.train.GradientDescentOptimizer(
-                    learning_rate=learning_rate, use_locking=True).minimize(
-                        pi_loss, var_list=phi)
+                with tf.control_dependencies([self.train_Q]):
+                    self.train_pi = tf.train.GradientDescentOptimizer(
+                        learning_rate=learning_rate, use_locking=True).minimize(
+                            pi_loss, var_list=phi)
             tf.set_random_seed(0)
             self.check = tf.add_check_numerics_ops()
 
