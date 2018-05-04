@@ -22,5 +22,5 @@ class MLPValueFunc(object):
             fc1 = tf.layers.dense(s, 256, tf.nn.relu, name='fc1')
             fc2 = tf.layers.dense(fc1, 256, tf.nn.relu, name='fc2')
             fc3 = tf.layers.dense(fc2, 256, tf.nn.relu, name='fc3')
-            v = tf.reshape(tf.layers.dense(fc2, 1, name='v'), [-1])
+            v = tf.reshape(tf.layers.dense(fc3, 1, name='v'), [-1])
         return v

@@ -4,6 +4,7 @@ from abc import abstractmethod
 
 class AbstractSoftActorCritic(object):
     def __init__(self, s_shape, a_shape):
+        tf.set_random_seed(0)
         self.S1 = S1 = tf.placeholder(
             tf.float32, [None] + list(s_shape), name='S1')
         self.S2 = S2 = tf.placeholder(
@@ -14,54 +15,66 @@ class AbstractSoftActorCritic(object):
         self.T = T = tf.placeholder(tf.float32, [None], name='T')
         gamma = 0.99
         tau = 0.01
-        learning_rate = 3 * 10**-4
-
-        # constructing V loss
-
-        self.A_sampled1 = A_sampled1 = tf.stop_gradient(
-            self.sample_pi_network(a_shape[0], S1, 'pi'))
-        self.A_sampled2 = A_sampled2 = tf.stop_gradient(
-            self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
-        print(a_shape, S1)
+        learning_rate = 3 * 10 ** -4
 
         self.A_max_likelihood = tf.stop_gradient(
-            self.get_best_action(a_shape[0], S1, 'pi', reuse=True))
+            self.get_best_action(a_shape[0], S1, 'pi'))
 
-        V_S1 = self.V_network(S1, 'V')
-        Q_sampled1 = self.Q_network(
-            S1, self.transform_action_sample(A_sampled1), 'Q')
-        log_pi_sampled1 = self.pi_network_log_prob(
-            A_sampled1, S1, 'pi', reuse=True)
-        Q_sampled2 = self.Q_network(
-            S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
-        log_pi_sampled2 = self.pi_network_log_prob(
-            A_sampled2, S1, 'pi', reuse=True)
-        self.V_loss = V_loss = tf.reduce_mean(
-            0.5 * tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
+        # constructing V loss
+        with tf.control_dependencies([self.A_max_likelihood]):
+            self.A_sampled1 = A_sampled1 = tf.stop_gradient(
+                self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
+            V_S1 = self.V_network(S1, 'V')
+            Q_sampled1 = self.Q_network(
+                S1, self.transform_action_sample(A_sampled1), 'Q')
+            log_pi_sampled1 = self.pi_network_log_prob(
+                A_sampled1, S1, 'pi', reuse=True)
+            self.V_loss = V_loss = tf.reduce_mean(
+                0.5 * tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
 
         # constructing Q loss
-        V_bar_S2 = self.V_network(S2, 'V_bar')
-        Q = self.Q_network(
-            S1, self.transform_action_sample(A), 'Q', reuse=True)
-        self.Q_loss = Q_loss = tf.reduce_mean(
-            0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
+        with tf.control_dependencies([self.V_loss]):
+            V_bar_S2 = self.V_network(S2, 'V_bar')
+            Q = self.Q_network(
+                S1, self.transform_action_sample(A), 'Q', reuse=True)
+            self.Q_loss = Q_loss = tf.reduce_mean(
+                0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
 
         # constructing pi loss
-        self.pi_loss = pi_loss = tf.reduce_mean(
-            log_pi_sampled2 *
-            tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
+        with tf.control_dependencies([self.Q_loss]):
+            self.A_sampled2 = A_sampled2 = tf.stop_gradient(
+                self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
+            Q_sampled2 = self.Q_network(
+                S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
+            log_pi_sampled2 = self.pi_network_log_prob(
+                A_sampled2, S1, 'pi', reuse=True)
+            self.pi_loss = pi_loss = tf.reduce_mean(
+                log_pi_sampled2 *
+                tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
 
         # grabbing all the relevant variables
         phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
         theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Q/')
         xi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V/')
-        xi_bar = tf.get_collection(
-            tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
+        xi_bar = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
+
+        with tf.control_dependencies([self.pi_loss]):
+            self.train_V = tf.train.AdamOptimizer(
+                learning_rate=learning_rate).minimize(
+                V_loss, var_list=xi)
+        with tf.control_dependencies([self.train_V]):
+            self.train_Q = tf.train.AdamOptimizer(
+                learning_rate=learning_rate).minimize(
+                Q_loss, var_list=theta)
+        with tf.control_dependencies([self.train_Q]):
+            self.train_pi = tf.train.AdamOptimizer(
+                learning_rate=learning_rate).minimize(
+                pi_loss, var_list=phi)
 
         soft_update_xi_bar_ops = [
             tf.assign(xbar, tau * x + (1 - tau) * xbar)
             for (xbar, x) in zip(xi_bar, xi)
-        ]
+            ]
         self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
         hard_update_xi_bar_ops = [
             tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
@@ -85,7 +98,13 @@ class AbstractSoftActorCritic(object):
         config.gpu_options.allow_growth = True
         self.sess = sess = tf.Session(config=config)
         sess.run(tf.global_variables_initializer())
+
         # ensure that xi and xi_bar are the same at initialization
+        hard_update_xi_bar_ops = [
+            tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
+            ]
+
+        hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
@@ -165,5 +184,4 @@ class AbstractSoftActorCritic(object):
             parameters = self.produce_policy_parameters(a_shape, processed_s)
             actions = self.policy_parameters_to_max_likelihood_action(
                 parameters)
-        print(actions)
         return actions
