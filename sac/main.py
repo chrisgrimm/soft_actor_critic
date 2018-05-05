@@ -1,26 +1,24 @@
 import argparse
-
 import itertools
+import pickle
+import time
 from collections import Counter
 
-import numpy as np
 import gym
-import time
+import numpy as np
+import tensorflow as tf
+from gym import spaces
 
 from environment.pick_and_place import PickAndPlaceEnv
-from gym import spaces
 from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
-import tensorflow as tf
-
-from sac.replay_buffer.replay_buffer import ReplayBuffer2
-from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
-from sac.networks.value_function_mixins import MLPValueFunc
-from sac.networks.network_interface import AbstractSoftActorCritic
 from sac.chaser import ChaserEnv
-import pickle
+from sac.networks.network_interface import AbstractSoftActorCritic
+from sac.networks.policy_mixins import GaussianPolicy, CategoricalPolicy, MLPPolicy
+from sac.networks.value_function_mixins import MLPValueFunc
+from sac.replay_buffer.replay_buffer import ReplayBuffer2
 
 
-def build_agent(env):
+def build_agent(env, activation, n_layers, layer_size, learning_rate):
     state_shape = env.observation_space.shape
     if isinstance(env.action_space, spaces.Discrete):
         action_shape = [env.action_space.n]
@@ -31,7 +29,12 @@ def build_agent(env):
 
     class Agent(PolicyType, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
-            super(Agent, self).__init__(s_shape, a_shape)
+            super(Agent, self).__init__(s_shape=s_shape,
+                                        a_shape=a_shape,
+                                        activation=activation,
+                                        n_layers=n_layers,
+                                        layer_size=layer_size,
+                                        learning_rate=learning_rate)
 
     return Agent(state_shape, action_shape)
 
@@ -76,8 +79,8 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps,
-                 logdir, render):
+    def __init__(self, env, buffer, activation, n_layers, layer_size, learning_rate,
+                 reward_scale, batch_size, num_train_steps, logdir, render):
         tb_writer = tf.summary.FileWriter(logdir) if logdir else None
 
         self.env = env
@@ -86,7 +89,11 @@ class Trainer:
 
         s1 = self.reset()
 
-        agent = build_agent(env)
+        agent = build_agent(env=env,
+                            activation=activation,
+                            n_layers=n_layers,
+                            layer_size=layer_size,
+                            learning_rate=learning_rate)
 
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
@@ -147,11 +154,11 @@ class Trainer:
 
 
 class HindsightTrainer(Trainer):
-    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps,
-                 logdir, render):
+    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps, logdir, render, activation, n_layers,
+                 layer_size, learning_rate):
         assert isinstance(env, GoalWrapper)
         self.trajectory = []
-        super().__init__(env, buffer, reward_scale, batch_size,
+        super().__init__(env, buffer, activation, n_layers, layer_size, learning_rate, reward_scale, batch_size,
                          num_train_steps, logdir, render)
         self.s1 = self.reset()
 
@@ -175,6 +182,10 @@ class HindsightTrainer(Trainer):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
+    parser.add_argument('--activation', default='relu')
+    parser.add_argument('--n-layers', default=3, type=int)
+    parser.add_argument('--layer-size', default=256, type=int)
+    parser.add_argument('--learning-rate', default=3e-4, type=float)
     parser.add_argument('--seed', default=None, type=int)
     parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
@@ -195,10 +206,15 @@ if __name__ == '__main__':
 
     if args.mimic_file is not None:
         inject_mimic_experiences(args.mimic_file, buffer, N=10)
+
     trainer = HindsightTrainer if isinstance(env, GoalWrapper) else Trainer
     trainer(
         env=env,
         buffer=buffer,
+        activation=args.activation,
+        n_layers=args.n_layers,
+        layer_size=args.layer_size,
+        learning_rate=args.learning_rate,
         reward_scale=args.reward_scale,
         batch_size=args.batch_size,
         num_train_steps=args.num_train_steps,
