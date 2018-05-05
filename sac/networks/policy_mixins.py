@@ -7,9 +7,6 @@ from sac.utils import ACT
 EPS = 1E-6
 
 
-def leaky_relu(x, alpha=0.2):
-    return tf.maximum(x, alpha * x)
-
 
 class MLPPolicy(object):
     def input_processing(self, s):

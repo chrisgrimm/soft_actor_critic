@@ -1,7 +1,11 @@
 import numpy as np
 import tensorflow as tf
 
-ACT = tf.nn.relu
+def leaky_relu(x, alpha=0.2):
+    return tf.maximum(x, alpha * x)
+
+
+ACT = leaky_relu
 
 def onehot(idx, num_entries):
     x = np.zeros(num_entries)
