@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
+ACT = tf.nn.relu
 
 def onehot(idx, num_entries):
     x = np.zeros(num_entries)
