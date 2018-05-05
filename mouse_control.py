@@ -6,16 +6,9 @@ import argparse
 import numpy as np
 from mujoco import ObjType
 
-from environment.arm2pos import Arm2PosEnv
-from environment.arm2touch import Arm2TouchEnv
 from environment.base import print1
-from environment.navigate import NavigateEnv
+from environment.goal_wrapper import PickAndPlaceGoalWrapper
 from environment.pick_and_place import PickAndPlaceEnv
-import pickle
-
-from goal_wrapper import PickAndPlaceGoalWrapper
-from sac.main import build_action_converter
-from sac.replay_buffer.replay_buffer import ReplayBuffer2
 
 saved_pos = None
 
@@ -25,10 +18,9 @@ def run(port, value_tensor=None, sess=None):
     #env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    env = PickAndPlaceGoalWrapper(PickAndPlaceEnv(max_steps=9999999))
+    env = PickAndPlaceGoalWrapper(PickAndPlaceEnv(max_steps=1000))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
-    converter = build_action_converter(env)
 
     shape, = env.action_space.shape
 
@@ -71,13 +63,13 @@ def run(port, value_tensor=None, sess=None):
         if not pause and not np.allclose(action, 0):
             print('.', end='')
             a = np.clip(action * .05, -1, 1)
-            s2, r, done, _ = env.step(a, converter)
+            s2, r, done, _ = env.step(a)
             print1(r)
             if s1 is not None:
                 traj.append((s1, a, r, s2, done))
             s1 = s2
             total_reward += r
-            run_tests(env, s2)
+            # run_tests(env, s2)
 
         if done:
             if not pause:
