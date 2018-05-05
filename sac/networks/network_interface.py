@@ -3,7 +3,7 @@ from abc import abstractmethod
 
 
 class AbstractSoftActorCritic(object):
-    def __init__(self, s_shape, a_shape):
+    def __init__(self, s_shape, a_shape, activation, n_layers, layer_size, learning_rate):
         tf.set_random_seed(0)
         self.S1 = S1 = tf.placeholder(
             tf.float32, [None] + list(s_shape), name='S1')
