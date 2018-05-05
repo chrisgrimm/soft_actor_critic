@@ -1,23 +1,21 @@
 import argparse
-
 import itertools
-from collections import Counter
-
-import numpy as np
-import gym
+import pickle
 import time
 
-from environment.pick_and_place import PickAndPlaceEnv
-from gym import spaces
-from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
+import gym
+import numpy as np
 import tensorflow as tf
+from collections import Counter
+from gym import spaces
 
-from sac.replay_buffer.replay_buffer import ReplayBuffer2
+from environment.goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
+from environment.pick_and_place import PickAndPlaceEnv
+from sac.chaser import ChaserEnv
+from sac.networks.network_interface import AbstractSoftActorCritic
 from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
 from sac.networks.value_function_mixins import MLPValueFunc
-from sac.networks.network_interface import AbstractSoftActorCritic
-from sac.chaser import ChaserEnv
-import pickle
+from sac.replay_buffer.replay_buffer import ReplayBuffer2
 
 
 def build_agent(env):
