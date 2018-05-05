@@ -10,7 +10,7 @@ def mlp(inputs, layer_size, out_size, n_layers, activation, name, reuse=None):
     with tf.variable_scope(name, reuse=reuse):
         for i in range(1, n_layers):
             inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
-        return tf.layers.dense(inputs, out_size, activation, name='out')
+        return tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
 
 
 class AbstractSoftActorCritic(object):
