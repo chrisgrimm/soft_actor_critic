@@ -73,33 +73,33 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
-        self.init_qpos = np.array([4.886e-05,
-                                   - 2.152e-05,
-                                   4.385e-01,
-                                   1.000e+00,
-                                   2.254e-17,
-                                   - 2.388e-19,
-                                   1.290e-05,
-                                   - 9.773e-01,
-                                   2.773e-02,
-                                   3.573e-01,
-                                   3.574e-01, ])
-        # if np.random.uniform(0, 1) < .5:
-        #     self.init_qpos = np.array([
-        #         7.450e-05,
-        #         -3.027e-03,
-        #         4.385e-01,
-        #         1.000e+00,
-        #         0,
-        #         0,
-        #         -6.184e-04,
-        #         -1.101e+00,
-        #         0,
-        #         3.573e-01,
-        #         3.574e-01,
-        #     ])
-        # else:
-        #     self.init_qpos = self.initial_qpos
+        # self.init_qpos = np.array([4.886e-05,
+        #                            - 2.152e-05,
+        #                            4.385e-01,
+        #                            1.000e+00,
+        #                            2.254e-17,
+        #                            - 2.388e-19,
+        #                            1.290e-05,
+        #                            - 9.773e-01,
+        #                            2.773e-02,
+        #                            3.573e-01,
+        #                            3.574e-01, ])
+        if np.random.uniform(0, 1) < .5:
+            self.init_qpos = np.array([
+                7.450e-05,
+                -3.027e-03,
+                4.385e-01,
+                1.000e+00,
+                0,
+                0,
+                -6.184e-04,
+                -1.101e+00,
+                0,
+                3.573e-01,
+                3.574e-01,
+            ])
+        else:
+            self.init_qpos = self.initial_qpos
 
         # block_joint = self.sim.jnt_qposadr('block1joint')
 
