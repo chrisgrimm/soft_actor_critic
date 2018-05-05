@@ -98,6 +98,17 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
     def final_goal(self):
         return self.env.goal()
 
+    def step(self, action):
+        s2, r, t, info = self.env.step(action)
+        new_r = self.reward(s2, self.final_goal())
+        if self.terminal(s2, self.final_goal()):
+            step_num = self.env._step_num
+            new_s2 = self.reset()
+            self.env._step_num = step_num
+        else:
+            new_s2 = State(obs=s2, goal=self.final_goal())
+        return new_s2, new_r, self.env.hit_max_steps(), {'base_reward': r}
+
     @staticmethod
     def obs_from_obs_part_and_goal(state):
         state = State(*state)
