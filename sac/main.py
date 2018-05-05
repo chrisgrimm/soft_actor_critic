@@ -183,7 +183,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--activation', default='relu')
-    parser.add_argument('--n-layers', default=3, type=int)
+    parser.add_argument('--n-layers', default=4, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
     parser.add_argument('--seed', default=None, type=int)
