@@ -5,7 +5,7 @@ def leaky_relu(x, alpha=0.2):
     return tf.maximum(x, alpha * x)
 
 
-ACT = elu
+ACT = selu
 
 def onehot(idx, num_entries):
     x = np.zeros(num_entries)
