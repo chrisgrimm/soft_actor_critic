@@ -13,9 +13,9 @@ class MLPPolicy(object):
         fc1 = tf.layers.dense(s, 256, ACT, name='fc1')
         fc2 = tf.layers.dense(fc1, 256, ACT, name='fc2')
         fc3 = tf.layers.dense(fc2, 256, ACT, name='fc3')
-        # fc4 = tf.layers.dense(fc3, 256, ACT, name='fc4')
+        fc4 = tf.layers.dense(fc3, 256, ACT, name='fc4')
         # fc5 = tf.layers.dense(fc4, 256, ACT, name='fc5')
-        return fc3
+        return fc4
 
 
 class GaussianPolicy(object):
