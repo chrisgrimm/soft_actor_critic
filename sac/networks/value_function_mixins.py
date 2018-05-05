@@ -14,7 +14,8 @@ class MLPValueFunc(object):
             fc1 = tf.layers.dense(sa, 256, ACT, name='fc1')
             fc2 = tf.layers.dense(fc1, 256, ACT, name='fc2')
             fc3 = tf.layers.dense(fc2, 256, ACT, name='fc3')
-            q = tf.reshape(tf.layers.dense(fc3, 1, name='q'), [-1])
+            fc4 = tf.layers.dense(fc3, 256, ACT, name='fc4')
+            q = tf.reshape(tf.layers.dense(fc4, 1, name='q'), [-1])
         return q
 
     def V_network(self, s, name, reuse=None):
@@ -22,5 +23,6 @@ class MLPValueFunc(object):
             fc1 = tf.layers.dense(s, 256, ACT, name='fc1')
             fc2 = tf.layers.dense(fc1, 256, ACT, name='fc2')
             fc3 = tf.layers.dense(fc2, 256, ACT, name='fc3')
-            v = tf.reshape(tf.layers.dense(fc3, 1, name='v'), [-1])
+            fc4 = tf.layers.dense(fc3, 256, ACT, name='fc4')
+            v = tf.reshape(tf.layers.dense(fc4, 1, name='v'), [-1])
         return v
