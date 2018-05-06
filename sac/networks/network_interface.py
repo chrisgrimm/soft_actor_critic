@@ -9,20 +9,23 @@ from sac.utils import leaky_relu
 def mlp(inputs, layer_size, out_size, n_layers, activation, name, reuse=None):
     with tf.variable_scope(name, reuse=reuse):
         for i in range(1, n_layers):
-            inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
-        return tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
+            inputs = tf.layers.dense(
+                inputs, layer_size, activation, name='fc' + str(i))
+        return tf.layers.dense(
+            inputs, out_size, activation, name='fc' + str(n_layers))
 
 
 class AbstractSoftActorCritic(object):
-    def __init__(self, s_shape, a_shape, activation: str,
-                 n_layers: int, layer_size: int, learning_rate: float):
+    def __init__(self, s_shape, a_shape, activation: str, n_layers: int,
+                 layer_size: int, learning_rate: float):
         self.activation = dict(
             relu=tf.nn.relu,
             crelu=tf.nn.crelu,
             selu=tf.nn.selu,
             elu=tf.nn.elu,
-            leaky=leaky_relu,
-            leaky_relu=leaky_relu,
+            leaky=tf.nn.leaky_relu,
+            leaky_relu=tf.nn.leaky_relu,
+            tanh=tf.nn.tanh,
         )[activation]
         self.n_layers = n_layers
         self.layer_size = layer_size
@@ -79,20 +82,21 @@ class AbstractSoftActorCritic(object):
         phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
         theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Q/')
         xi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V/')
-        xi_bar = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
+        xi_bar = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
 
         with tf.control_dependencies([self.pi_loss]):
             self.train_V = tf.train.RMSPropOptimizer(
                 learning_rate=learning_rate).minimize(
-                V_loss, var_list=xi)
+                    V_loss, var_list=xi)
         with tf.control_dependencies([self.train_V]):
             self.train_Q = tf.train.RMSPropOptimizer(
                 learning_rate=learning_rate).minimize(
-                Q_loss, var_list=theta)
+                    Q_loss, var_list=theta)
         with tf.control_dependencies([self.train_Q]):
             self.train_pi = tf.train.RMSPropOptimizer(
                 learning_rate=learning_rate).minimize(
-                pi_loss, var_list=phi)
+                    pi_loss, var_list=phi)
 
         with tf.control_dependencies([self.train_pi]):
             soft_update_xi_bar_ops = [
@@ -101,25 +105,25 @@ class AbstractSoftActorCritic(object):
             ]
             self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
             self.check = tf.add_check_numerics_ops()
+            # ensure that xi and xi_bar are the same at initialization
+            hard_update_xi_bar_ops = [
+                tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
+            ]
+
+            hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
 
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
         self.sess = sess = tf.Session(config=config)
         sess.run(tf.global_variables_initializer())
 
-        # ensure that xi and xi_bar are the same at initialization
-        hard_update_xi_bar_ops = [
-            tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
-        ]
-
-        hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
         [_, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.soft_update_xi_bar, self.train_V, self.train_Q, self.train_pi, self.V_loss,
-                self.Q_loss, self.pi_loss
+                self.soft_update_xi_bar, self.train_V, self.train_Q,
+                self.train_pi, self.V_loss, self.Q_loss, self.pi_loss
             ],
             feed_dict={
                 self.S1: S1,
@@ -139,9 +143,14 @@ class AbstractSoftActorCritic(object):
         return actions[0]
 
     def mlp(self, inputs, out_size, name, reuse=None):
-        return mlp(inputs=inputs, layer_size=self.layer_size,
-                   out_size=out_size, n_layers=self.n_layers,
-                   activation=self.activation, name=name, reuse=reuse)
+        return mlp(
+            inputs=inputs,
+            layer_size=self.layer_size,
+            out_size=out_size,
+            n_layers=self.n_layers,
+            activation=self.activation,
+            name=name,
+            reuse=reuse)
 
     def Q_network(self, s, a, name, reuse=None):
         sa = tf.concat([s, a], axis=1)
