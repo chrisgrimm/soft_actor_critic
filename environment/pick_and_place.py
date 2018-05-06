@@ -73,6 +73,12 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
+        # block_joint = self.sim.jnt_qposadr('block1joint')
+        #
+        # self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
+        # self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
+
+
         # self.init_qpos = np.array([4.886e-05,
         #                            - 2.152e-05,
         #                            4.385e-01,
@@ -100,11 +106,6 @@ class PickAndPlaceEnv(MujocoEnv):
         #     ])
         # else:
         #     self.init_qpos = self.initial_qpos
-
-        block_joint = self.sim.jnt_qposadr('block1joint')
-
-        self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
-        self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
         # self.init_qpos[block_joint + 3:block_joint + 7] = np.random.random(
         #     4) * 2 * np.pi
