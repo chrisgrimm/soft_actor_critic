@@ -8,9 +8,13 @@ from sac.utils import leaky_relu
 
 def mlp(inputs, layer_size, out_size, n_layers, activation, name, reuse=None):
     with tf.variable_scope(name, reuse=reuse):
-        for i in range(1, n_layers):
-            inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
-        return tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
+        fc1 = tf.layers.dense(inputs, 256, activation, name='fc1')
+        fc2 = tf.layers.dense(fc1, 256, activation, name='fc2')
+        fc3 = tf.layers.dense(fc2, 256, activation, name='fc3')
+        return fc3
+        # for i in range(1, n_layers):
+        #     inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
+        # return tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
 
 
 class AbstractSoftActorCritic(object):
