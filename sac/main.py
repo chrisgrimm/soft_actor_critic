@@ -83,7 +83,6 @@ class Trainer:
     def __init__(self, env, buffer, activation, n_layers, layer_size,
                  learning_rate, reward_scale, batch_size, num_train_steps,
                  logdir, render):
-        tb_writer = tf.summary.FileWriter(logdir) if logdir else None
 
         self.env = env
         self.buffer = buffer
@@ -97,6 +96,11 @@ class Trainer:
             n_layers=n_layers,
             layer_size=layer_size,
             learning_rate=learning_rate)
+
+        tb_writer = None
+        if logdir:
+            tb_writer = tf.summary.FileWriter(
+                logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
@@ -190,7 +194,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--activation', default='relu')
-    parser.add_argument('--n-layers', default=4, type=int)
+    parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
     parser.add_argument('--seed', default=None, type=int)

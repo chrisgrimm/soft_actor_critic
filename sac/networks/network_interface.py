@@ -1,18 +1,15 @@
-from typing import Callable
-
 import tensorflow as tf
 from abc import abstractmethod
 
 from sac.utils import leaky_relu
 
 
-def mlp(inputs, layer_size, out_size, n_layers, activation, name, reuse=None):
-    with tf.variable_scope(name, reuse=reuse):
-        for i in range(1, n_layers):
-            inputs = tf.layers.dense(
-                inputs, layer_size, activation, name='fc' + str(i))
-        return tf.layers.dense(
-            inputs, out_size, activation, name='fc' + str(n_layers))
+def mlp(inputs, layer_size, n_layers, activation, out_size):
+    for i in range(1, n_layers):
+        inputs = tf.layers.dense(
+            inputs, layer_size, activation, name='fc' + str(i))
+    return tf.layers.dense(
+        inputs, out_size, activation, name='fc' + str(n_layers))
 
 
 class AbstractSoftActorCritic(object):
@@ -141,27 +138,27 @@ class AbstractSoftActorCritic(object):
                 self.A_max_likelihood, feed_dict={self.S1: S1})
         return actions[0]
 
-    def mlp(self, inputs, out_size, name, reuse=None):
+    def mlp(self, inputs, n_layers, out_size):
         return mlp(
             inputs=inputs,
             layer_size=self.layer_size,
-            out_size=out_size,
-            n_layers=self.n_layers,
+            n_layers=n_layers,
             activation=self.activation,
-            name=name,
-            reuse=reuse)
+            out_size=out_size)
 
     def Q_network(self, s, a, name, reuse=None):
-        sa = tf.concat([s, a], axis=1)
-        return tf.reshape(
-            self.mlp(inputs=sa, out_size=1, name=name, reuse=reuse), [-1])
+        with tf.variable_scope(name, reuse=reuse):
+            sa = tf.concat([s, a], axis=1)
+            return tf.reshape(
+                self.mlp(sa, n_layers=self.n_layers + 1, out_size=1), [-1])
 
     def V_network(self, s, name, reuse=None):
-        return tf.reshape(
-            self.mlp(inputs=s, out_size=1, name=name, reuse=reuse), [-1])
+        with tf.variable_scope(name, reuse=reuse):
+            return tf.reshape(
+                self.mlp(s, n_layers=self.n_layers + 1, out_size=1), [-1])
 
     def input_processing(self, s):
-        return self.mlp(inputs=s, out_size=1, name='pi', reuse=False)
+        return self.mlp(s, n_layers=self.n_layers, out_size=self.layer_size)
 
     @abstractmethod
     def produce_policy_parameters(self, a_shape, processed_s):
