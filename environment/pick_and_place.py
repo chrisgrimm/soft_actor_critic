@@ -59,9 +59,9 @@ class PickAndPlaceEnv(MujocoEnv):
             map(np.size, self.goal()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
         self.action_space = spaces.Box(
-            -1, 1, shape=(self.sim.nu - 1,), dtype=np.float32)
+            -1, 1, shape=(self.sim.nu - 1, ), dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
 
@@ -135,7 +135,7 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def goal(self):
         goal_pos = self._initial_block_pos + \
-                   np.array([0, 0, self._min_lift_height])
+            np.array([0, 0, self._min_lift_height])
         return Goal(gripper=goal_pos, block=goal_pos)
 
     def goal_3d(self):
@@ -165,7 +165,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def gripper_pos(self, qpos=None):
         finger1, finger2 = [
             self.sim.get_body_xpos(name, qpos) for name in self._finger_names
-            ]
+        ]
         return (finger1 + finger2) / 2.
 
     def step(self, action):

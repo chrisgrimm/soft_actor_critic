@@ -7,7 +7,6 @@ from sac.utils import ACT
 EPS = 1E-6
 
 
-
 class MLPPolicy(object):
     def input_processing(self, s, activation=tf.nn.relu):
         fc1 = tf.layers.dense(s, 256, activation, name='fc1')
