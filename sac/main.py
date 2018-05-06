@@ -150,7 +150,7 @@ class Trainer:
                         simple_value=(
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
-                    for k in ['R/V', 'R/log(pi)', 'V loss', 'Q loss', 'pi loss', 'reward']:
+                    for k in ['R/log(pi)', 'V loss', 'Q loss', 'pi loss', 'reward']:
                         summary.value.add(tag=k, simple_value=episode_count[k])
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
