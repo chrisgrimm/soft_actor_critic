@@ -2,12 +2,11 @@ import tensorflow as tf
 from abc import abstractmethod
 
 
-def mlp(inputs, layer_size, n_layers, activation, out_size):
-    for i in range(1, n_layers):
+def mlp(inputs, layer_size, n_layers, activation):
+    for i in range(n_layers):
         inputs = tf.layers.dense(
             inputs, layer_size, activation, name='fc' + str(i))
-    return tf.layers.dense(
-        inputs, out_size, activation, name='fc' + str(n_layers))
+    return inputs
 
 
 class AbstractSoftActorCritic(object):
@@ -145,27 +144,24 @@ class AbstractSoftActorCritic(object):
                 self.A_max_likelihood, feed_dict={self.S1: S1})
         return actions[0]
 
-    def mlp(self, inputs, n_layers, out_size):
+    def mlp(self, inputs):
         return mlp(
             inputs=inputs,
             layer_size=self.layer_size,
-            n_layers=n_layers,
-            activation=self.activation,
-            out_size=out_size)
+            n_layers=self.n_layers,
+            activation=self.activation)
 
     def Q_network(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
-            return tf.reshape(
-                self.mlp(sa, n_layers=self.n_layers + 1, out_size=1), [-1])
+            return tf.reshape(tf.layers.dense(self.mlp(sa), 1, name='q'), [-1])
 
     def V_network(self, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            return tf.reshape(
-                self.mlp(s, n_layers=self.n_layers + 1, out_size=1), [-1])
+            return tf.reshape(tf.layers.dense(self.mlp(s), 1, name='v'), [-1])
 
     def input_processing(self, s):
-        return self.mlp(s, n_layers=self.n_layers, out_size=self.layer_size)
+        return self.mlp(s)
 
     @abstractmethod
     def produce_policy_parameters(self, a_shape, processed_s):
