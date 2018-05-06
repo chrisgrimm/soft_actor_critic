@@ -65,7 +65,6 @@ class AbstractSoftActorCritic(object):
             def pos_mean(x, epsilon: float=0):
                 return tf.square(tf.reduce_mean(x)) + epsilon
 
-            self.r_to_v = pos_mean(R) / pos_mean(V_bar_S2, epsilon=1e-6)
             self.r_to_log_pi = pos_mean(R) / pos_mean(log_pi_sampled1, epsilon=1e-6)
 
         # constructing pi loss
@@ -122,9 +121,9 @@ class AbstractSoftActorCritic(object):
         sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
-        [r_to_v, r_to_log_pi, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
+        [r_to_log_pi, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.r_to_v, self.r_to_log_pi, self.soft_update_xi_bar, self.train_V, self.train_Q,
+                self.r_to_log_pi, self.soft_update_xi_bar, self.train_V, self.train_Q,
                 self.train_pi, self.V_loss, self.Q_loss, self.pi_loss
             ],
             feed_dict={
@@ -134,7 +133,7 @@ class AbstractSoftActorCritic(object):
                 self.S2: S2,
                 self.T: T
             })
-        return r_to_v, r_to_log_pi, V_loss, Q_loss, pi_loss
+        return r_to_log_pi, V_loss, Q_loss, pi_loss
 
     def get_actions(self, S1, sample=True):
         if sample:

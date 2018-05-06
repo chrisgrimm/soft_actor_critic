@@ -123,11 +123,10 @@ class Trainer:
                             batch_size)
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
-                        [r_to_v, r_to_log_pi, v_loss, q_loss, pi_loss] = agent.train_step(
+                        [r_to_log_pi, v_loss, q_loss, pi_loss] = agent.train_step(
                             s1_sample, a_sample, r_sample, s2_sample, t_sample)
                         episode_count += Counter({
-                            'R/V': r_to_v,
-                            'R/log(pi)': r_to_log_pi,
+                            'R/log(pi)': r_to_log_pi / reward_scale,
                             'V loss': v_loss,
                             'Q loss': q_loss,
                             'pi loss': pi_loss
