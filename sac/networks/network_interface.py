@@ -4,13 +4,10 @@ from abc import abstractmethod
 from sac.utils import leaky_relu
 
 
-def mlp(inputs, layer_size, out_size, n_layers, activation):
+def mlp(inputs, layer_size, n_layers, activation, out_size):
     for i in range(1, n_layers):
         inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
-        print(inputs)
-    dense = tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
-    print(dense)
-    return dense
+    return tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
     # fc1 = tf.layers.dense(inputs, 256, activation, name='fc1')
     # fc2 = tf.layers.dense(fc1, 256, activation, name='fc2')
     # fc3 = tf.layers.dense(fc2, 256, activation, name='fc3')
@@ -144,23 +141,21 @@ class AbstractSoftActorCritic(object):
                 self.A_max_likelihood, feed_dict={self.S1: S1})
         return actions[0]
 
+    def mlp(self, inputs, n_layers, out_size):
+        return mlp(inputs=inputs, layer_size=self.layer_size, n_layers=n_layers,
+                   activation=self.activation, out_size=out_size)
+
     def Q_network(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
-            reshape = tf.reshape(mlp(inputs=sa, layer_size=self.layer_size, out_size=1, n_layers=self.n_layers,
-                                     activation=self.activation), [-1])
-            exit()
-            return reshape
+            return tf.reshape(self.mlp(sa, n_layers=self.n_layers + 1, out_size=1), [-1])
 
     def V_network(self, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            return tf.reshape(
-                mlp(inputs=s, layer_size=self.layer_size, out_size=1,
-                    n_layers=self.n_layers, activation=self.activation), [-1])
+            return tf.reshape(self.mlp(s, n_layers=self.n_layers + 1, out_size=1), [-1])
 
     def input_processing(self, s):
-        return mlp(inputs=s, layer_size=self.layer_size, out_size=self.layer_size,
-                   n_layers=self.n_layers, activation=self.activation)
+        return self.mlp(s, n_layers=self.n_layers, out_size=self.layer_size)
 
     @abstractmethod
     def produce_policy_parameters(self, a_shape, processed_s):
