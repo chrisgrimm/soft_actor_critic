@@ -7,7 +7,10 @@ from sac.utils import leaky_relu
 def mlp(inputs, layer_size, out_size, n_layers, activation):
     for i in range(1, n_layers):
         inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
-    return tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
+        print(inputs)
+    dense = tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
+    print(dense)
+    return dense
     # fc1 = tf.layers.dense(inputs, 256, activation, name='fc1')
     # fc2 = tf.layers.dense(fc1, 256, activation, name='fc2')
     # fc3 = tf.layers.dense(fc2, 256, activation, name='fc3')
@@ -144,9 +147,10 @@ class AbstractSoftActorCritic(object):
     def Q_network(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
-            return tf.reshape(
-                mlp(inputs=sa, layer_size=self.layer_size, out_size=1,
-                    n_layers=self.n_layers, activation=self.activation), [-1])
+            reshape = tf.reshape(mlp(inputs=sa, layer_size=self.layer_size, out_size=1, n_layers=self.n_layers,
+                                     activation=self.activation), [-1])
+            exit()
+            return reshape
 
     def V_network(self, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
