@@ -94,12 +94,13 @@ class AbstractSoftActorCritic(object):
                 learning_rate=learning_rate).minimize(
                 pi_loss, var_list=phi)
 
-        soft_update_xi_bar_ops = [
-            tf.assign(xbar, tau * x + (1 - tau) * xbar)
-            for (xbar, x) in zip(xi_bar, xi)
-        ]
-        self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
-        self.check = tf.add_check_numerics_ops()
+        with tf.control_dependencies([self.train_pi]):
+            soft_update_xi_bar_ops = [
+                tf.assign(xbar, tau * x + (1 - tau) * xbar)
+                for (xbar, x) in zip(xi_bar, xi)
+            ]
+            self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
+            self.check = tf.add_check_numerics_ops()
 
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
@@ -115,9 +116,9 @@ class AbstractSoftActorCritic(object):
         sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
-        [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
+        [_, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.train_V, self.train_Q, self.train_pi, self.V_loss,
+                self.soft_update_xi_bar, self.train_V, self.train_Q, self.train_pi, self.V_loss,
                 self.Q_loss, self.pi_loss
             ],
             feed_dict={
@@ -127,7 +128,6 @@ class AbstractSoftActorCritic(object):
                 self.S2: S2,
                 self.T: T
             })
-        self.sess.run(self.soft_update_xi_bar)
         return V_loss, Q_loss, pi_loss
 
     def get_actions(self, S1, sample=True):
