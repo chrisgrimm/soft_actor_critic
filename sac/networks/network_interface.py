@@ -159,7 +159,7 @@ class AbstractSoftActorCritic(object):
                     n_layers=self.n_layers, activation=self.activation), [-1])
 
     def input_processing(self, s):
-        return mlp(inputs=s, layer_size=self.layer_size, out_size=1,
+        return mlp(inputs=s, layer_size=self.layer_size, out_size=self.layer_size,
                    n_layers=self.n_layers, activation=self.activation)
 
     @abstractmethod
