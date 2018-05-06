@@ -138,23 +138,22 @@ class AbstractSoftActorCritic(object):
                 self.A_max_likelihood, feed_dict={self.S1: S1})
         return actions[0]
 
+    def mlp(self, inputs, out_size, name, reuse=None):
+        return mlp(inputs=inputs, layer_size=self.layer_size,
+                   out_size=out_size, n_layers=self.n_layers,
+                   activation=self.activation, name=name, reuse=reuse)
+
     def Q_network(self, s, a, name, reuse=None):
         sa = tf.concat([s, a], axis=1)
         return tf.reshape(
-            mlp(inputs=sa, layer_size=self.layer_size, out_size=1,
-                n_layers=self.n_layers, activation=self.activation,
-                name=name, reuse=reuse), [-1])
+            self.mlp(inputs=sa, out_size=1, name=name, reuse=reuse), [-1])
 
     def V_network(self, s, name, reuse=None):
         return tf.reshape(
-            mlp(inputs=s, layer_size=self.layer_size, out_size=1,
-                n_layers=self.n_layers, activation=self.activation,
-                name=name, reuse=reuse), [-1])
+            self.mlp(inputs=s, out_size=1, name=name, reuse=reuse), [-1])
 
     def input_processing(self, s):
-        return mlp(inputs=s, layer_size=self.layer_size, out_size=1,
-                   n_layers=self.n_layers, activation=self.activation,
-                   name='pi', reuse=False)
+        return self.mlp(inputs=s, out_size=1, name='pi', reuse=False)
 
     @abstractmethod
     def produce_policy_parameters(self, a_shape, processed_s):
