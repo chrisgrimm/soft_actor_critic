@@ -27,7 +27,7 @@ def build_agent(env, activation, n_layers, layer_size, learning_rate):
         action_shape = env.action_space.shape
         PolicyType = GaussianPolicy
 
-    class Agent(PolicyType, AbstractSoftActorCritic):
+    class Agent(PolicyType, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
             super(Agent, self).__init__(s_shape=s_shape,
                                         a_shape=a_shape,
