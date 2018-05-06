@@ -116,7 +116,7 @@
         <!--<position gear="1" kp="1000" name="slide_y_motor" joint="slide_y"-->
                   <!--forcelimited="true" forcerange="-15 35"/>-->
         <position gear="1" kp="1000" name="arm_flex_motor" joint="arm_flex_joint"
-                  forcelimited="true" forcerange="-35 35"/>
+                  forcelimited="true" forcerange="-15 35"/>
         <!--<motor gear="1000.0" name="arm_lift_motor" joint="arm_lift_joint"/>-->
         <!--<motor gear="1000.0" name="arm_roll_motor" joint="arm_roll_joint"/>-->
         <!--<motor gear="1000.0" name="wrist_flex_motor" joint="wrist_flex_joint"/>-->
