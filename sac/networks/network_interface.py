@@ -1,9 +1,5 @@
-from typing import Callable
-
 import tensorflow as tf
 from abc import abstractmethod
-
-from sac.utils import leaky_relu
 
 
 def mlp(inputs, layer_size, out_size, n_layers, activation, name, reuse=None):
@@ -66,6 +62,12 @@ class AbstractSoftActorCritic(object):
             self.Q_loss = Q_loss = tf.reduce_mean(
                 0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
 
+            def pos_mean(x, epsilon: float=0):
+                return tf.square(tf.reduce_mean(x)) + epsilon
+
+            self.r_to_v = pos_mean(R) / pos_mean(V_bar_S2, epsilon=1e-6)
+            self.r_to_log_pi = pos_mean(R) / pos_mean(log_pi_sampled1, epsilon=1e-6)
+
         # constructing pi loss
         with tf.control_dependencies([self.Q_loss]):
             self.A_sampled2 = A_sampled2 = tf.stop_gradient(
@@ -88,41 +90,41 @@ class AbstractSoftActorCritic(object):
         with tf.control_dependencies([self.pi_loss]):
             self.train_V = tf.train.RMSPropOptimizer(
                 learning_rate=learning_rate).minimize(
-                    V_loss, var_list=xi)
+                V_loss, var_list=xi)
         with tf.control_dependencies([self.train_V]):
             self.train_Q = tf.train.RMSPropOptimizer(
                 learning_rate=learning_rate).minimize(
-                    Q_loss, var_list=theta)
+                Q_loss, var_list=theta)
         with tf.control_dependencies([self.train_Q]):
             self.train_pi = tf.train.RMSPropOptimizer(
                 learning_rate=learning_rate).minimize(
-                    pi_loss, var_list=phi)
+                pi_loss, var_list=phi)
 
         with tf.control_dependencies([self.train_pi]):
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)
                 for (xbar, x) in zip(xi_bar, xi)
-            ]
+                ]
             self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
             self.check = tf.add_check_numerics_ops()
             # ensure that xi and xi_bar are the same at initialization
-            hard_update_xi_bar_ops = [
-                tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
-            ]
-
-            hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
 
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
         self.sess = sess = tf.Session(config=config)
         sess.run(tf.global_variables_initializer())
 
+        hard_update_xi_bar_ops = [
+            tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
+            ]
+
+        hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
-        [_, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
+        [r_to_v, r_to_log_pi, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.soft_update_xi_bar, self.train_V, self.train_Q,
+                self.r_to_v, self.r_to_log_pi, self.soft_update_xi_bar, self.train_V, self.train_Q,
                 self.train_pi, self.V_loss, self.Q_loss, self.pi_loss
             ],
             feed_dict={
@@ -132,7 +134,7 @@ class AbstractSoftActorCritic(object):
                 self.S2: S2,
                 self.T: T
             })
-        return V_loss, Q_loss, pi_loss
+        return r_to_v, r_to_log_pi, V_loss, Q_loss, pi_loss
 
     def get_actions(self, S1, sample=True):
         if sample:

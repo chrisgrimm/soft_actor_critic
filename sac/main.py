@@ -123,9 +123,11 @@ class Trainer:
                             batch_size)
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
-                        [v_loss, q_loss, pi_loss] = agent.train_step(
+                        [r_to_v, r_to_log_pi, v_loss, q_loss, pi_loss] = agent.train_step(
                             s1_sample, a_sample, r_sample, s2_sample, t_sample)
                         episode_count += Counter({
+                            'R/V': r_to_v,
+                            'R/log(pi)': r_to_log_pi,
                             'V loss': v_loss,
                             'Q loss': q_loss,
                             'pi loss': pi_loss
@@ -149,7 +151,7 @@ class Trainer:
                         simple_value=(
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
-                    for k in ['V loss', 'Q loss', 'pi loss', 'reward']:
+                    for k in ['R/V', 'R/log(pi)', 'V loss', 'Q loss', 'pi loss', 'reward']:
                         summary.value.add(tag=k, simple_value=episode_count[k])
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
