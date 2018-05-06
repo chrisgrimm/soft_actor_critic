@@ -6,15 +6,10 @@ from abc import abstractmethod
 from sac.utils import leaky_relu
 
 
-def mlp(inputs, layer_size, out_size, n_layers, activation, name, reuse=None):
-    with tf.variable_scope(name, reuse=reuse):
-        fc1 = tf.layers.dense(inputs, 256, activation, name='fc1')
-        fc2 = tf.layers.dense(fc1, 256, activation, name='fc2')
-        fc3 = tf.layers.dense(fc2, 256, activation, name='fc3')
-        return fc3
-        # for i in range(1, n_layers):
-        #     inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
-        # return tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
+def mlp(inputs, layer_size, out_size, n_layers, activation):
+    for i in range(1, n_layers):
+        inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
+    return tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
 
 
 class AbstractSoftActorCritic(object):
@@ -143,28 +138,21 @@ class AbstractSoftActorCritic(object):
         return actions[0]
 
     def Q_network(self, s, a, name, reuse=None):
-        sa = tf.concat([s, a], axis=1)
-        return tf.reshape(
-            mlp(inputs=sa, layer_size=self.layer_size, out_size=1,
-                n_layers=self.n_layers, activation=self.activation,
-                name=name, reuse=reuse), [-1])
+        with tf.variable_scope(name, reuse=reuse):
+            sa = tf.concat([s, a], axis=1)
+            return tf.reshape(
+                mlp(inputs=sa, layer_size=self.layer_size, out_size=1,
+                    n_layers=self.n_layers, activation=self.activation), [-1])
 
     def V_network(self, s, name, reuse=None):
-        return tf.reshape(
-            mlp(inputs=s, layer_size=self.layer_size, out_size=1,
-                n_layers=self.n_layers, activation=self.activation,
-                name=name, reuse=reuse), [-1])
+        with tf.variable_scope(name, reuse=reuse):
+            return tf.reshape(
+                mlp(inputs=s, layer_size=self.layer_size, out_size=1,
+                    n_layers=self.n_layers, activation=self.activation), [-1])
 
     def input_processing(self, s):
-        fc1 = tf.layers.dense(s, 256, self.activation, name='fc1')
-        fc2 = tf.layers.dense(fc1, 256, self.activation, name='fc2')
-        fc3 = tf.layers.dense(fc2, 256, self.activation, name='fc3')
-        # fc4 = tf.layers.dense(fc3, 256, activation, name='fc4')
-        # fc5 = tf.layers.dense(fc4, 256, activation, name='fc5')
-        return fc3
-        # return mlp(inputs=s, layer_size=self.layer_size, out_size=1,
-        #            n_layers=self.n_layers, activation=self.activation,
-        #            name='pi', reuse=False)
+        return mlp(inputs=s, layer_size=self.layer_size, out_size=1,
+                   n_layers=self.n_layers, activation=self.activation)
 
     @abstractmethod
     def produce_policy_parameters(self, a_shape, processed_s):
