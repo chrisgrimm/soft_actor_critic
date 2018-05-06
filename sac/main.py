@@ -2,19 +2,18 @@ import argparse
 import itertools
 import pickle
 import time
-from collections import Counter
 
 import gym
 import numpy as np
 import tensorflow as tf
+from collections import Counter
 from gym import spaces
 
 from environment.pick_and_place import PickAndPlaceEnv
 from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
 from sac.chaser import ChaserEnv
 from sac.networks.network_interface import AbstractSoftActorCritic
-from sac.networks.policy_mixins import GaussianPolicy, CategoricalPolicy, MLPPolicy
-from sac.networks.value_function_mixins import MLPValueFunc
+from sac.networks.policy_mixins import GaussianPolicy, CategoricalPolicy
 from sac.replay_buffer.replay_buffer import ReplayBuffer2
 
 
