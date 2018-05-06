@@ -29,12 +29,13 @@ def build_agent(env, activation, n_layers, layer_size, learning_rate):
 
     class Agent(PolicyType, AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
-            super(Agent, self).__init__(s_shape=s_shape,
-                                        a_shape=a_shape,
-                                        activation=activation,
-                                        n_layers=n_layers,
-                                        layer_size=layer_size,
-                                        learning_rate=learning_rate)
+            super(Agent, self).__init__(
+                s_shape=s_shape,
+                a_shape=a_shape,
+                activation=activation,
+                n_layers=n_layers,
+                layer_size=layer_size,
+                learning_rate=learning_rate)
 
     return Agent(state_shape, action_shape)
 
@@ -79,8 +80,9 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def __init__(self, env, buffer, activation, n_layers, layer_size, learning_rate,
-                 reward_scale, batch_size, num_train_steps, logdir, render):
+    def __init__(self, env, buffer, activation, n_layers, layer_size,
+                 learning_rate, reward_scale, batch_size, num_train_steps,
+                 logdir, render):
 
         self.env = env
         self.buffer = buffer
@@ -88,15 +90,17 @@ class Trainer:
 
         s1 = self.reset()
 
-        agent = build_agent(env=env,
-                            activation=activation,
-                            n_layers=n_layers,
-                            layer_size=layer_size,
-                            learning_rate=learning_rate)
+        agent = build_agent(
+            env=env,
+            activation=activation,
+            n_layers=n_layers,
+            layer_size=layer_size,
+            learning_rate=learning_rate)
 
         tb_writer = None
         if logdir:
-            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
+            tb_writer = tf.summary.FileWriter(
+                logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
@@ -105,8 +109,7 @@ class Trainer:
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % evaluation_period == 0
             a = agent.get_actions(
-                [self.state_converter(s1)],
-                sample=(not is_eval_period))
+                [self.state_converter(s1)], sample=(not is_eval_period))
             if render:
                 env.render()
             s2, r, t, info = self.step(self.action_converter(a))
@@ -135,17 +138,20 @@ class Trainer:
             if t:
                 s1 = self.reset()
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                    'EVAL' if is_eval_period else 'TRAIN',
-                    (count['episode']), time_steps, episode_count['reward']))
+                    'EVAL' if is_eval_period else 'TRAIN', (count['episode']),
+                    time_steps, episode_count['reward']))
                 count += Counter(reward=(episode_count['reward']), episode=1)
                 fps = int(episode_count['timesteps'] / (time.time() - tick))
                 if logdir:
                     summary = tf.Summary()
                     if is_eval_period:
-                        summary.value.add(tag='eval reward', simple_value=(episode_count['reward']))
+                        summary.value.add(
+                            tag='eval reward',
+                            simple_value=(episode_count['reward']))
                     summary.value.add(
                         tag='average reward',
-                        simple_value=(count['reward'] / float(count['episode'])))
+                        simple_value=(
+                            count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
                     for k in ['V loss', 'Q loss', 'pi loss', 'reward']:
                         summary.value.add(tag=k, simple_value=episode_count[k])
@@ -157,11 +163,13 @@ class Trainer:
 
 
 class HindsightTrainer(Trainer):
-    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps, logdir, render, activation, n_layers,
-                 layer_size, learning_rate):
+    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps,
+                 logdir, render, activation, n_layers, layer_size,
+                 learning_rate):
         assert isinstance(env, GoalWrapper)
         self.trajectory = []
-        super().__init__(env, buffer, activation, n_layers, layer_size, learning_rate, reward_scale, batch_size,
+        super().__init__(env, buffer, activation, n_layers, layer_size,
+                         learning_rate, reward_scale, batch_size,
                          num_train_steps, logdir, render)
         self.s1 = self.reset()
 
@@ -190,7 +198,7 @@ if __name__ == '__main__':
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
     parser.add_argument('--seed', default=None, type=int)
-    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
+    parser.add_argument('--buffer-size', default=int(10**7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)

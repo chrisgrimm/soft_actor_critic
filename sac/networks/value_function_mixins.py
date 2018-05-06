@@ -5,7 +5,7 @@ from sac.utils import ACT
 
 class MLPValueFunc(object):
     def Q_network(self, s, a, name='Q', reuse=None):
-        activation=tf.nn.relu
+        activation = tf.nn.relu
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
             fc1 = tf.layers.dense(sa, 256, activation, name='fc1')
@@ -17,7 +17,7 @@ class MLPValueFunc(object):
         return q
 
     def V_network(self, s, name='V', reuse=None):
-        activation=tf.nn.relu
+        activation = tf.nn.relu
         with tf.variable_scope(name, reuse=reuse):
             fc1 = tf.layers.dense(s, 256, activation, name='fc1')
             fc2 = tf.layers.dense(fc1, 256, activation, name='fc2')

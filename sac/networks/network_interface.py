@@ -6,8 +6,10 @@ from sac.utils import leaky_relu
 
 def mlp(inputs, layer_size, n_layers, activation, out_size):
     for i in range(1, n_layers):
-        inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
-    return tf.layers.dense(inputs, out_size, activation, name='fc' + str(n_layers))
+        inputs = tf.layers.dense(
+            inputs, layer_size, activation, name='fc' + str(i))
+    return tf.layers.dense(
+        inputs, out_size, activation, name='fc' + str(n_layers))
     # fc1 = tf.layers.dense(inputs, 256, activation, name='fc1')
     # fc2 = tf.layers.dense(fc1, 256, activation, name='fc2')
     # fc3 = tf.layers.dense(fc2, 256, activation, name='fc3')
@@ -17,8 +19,8 @@ def mlp(inputs, layer_size, n_layers, activation, out_size):
 
 
 class AbstractSoftActorCritic(object):
-    def __init__(self, s_shape, a_shape, activation: str,
-                 n_layers: int, layer_size: int, learning_rate: float):
+    def __init__(self, s_shape, a_shape, activation: str, n_layers: int,
+                 layer_size: int, learning_rate: float):
         self.activation = dict(
             relu=tf.nn.relu,
             crelu=tf.nn.crelu,
@@ -82,20 +84,21 @@ class AbstractSoftActorCritic(object):
         phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
         theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Q/')
         xi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V/')
-        xi_bar = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
+        xi_bar = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
 
         with tf.control_dependencies([self.pi_loss]):
             self.train_V = tf.train.AdamOptimizer(
                 learning_rate=learning_rate).minimize(
-                V_loss, var_list=xi)
+                    V_loss, var_list=xi)
         with tf.control_dependencies([self.train_V]):
             self.train_Q = tf.train.AdamOptimizer(
                 learning_rate=learning_rate).minimize(
-                Q_loss, var_list=theta)
+                    Q_loss, var_list=theta)
         with tf.control_dependencies([self.train_Q]):
             self.train_pi = tf.train.AdamOptimizer(
                 learning_rate=learning_rate).minimize(
-                pi_loss, var_list=phi)
+                    pi_loss, var_list=phi)
 
         soft_update_xi_bar_ops = [
             tf.assign(xbar, tau * x + (1 - tau) * xbar)
@@ -142,17 +145,23 @@ class AbstractSoftActorCritic(object):
         return actions[0]
 
     def mlp(self, inputs, n_layers, out_size):
-        return mlp(inputs=inputs, layer_size=self.layer_size, n_layers=n_layers,
-                   activation=self.activation, out_size=out_size)
+        return mlp(
+            inputs=inputs,
+            layer_size=self.layer_size,
+            n_layers=n_layers,
+            activation=self.activation,
+            out_size=out_size)
 
     def Q_network(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
-            return tf.reshape(self.mlp(sa, n_layers=self.n_layers + 1, out_size=1), [-1])
+            return tf.reshape(
+                self.mlp(sa, n_layers=self.n_layers + 1, out_size=1), [-1])
 
     def V_network(self, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            return tf.reshape(self.mlp(s, n_layers=self.n_layers + 1, out_size=1), [-1])
+            return tf.reshape(
+                self.mlp(s, n_layers=self.n_layers + 1, out_size=1), [-1])
 
     def input_processing(self, s):
         return self.mlp(s, n_layers=self.n_layers, out_size=self.layer_size)
