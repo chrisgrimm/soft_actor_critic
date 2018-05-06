@@ -59,9 +59,9 @@ class PickAndPlaceEnv(MujocoEnv):
             map(np.size, self.goal()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
         self.action_space = spaces.Box(
-            -1, 1, shape=(self.sim.nu - 1, ), dtype=np.float32)
+            -1, 1, shape=(self.sim.nu - 1,), dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
 
@@ -73,6 +73,17 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
+        # self.init_qpos = np.array([4.886e-05,
+        #                            - 2.152e-05,
+        #                            4.385e-01,
+        #                            1.000e+00,
+        #                            2.254e-17,
+        #                            - 2.388e-19,
+        #                            1.290e-05,
+        #                            - 9.773e-01,
+        #                            2.773e-02,
+        #                            3.573e-01,
+        #                            3.574e-01, ])
         # if np.random.uniform(0, 1) < .5:
         #     self.init_qpos = np.array([
         #         7.450e-05,
@@ -124,7 +135,7 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def goal(self):
         goal_pos = self._initial_block_pos + \
-            np.array([0, 0, self._min_lift_height])
+                   np.array([0, 0, self._min_lift_height])
         return Goal(gripper=goal_pos, block=goal_pos)
 
     def goal_3d(self):
@@ -154,7 +165,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def gripper_pos(self, qpos=None):
         finger1, finger2 = [
             self.sim.get_body_xpos(name, qpos) for name in self._finger_names
-        ]
+            ]
         return (finger1 + finger2) / 2.
 
     def step(self, action):
