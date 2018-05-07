@@ -49,6 +49,7 @@ class AbstractSoftActorCritic(object):
                 S1, self.transform_action_sample(A_sampled1), 'Q')
             log_pi_sampled1 = self.pi_network_log_prob(
                 A_sampled1, S1, 'pi', reuse=True)
+            self.entropy = self.entropy_from_sa(A_sampled1, S1)
             self.V_loss = V_loss = tf.reduce_mean(
                 0.5 * tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
 
@@ -59,12 +60,6 @@ class AbstractSoftActorCritic(object):
                 S1, self.transform_action_sample(A), 'Q', reuse=True)
             self.Q_loss = Q_loss = tf.reduce_mean(
                 0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
-
-            def pos_mean(x, epsilon: float = 0):
-                return tf.square(tf.reduce_mean(x)) + epsilon
-
-            self.r_to_log_pi = pos_mean(R) / pos_mean(
-                log_pi_sampled1, epsilon=1e-6)
 
         # constructing pi loss
         with tf.control_dependencies([self.Q_loss]):
@@ -121,9 +116,9 @@ class AbstractSoftActorCritic(object):
         sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
-        [r_to_log_pi, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
+        [entropy, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.r_to_log_pi, self.soft_update_xi_bar, self.train_V,
+                self.entropy, self.soft_update_xi_bar, self.train_V,
                 self.train_Q, self.train_pi, self.V_loss, self.Q_loss,
                 self.pi_loss
             ],
@@ -134,7 +129,7 @@ class AbstractSoftActorCritic(object):
                 self.S2: S2,
                 self.T: T
             })
-        return r_to_log_pi, V_loss, Q_loss, pi_loss
+        return entropy, V_loss, Q_loss, pi_loss
 
     def get_actions(self, S1, sample=True):
         if sample:
@@ -182,6 +177,18 @@ class AbstractSoftActorCritic(object):
     @abstractmethod
     def transform_action_sample(self, action_sample):
         pass
+
+    @abstractmethod
+    def entropy_from_params(self, params):
+        pass
+
+    def entropy_from_sa(self, a, s, reuse=None):
+        with tf.variable_scope('entropy', reuse=reuse):
+            processed_s = self.input_processing(s)
+            a_shape = a.get_shape()[1].value
+            parameters = self.produce_policy_parameters(a_shape, processed_s)
+        return tf.reduce_mean(self.entropy_from_params(parameters))
+
 
     def pi_network_log_prob(self, a, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):

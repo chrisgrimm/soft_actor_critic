@@ -7,6 +7,7 @@ import gym
 import numpy as np
 import tensorflow as tf
 from collections import Counter
+from environment.base import print1
 from gym import spaces
 
 from environment.pick_and_place import PickAndPlaceEnv
@@ -126,12 +127,12 @@ class Trainer:
                             batch_size)
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
-                        [r_to_log_pi, v_loss,
+                        [entropy, v_loss,
                          q_loss, pi_loss] = agent.train_step(
                              s1_sample, a_sample, r_sample, s2_sample,
                              t_sample)
                         episode_count += Counter({
-                            'R/log(pi)': r_to_log_pi,
+                            'entropy': entropy,
                             'V loss': v_loss,
                             'Q loss': q_loss,
                             'pi loss': pi_loss
@@ -139,9 +140,9 @@ class Trainer:
             s1 = s2
             if t:
                 s1 = self.reset()
-                print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
+                print('({}) Episode {}\t Time Steps: {}\t Reward: {}\t Entropy'.format(
                     'EVAL' if is_eval_period else 'TRAIN', (count['episode']),
-                    time_steps, episode_count['reward']))
+                    time_steps, episode_count['reward']), episode_count['entropy'])
                 count += Counter(reward=(episode_count['reward']), episode=1)
                 fps = int(episode_count['timesteps'] / (time.time() - tick))
                 if logdir:
@@ -156,7 +157,7 @@ class Trainer:
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
                     for k in [
-                            'R/log(pi)', 'V loss', 'Q loss', 'pi loss',
+                            'entropy', 'V loss', 'Q loss', 'pi loss',
                             'reward'
                     ]:
                         summary.value.add(tag=k, simple_value=episode_count[k])

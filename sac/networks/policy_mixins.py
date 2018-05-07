@@ -50,6 +50,11 @@ class GaussianPolicy(object):
     def transform_action_sample(self, action_sample):
         return tf.tanh(action_sample)
 
+    def entropy_from_params(self, parameters):
+        (mu, sigma) = parameters
+        return tf.distributions.Normal(mu, sigma).entropy()
+
+
 
 class GaussianMixturePolicy(object):
     def produce_policy_parameters(self, a_shape, processed_s):
@@ -89,3 +94,6 @@ class CategoricalPolicy(object):
 
     def transform_action_sample(self, action_sample):
         return action_sample
+
+    def entropy_from_params(self, logits):
+        return tf.distributions.Categorical(logits).entropy()
