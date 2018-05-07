@@ -10,7 +10,7 @@ from collections import Counter
 from gym import spaces
 
 from environment.pick_and_place import PickAndPlaceEnv
-from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
+from environment.goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
 from sac.chaser import ChaserEnv
 from sac.networks.network_interface import AbstractSoftActorCritic
 from sac.networks.policy_mixins import GaussianPolicy, CategoricalPolicy
