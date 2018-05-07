@@ -110,6 +110,10 @@ class Trainer:
             is_eval_period = count['episode'] % evaluation_period == 0
             a = agent.get_actions(
                 [self.state_converter(s1)], sample=(not is_eval_period))
+            with open('r10.txt', 'a') as f:
+                f.write('{}: {} -> {}\n'.format(time_steps, s1, a))
+            if count['episode'] > 1:
+                exit()
             if render:
                 env.render()
             s2, r, t, info = self.step(self.action_converter(a))
