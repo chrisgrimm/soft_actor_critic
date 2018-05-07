@@ -73,6 +73,23 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
+        # block_joint = self.sim.jnt_qposadr('block1joint')
+        #
+        # self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
+        # self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
+
+
+        # self.init_qpos = np.array([4.886e-05,
+        #                            - 2.152e-05,
+        #                            4.385e-01,
+        #                            1.000e+00,
+        #                            2.254e-17,
+        #                            - 2.388e-19,
+        #                            1.290e-05,
+        #                            - 9.773e-01,
+        #                            2.773e-02,
+        #                            3.573e-01,
+        #                            3.574e-01, ])
         # if np.random.uniform(0, 1) < .5:
         #     self.init_qpos = np.array([
         #         7.450e-05,
@@ -89,11 +106,6 @@ class PickAndPlaceEnv(MujocoEnv):
         #     ])
         # else:
         #     self.init_qpos = self.initial_qpos
-
-        # block_joint = self.sim.jnt_qposadr('block1joint')
-
-        # self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
-        # self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
         # self.init_qpos[block_joint + 3:block_joint + 7] = np.random.random(
         #     4) * 2 * np.pi
@@ -140,11 +152,11 @@ class PickAndPlaceEnv(MujocoEnv):
         return gripper_at_goal and block_at_goal
 
     def compute_terminal(self, goal, obs):
-        return self._achieved_goal(goal, obs)
+        return False
+        # return self._achieved_goal(goal, obs)
 
     def compute_reward(self, goal, obs):
         if self._achieved_goal(goal, obs):
-            print('Achieved goal')
             return 1
         elif self._neg_reward:
             return -.0001

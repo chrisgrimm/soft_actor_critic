@@ -1,26 +1,24 @@
 import argparse
-
 import itertools
-from collections import Counter
-
-import numpy as np
-import gym
+import pickle
 import time
 
-from environment.pick_and_place import PickAndPlaceEnv
-from gym import spaces
-from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
+import gym
+import numpy as np
 import tensorflow as tf
+from collections import Counter
+from environment.base import print1
+from gym import spaces
 
-from sac.replay_buffer.replay_buffer import ReplayBuffer2
-from sac.networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy
-from sac.networks.value_function_mixins import MLPValueFunc
-from sac.networks.network_interface import AbstractSoftActorCritic
+from environment.pick_and_place import PickAndPlaceEnv
+from environment.goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
 from sac.chaser import ChaserEnv
-import pickle
+from sac.networks.network_interface import AbstractSoftActorCritic
+from sac.networks.policy_mixins import GaussianPolicy, CategoricalPolicy
+from sac.replay_buffer.replay_buffer import ReplayBuffer2
 
 
-def build_agent(env):
+def build_agent(env, activation, n_layers, layer_size, learning_rate):
     state_shape = env.observation_space.shape
     if isinstance(env.action_space, spaces.Discrete):
         action_shape = [env.action_space.n]
@@ -29,9 +27,15 @@ def build_agent(env):
         action_shape = env.action_space.shape
         PolicyType = GaussianPolicy
 
-    class Agent(PolicyType, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
+    class Agent(PolicyType, AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
-            super(Agent, self).__init__(s_shape, a_shape)
+            super(Agent, self).__init__(
+                s_shape=s_shape,
+                a_shape=a_shape,
+                activation=activation,
+                n_layers=n_layers,
+                layer_size=layer_size,
+                learning_rate=learning_rate)
 
     return Agent(state_shape, action_shape)
 
@@ -76,9 +80,9 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps,
+    def __init__(self, env, buffer, activation, n_layers, layer_size,
+                 learning_rate, reward_scale, batch_size, num_train_steps,
                  logdir, render):
-        tb_writer = tf.summary.FileWriter(logdir) if logdir else None
 
         self.env = env
         self.buffer = buffer
@@ -86,7 +90,17 @@ class Trainer:
 
         s1 = self.reset()
 
-        agent = build_agent(env)
+        agent = build_agent(
+            env=env,
+            activation=activation,
+            n_layers=n_layers,
+            layer_size=layer_size,
+            learning_rate=learning_rate)
+
+        tb_writer = None
+        if logdir:
+            tb_writer = tf.summary.FileWriter(
+                logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
@@ -95,8 +109,11 @@ class Trainer:
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % evaluation_period == 0
             a = agent.get_actions(
-                [self.state_converter(s1)],
-                sample=(not is_eval_period))
+                [self.state_converter(s1)], sample=(not is_eval_period))
+            with open('r10.txt', 'a') as f:
+                f.write('{}: {} -> {}\n'.format(time_steps, s1, a))
+            if count['episode'] > 1:
+                exit()
             if render:
                 env.render()
             s2, r, t, info = self.step(self.action_converter(a))
@@ -114,9 +131,12 @@ class Trainer:
                             batch_size)
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
-                        [v_loss, q_loss, pi_loss] = agent.train_step(
-                            s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                        [entropy, v_loss,
+                         q_loss, pi_loss] = agent.train_step(
+                             s1_sample, a_sample, r_sample, s2_sample,
+                             t_sample)
                         episode_count += Counter({
+                            'entropy': entropy,
                             'V loss': v_loss,
                             'Q loss': q_loss,
                             'pi loss': pi_loss
@@ -124,20 +144,26 @@ class Trainer:
             s1 = s2
             if t:
                 s1 = self.reset()
-                print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                    'EVAL' if is_eval_period else 'TRAIN',
-                    (count['episode']), time_steps, episode_count['reward']))
+                print('({}) Episode {}\t Time Steps: {}\t Reward: {}\t Entropy'.format(
+                    'EVAL' if is_eval_period else 'TRAIN', (count['episode']),
+                    time_steps, episode_count['reward']), episode_count['entropy'])
                 count += Counter(reward=(episode_count['reward']), episode=1)
                 fps = int(episode_count['timesteps'] / (time.time() - tick))
                 if logdir:
                     summary = tf.Summary()
                     if is_eval_period:
-                        summary.value.add(tag='eval reward', simple_value=(episode_count['reward']))
+                        summary.value.add(
+                            tag='eval reward',
+                            simple_value=(episode_count['reward']))
                     summary.value.add(
                         tag='average reward',
-                        simple_value=(count['reward'] / float(count['episode'])))
+                        simple_value=(
+                            count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
-                    for k in ['V loss', 'Q loss', 'pi loss', 'reward']:
+                    for k in [
+                            'entropy', 'V loss', 'Q loss', 'pi loss',
+                            'reward'
+                    ]:
                         summary.value.add(tag=k, simple_value=episode_count[k])
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
@@ -148,11 +174,22 @@ class Trainer:
 
 class HindsightTrainer(Trainer):
     def __init__(self, env, buffer, reward_scale, batch_size, num_train_steps,
-                 logdir, render):
+                 logdir, render, activation, n_layers, layer_size,
+                 learning_rate):
         assert isinstance(env, GoalWrapper)
         self.trajectory = []
-        super().__init__(env, buffer, reward_scale, batch_size,
-                         num_train_steps, logdir, render)
+        super().__init__(
+            env=env,
+            buffer=buffer,
+            activation=activation,
+            n_layers=n_layers,
+            layer_size=layer_size,
+            learning_rate=learning_rate,
+            reward_scale=reward_scale,
+            batch_size=batch_size,
+            num_train_steps=num_train_steps,
+            logdir=logdir,
+            render=render)
         self.s1 = self.reset()
 
     def step(self, action):
@@ -175,8 +212,12 @@ class HindsightTrainer(Trainer):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
+    parser.add_argument('--activation', default='relu')
+    parser.add_argument('--n-layers', default=3, type=int)
+    parser.add_argument('--layer-size', default=256, type=int)
+    parser.add_argument('--learning-rate', default=3e-4, type=float)
     parser.add_argument('--seed', default=None, type=int)
-    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
+    parser.add_argument('--buffer-size', default=int(10**7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)
@@ -195,10 +236,15 @@ if __name__ == '__main__':
 
     if args.mimic_file is not None:
         inject_mimic_experiences(args.mimic_file, buffer, N=10)
+
     trainer = HindsightTrainer if isinstance(env, GoalWrapper) else Trainer
     trainer(
         env=env,
         buffer=buffer,
+        activation=args.activation,
+        n_layers=args.n_layers,
+        layer_size=args.layer_size,
+        learning_rate=args.learning_rate,
         reward_scale=args.reward_scale,
         batch_size=args.batch_size,
         num_train_steps=args.num_train_steps,

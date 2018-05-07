@@ -2,30 +2,33 @@ import tensorflow as tf
 import numpy as np
 from abc import abstractmethod
 
+from sac.utils import ACT
+
 EPS = 1E-6
 
 
-def leaky_relu(x, alpha=0.2):
-    return tf.maximum(x, alpha * x)
-
-
 class MLPPolicy(object):
-    def input_processing(self, s):
-        fc1 = tf.layers.dense(s, 256, tf.nn.relu, name='fc1', kernel_initializer=tf.glorot_uniform_initializer())
-        fc2 = tf.layers.dense(fc1, 256, tf.nn.relu, name='fc2', kernel_initializer=tf.glorot_uniform_initializer())
-        fc3 = tf.layers.dense(fc2, 256, tf.nn.relu, name='fc3', kernel_initializer=tf.glorot_uniform_initializer())
+    def input_processing(self, s, activation=tf.nn.relu):
+        fc1 = tf.layers.dense(s, 256, activation, name='fc1')
+        print(fc1)
+        fc2 = tf.layers.dense(fc1, 256, activation, name='fc2')
+        print(fc2)
+        fc3 = tf.layers.dense(fc2, 256, activation, name='fc3')
+        print(fc3)
+        # fc4 = tf.layers.dense(fc3, 256, activation, name='fc4')
+        # fc5 = tf.layers.dense(fc4, 256, activation, name='fc5')
         return fc3
 
 
 class GaussianPolicy(object):
-    '''
+    """
     Policy outputs a gaussian action that is clamped to the interval [-1, 1]
-    '''
+    """
 
     def produce_policy_parameters(self, a_shape, processed_s):
-        mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params', kernel_initializer=tf.glorot_uniform_initializer())
+        mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params')
         sigma_params = tf.layers.dense(
-            processed_s, a_shape, tf.nn.sigmoid, name='sigma_params', kernel_initializer=tf.glorot_uniform_initializer())
+            processed_s, a_shape, tf.nn.sigmoid, name='sigma_params')
         return (mu_params, sigma_params + 0.0001)
 
     def policy_parameters_to_log_prob(self, u, parameters):
@@ -47,6 +50,11 @@ class GaussianPolicy(object):
     def transform_action_sample(self, action_sample):
         return tf.tanh(action_sample)
 
+    def entropy_from_params(self, parameters):
+        (mu, sigma) = parameters
+        return tf.distributions.Normal(mu, sigma).entropy()
+
+
 
 class GaussianMixturePolicy(object):
     def produce_policy_parameters(self, a_shape, processed_s):
@@ -61,7 +69,7 @@ class GaussianMixturePolicy(object):
 
 class CategoricalPolicy(object):
     def produce_policy_parameters(self, a_shape, processed_s):
-        logits = tf.layers.dense(processed_s, a_shape, name='logits', kernel_initializer=tf.glorot_uniform_initializer())
+        logits = tf.layers.dense(processed_s, a_shape, name='logits')
         return logits
 
     def policy_parameters_to_log_prob(self, a, parameters):
@@ -86,3 +94,6 @@ class CategoricalPolicy(object):
 
     def transform_action_sample(self, action_sample):
         return action_sample
+
+    def entropy_from_params(self, logits):
+        return tf.distributions.Categorical(logits).entropy()

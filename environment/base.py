@@ -40,12 +40,11 @@ class BaseEnv(utils.EzPickle, Server):
 
         while not done and step < self._steps_per_action:
             self._perform_action(action)
-            hit_max_steps = self._step_num >= self.max_steps
             done = False
             if self.compute_terminal(self.goal(), self._obs()):
                 # print('terminal')
                 done = True
-            elif hit_max_steps:
+            elif self.hit_max_steps():
                 # print('hit max steps')
                 done = True
             elif self._currently_failed():
@@ -55,6 +54,9 @@ class BaseEnv(utils.EzPickle, Server):
 
         self._history_buffer.append(self._obs())
         return self._history_buffer, reward, done, {}
+
+    def hit_max_steps(self):
+        return self._step_num >= self.max_steps
 
     @staticmethod
     def seed(seed):
