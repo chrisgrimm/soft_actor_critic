@@ -203,9 +203,9 @@ class AbstractSoftActorCritic(object):
 
     def sample_pi_network(self, a_shape, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            processed_s = self.input_processing(s)
-            parameters = self.produce_policy_parameters(a_shape, processed_s)
-            sample = self.policy_parameters_to_sample(parameters)
+            # processed_s = self.input_processing(s)
+            # parameters = self.produce_policy_parameters(a_shape, processed_s)
+            sample = self.policy_parameters_to_sample(self.parameters)
         return sample
 
     def get_best_action(self, a_shape, s, name, reuse=None):
