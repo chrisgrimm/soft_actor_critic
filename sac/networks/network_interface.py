@@ -47,11 +47,12 @@ class AbstractSoftActorCritic(object):
             V_S1 = self.V_network(S1, 'V')
             Q_sampled1 = self.Q_network(
                 S1, self.transform_action_sample(A_sampled1), 'Q')
-            self.log_pi_sampled1 = self.pi_network_log_prob(
+            log_pi_sampled1 = self.pi_network_log_prob(
                 A_sampled1, S1, 'pi', reuse=True)
+            self.mean_log_pi = tf.reduce_mean(log_pi_sampled1)
             self.entropy = self.entropy_from_sa(A_sampled1, S1)
             self.V_loss = V_loss = tf.reduce_mean(
-                0.5 * tf.square(V_S1 - (Q_sampled1 - self.log_pi_sampled1)))
+                0.5 * tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
 
         # constructing Q loss
         with tf.control_dependencies([self.V_loss]):
@@ -118,7 +119,7 @@ class AbstractSoftActorCritic(object):
     def train_step(self, S1, A, R, S2, T):
         [entropy, log_pi, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.entropy, tf.reduce_mean(self.log_pi_sampled1), self.soft_update_xi_bar, self.train_V,
+                self.entropy, self.mean_log_pi, self.soft_update_xi_bar, self.train_V,
                 self.train_Q, self.train_pi, self.V_loss, self.Q_loss,
                 self.pi_loss
             ],
