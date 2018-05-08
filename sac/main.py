@@ -127,12 +127,12 @@ class Trainer:
                             batch_size)
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
-                        [entropy, v_loss,
-                         q_loss, pi_loss] = agent.train_step(
+                        [entropy, log_pi, v_loss, q_loss, pi_loss] = agent.train_step(
                              s1_sample, a_sample, r_sample, s2_sample,
                              t_sample)
                         episode_count += Counter({
                             'entropy': entropy,
+                            'log(π)': log_pi,
                             'V loss': v_loss,
                             'Q loss': q_loss,
                             'pi loss': pi_loss
@@ -157,7 +157,7 @@ class Trainer:
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
                     for k in [
-                            'entropy', 'V loss', 'Q loss', 'pi loss',
+                            'entropy', 'log(π)', 'V loss', 'Q loss', 'pi loss',
                             'reward'
                     ]:
                         summary.value.add(tag=k, simple_value=episode_count[k])
