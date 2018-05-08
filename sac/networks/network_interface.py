@@ -177,6 +177,18 @@ class AbstractSoftActorCritic(object):
     def transform_action_sample(self, action_sample):
         pass
 
+    @abstractmethod
+    def entropy_from_params(self, params):
+        pass
+
+    def entropy_from_sa(self, a, s, reuse=None):
+        with tf.variable_scope('entropy', reuse=reuse):
+            processed_s = self.input_processing(s)
+            a_shape = a.get_shape()[1].value
+            parameters = self.produce_policy_parameters(a_shape, processed_s)
+        return tf.reduce_mean(self.entropy_from_params(parameters))
+
+
     def pi_network_log_prob(self, a, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             processed_s = self.input_processing(s)
