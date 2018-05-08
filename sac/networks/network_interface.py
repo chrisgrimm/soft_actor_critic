@@ -60,12 +60,6 @@ class AbstractSoftActorCritic(object):
             self.Q_loss = Q_loss = tf.reduce_mean(
                 0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
 
-            def pos_mean(x, epsilon: float = 0):
-                return tf.square(tf.reduce_mean(x)) + epsilon
-
-            self.r_to_log_pi = pos_mean(R) / pos_mean(
-                log_pi_sampled1, epsilon=1e-6)
-
         # constructing pi loss
         with tf.control_dependencies([self.Q_loss]):
             self.A_sampled2 = A_sampled2 = tf.stop_gradient(
@@ -121,9 +115,9 @@ class AbstractSoftActorCritic(object):
         sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
-        [r_to_log_pi, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
+        [_, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.r_to_log_pi, self.soft_update_xi_bar, self.train_V,
+                self.soft_update_xi_bar, self.train_V,
                 self.train_Q, self.train_pi, self.V_loss, self.Q_loss,
                 self.pi_loss
             ],
@@ -134,7 +128,7 @@ class AbstractSoftActorCritic(object):
                 self.S2: S2,
                 self.T: T
             })
-        return r_to_log_pi, V_loss, Q_loss, pi_loss
+        return V_loss, Q_loss, pi_loss
 
     def get_actions(self, S1, sample=True):
         if sample:
