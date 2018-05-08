@@ -9,12 +9,11 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
+from environment.goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
 from environment.pick_and_place import PickAndPlaceEnv
-from goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
 from sac.chaser import ChaserEnv
 from sac.networks.network_interface import AbstractSoftActorCritic
-from sac.networks.policy_mixins import GaussianPolicy, CategoricalPolicy, MLPPolicy
-from sac.networks.value_function_mixins import MLPValueFunc
+from sac.networks.policy_mixins import GaussianPolicy, CategoricalPolicy
 from sac.replay_buffer.replay_buffer import ReplayBuffer2
 
 
@@ -127,8 +126,10 @@ class Trainer:
                             batch_size)
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
-                        [v_loss, q_loss, pi_loss] = agent.train_step(
-                            s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                        [v_loss,
+                         q_loss, pi_loss] = agent.train_step(
+                             s1_sample, a_sample, r_sample, s2_sample,
+                             t_sample)
                         episode_count += Counter({
                             'V loss': v_loss,
                             'Q loss': q_loss,
@@ -168,9 +169,18 @@ class HindsightTrainer(Trainer):
                  learning_rate):
         assert isinstance(env, GoalWrapper)
         self.trajectory = []
-        super().__init__(env, buffer, activation, n_layers, layer_size,
-                         learning_rate, reward_scale, batch_size,
-                         num_train_steps, logdir, render)
+        super().__init__(
+            env=env,
+            buffer=buffer,
+            activation=activation,
+            n_layers=n_layers,
+            layer_size=layer_size,
+            learning_rate=learning_rate,
+            reward_scale=reward_scale,
+            batch_size=batch_size,
+            num_train_steps=num_train_steps,
+            logdir=logdir,
+            render=render)
         self.s1 = self.reset()
 
     def step(self, action):
