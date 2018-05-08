@@ -118,7 +118,7 @@ class AbstractSoftActorCritic(object):
     def train_step(self, S1, A, R, S2, T):
         [entropy, log_pi, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.entropy, self.log_pi_sampled1, self.soft_update_xi_bar, self.train_V,
+                self.entropy, tf.reduce_mean(self.log_pi_sampled1), self.soft_update_xi_bar, self.train_V,
                 self.train_Q, self.train_pi, self.V_loss, self.Q_loss,
                 self.pi_loss
             ],
