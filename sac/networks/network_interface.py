@@ -37,6 +37,9 @@ class AbstractSoftActorCritic(object):
         tau = 0.01
         # learning_rate = 3 * 10 ** -4
 
+        processed_s = self.input_processing(S1)
+        self.parameters = self.produce_policy_parameters(a_shape[0], processed_s)
+
         self.A_max_likelihood = tf.stop_gradient(
             self.get_best_action(a_shape[0], S1, 'pi'))
 
@@ -206,8 +209,8 @@ class AbstractSoftActorCritic(object):
 
     def get_best_action(self, a_shape, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            processed_s = self.input_processing(s)
-            parameters = self.produce_policy_parameters(a_shape, processed_s)
+            # processed_s = self.input_processing(s)
+            # parameters = self.produce_policy_parameters(a_shape, processed_s)
             actions = self.policy_parameters_to_max_likelihood_action(
-                parameters)
+                self.parameters)
         return actions
