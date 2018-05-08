@@ -37,8 +37,9 @@ class AbstractSoftActorCritic(object):
         tau = 0.01
         # learning_rate = 3 * 10 ** -4
 
-        processed_s = self.input_processing(S1)
-        self.parameters = self.produce_policy_parameters(a_shape[0], processed_s)
+        with tf.variable_scope('pi'):
+            processed_s = self.input_processing(S1)
+            self.parameters = self.produce_policy_parameters(a_shape[0], processed_s)
 
         self.A_max_likelihood = tf.stop_gradient(
             self.get_best_action(a_shape[0], S1, 'pi'))
