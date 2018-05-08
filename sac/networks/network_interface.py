@@ -6,7 +6,6 @@ def mlp(inputs, layer_size, n_layers, activation):
     for i in range(n_layers):
         inputs = tf.layers.dense(
             inputs, layer_size, activation, name='fc' + str(i))
-        print(inputs)
     return inputs
 
 
@@ -155,19 +154,11 @@ class AbstractSoftActorCritic(object):
     def Q_network(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
-            dense = tf.layers.dense(self.mlp(sa), 1, name='q')
-            print(dense)
-            reshape = tf.reshape(dense, [-1])
-            print(reshape)
-            return reshape
+            return tf.reshape(tf.layers.dense(self.mlp(sa), 1, name='q'), [-1])
 
     def V_network(self, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            dense = tf.layers.dense(self.mlp(s), 1, name='v')
-            print(dense)
-            reshape = tf.reshape(dense, [-1])
-            print(reshape)
-            return reshape
+            return tf.reshape(tf.layers.dense(self.mlp(s), 1, name='v'), [-1])
 
     def input_processing(self, s):
         return self.mlp(s)
