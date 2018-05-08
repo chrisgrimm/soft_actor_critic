@@ -44,6 +44,7 @@ class AbstractSoftActorCritic(object):
         with tf.control_dependencies([self.A_max_likelihood]):
             self.A_sampled1 = A_sampled1 = tf.stop_gradient(
                 self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
+            self.entropy = self.entropy_from_sa(A_sampled1, S1)
             V_S1 = self.V_network(S1, 'V')
             Q_sampled1 = self.Q_network(
                 S1, self.transform_action_sample(A_sampled1), 'Q')
