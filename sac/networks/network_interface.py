@@ -41,10 +41,13 @@ class AbstractSoftActorCritic(object):
             processed_s = self.input_processing(S1)
             self.parameters = self.produce_policy_parameters(a_shape[0], processed_s)
 
-        self.A_max_likelihood = tf.stop_gradient(
-            self.get_best_action('pi'))
-        self.A_sampled1 = A_sampled1 = tf.stop_gradient(
-            self.sample_pi_network('pi', reuse=True))
+        # generate actions:
+        with tf.control_dependencies(self.parameters):
+            self.A_max_likelihood = tf.stop_gradient(
+                self.get_best_action('pi'))
+            self.A_sampled1 = A_sampled1 = tf.stop_gradient(
+                self.sample_pi_network('pi', reuse=True))
+            # self.entropy = self.compute_entropy()
 
         # constructing V loss
         with tf.control_dependencies([self.A_sampled1]):
@@ -185,25 +188,19 @@ class AbstractSoftActorCritic(object):
     def entropy_from_params(self, params):
         pass
 
-    def entropy_from_sa(self, a, s, reuse=None):
+    def compute_entropy(self, reuse=None):
         with tf.variable_scope('entropy', reuse=reuse):
-            processed_s = self.input_processing(s)
-            a_shape = a.get_shape()[1].value
-            parameters = self.produce_policy_parameters(a_shape, processed_s)
-        return tf.reduce_mean(self.entropy_from_params(parameters))
+            return tf.reduce_mean(self.entropy_from_params(self.parameters))
 
     def pi_network_log_prob(self, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            log_prob = self.policy_parameters_to_log_prob(a, self.parameters)
-        return log_prob
+            return self.policy_parameters_to_log_prob(a, self.parameters)
 
     def sample_pi_network(self, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            sample = self.policy_parameters_to_sample(self.parameters)
-        return sample
+            return self.policy_parameters_to_sample(self.parameters)
 
     def get_best_action(self, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            actions = self.policy_parameters_to_max_likelihood_action(
-                self.parameters)
-        return actions
+            return self.policy_parameters_to_max_likelihood_action(
+            self.parameters)
