@@ -105,3 +105,9 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
         return np.concatenate(
             [np.concatenate(state_history),
              np.concatenate(state.goal)])
+
+    def step(self, action):
+        s2, r, t, info = super().step(action)
+        if t:
+            s2 = self.reset()
+        return s2, r, t, info
