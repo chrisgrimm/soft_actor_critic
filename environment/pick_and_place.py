@@ -159,8 +159,8 @@ class PickAndPlaceEnv(MujocoEnv):
         return gripper_at_goal and block_at_goal
 
     def compute_terminal(self, goal, obs):
-        # return False
-        return self._achieved_goal(goal, obs)
+        return False
+        # return self._achieved_goal(goal, obs)
 
     def compute_reward(self, goal, obs):
         if self._achieved_goal(goal, obs):
