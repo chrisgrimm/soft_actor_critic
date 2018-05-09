@@ -47,7 +47,6 @@ class AbstractSoftActorCritic(object):
                 self.get_best_action('pi'))
             self.A_sampled1 = A_sampled1 = tf.stop_gradient(
                 self.sample_pi_network('pi', reuse=True))
-            self.entropy = self.compute_entropy()
 
         # constructing V loss
         with tf.control_dependencies([self.A_sampled1]):
@@ -106,6 +105,7 @@ class AbstractSoftActorCritic(object):
                 ]
             self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
             self.check = tf.add_check_numerics_ops()
+            self.entropy = self.compute_entropy()
             # ensure that xi and xi_bar are the same at initialization
 
         config = tf.ConfigProto(allow_soft_placement=True)
