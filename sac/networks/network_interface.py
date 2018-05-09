@@ -47,7 +47,7 @@ class AbstractSoftActorCritic(object):
                 self.get_best_action('pi'))
             self.A_sampled1 = A_sampled1 = tf.stop_gradient(
                 self.sample_pi_network('pi', reuse=True))
-            # self.entropy = self.compute_entropy()
+            self.entropy = self.compute_entropy()
 
         # constructing V loss
         with tf.control_dependencies([self.A_sampled1]):
