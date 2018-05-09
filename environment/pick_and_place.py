@@ -129,7 +129,7 @@ class PickAndPlaceEnv(MujocoEnv):
         pass
 
     def _obs(self):
-        return self.sim.qpos,
+        return np.copy(self.sim.qpos),
 
     def block_pos(self):
         return self.sim.get_body_xpos(self._goal_block_name)

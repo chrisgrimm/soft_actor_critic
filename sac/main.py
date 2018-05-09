@@ -3,6 +3,7 @@ import itertools
 import pickle
 import time
 from collections import Counter
+from copy import deepcopy
 
 import gym
 import numpy as np
