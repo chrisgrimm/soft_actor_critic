@@ -3,7 +3,6 @@ import itertools
 import pickle
 import time
 from collections import Counter
-from copy import deepcopy
 
 import gym
 import numpy as np
@@ -125,10 +124,10 @@ class Trainer:
 
             episode_count += Counter(reward=r, timesteps=1)
             if not is_eval_period:
-                ReplayBuffer2(buffer_size).append(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
-                if len(ReplayBuffer2(buffer_size)) >= batch_size:
+                self.buffer.append(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
+                if len(self.buffer) >= batch_size:
                     for i in range(num_train_steps):
-                        s1_sample, a_sample, r_sample, s2_sample, t_sample = ReplayBuffer2(buffer_size).sample(
+                        s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
                             batch_size)
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
@@ -197,7 +196,7 @@ class HindsightTrainer(Trainer):
         return s2, r, t, i
 
     def reset(self):
-        for s1, a, r, s2, t in env.recompute_trajectory(self.trajectory):
+        for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
             self.buffer.append(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t)
         self.trajectory = []
         self.s1 = super().reset()
