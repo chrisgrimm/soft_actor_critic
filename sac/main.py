@@ -2,6 +2,8 @@ import argparse
 import itertools
 import pickle
 import time
+from collections import Counter
+from copy import deepcopy
 
 import gym
 import numpy as np
@@ -10,8 +12,8 @@ from collections import Counter
 from environment.base import print1
 from gym import spaces
 
-from environment.pick_and_place import PickAndPlaceEnv
 from environment.goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
+from environment.pick_and_place import PickAndPlaceEnv
 from sac.chaser import ChaserEnv
 from sac.networks.network_interface import AbstractSoftActorCritic
 from sac.networks.policy_mixins import GaussianPolicy, CategoricalPolicy
@@ -127,12 +129,11 @@ class Trainer:
                             batch_size)
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
-                        [entropy, log_pi, v_loss, q_loss, pi_loss] = agent.train_step(
+                        [v_loss,
+                         q_loss, pi_loss] = agent.train_step(
                              s1_sample, a_sample, r_sample, s2_sample,
                              t_sample)
                         episode_count += Counter({
-                            'entropy': entropy,
-                            'log(π)': log_pi,
                             'V loss': v_loss,
                             'Q loss': q_loss,
                             'pi loss': pi_loss
@@ -156,10 +157,7 @@ class Trainer:
                         simple_value=(
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
-                    for k in [
-                            'entropy', 'log(π)', 'V loss', 'Q loss', 'pi loss',
-                            'reward'
-                    ]:
+                    for k in ['V loss', 'Q loss', 'pi loss', 'reward']:
                         summary.value.add(tag=k, simple_value=episode_count[k])
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()

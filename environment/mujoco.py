@@ -3,6 +3,7 @@ from abc import abstractmethod
 
 import mujoco
 import numpy as np
+from copy import deepcopy
 
 from environment.base import BaseEnv
 
@@ -60,7 +61,7 @@ class MujocoEnv(BaseEnv):
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = qvel.copy()
         self.sim.forward()
-        return self._history_buffer
+        return deepcopy(self._history_buffer)
 
     @abstractmethod
     def reset_qpos(self):
