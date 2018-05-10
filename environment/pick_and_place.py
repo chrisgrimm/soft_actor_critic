@@ -33,7 +33,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
                  max_steps,
                  min_lift_height=.02,
-                 geofence=.06,
+                 geofence=.04,
                  neg_reward=False,
                  history_len=1):
         self._goal_block_name = 'block1'
