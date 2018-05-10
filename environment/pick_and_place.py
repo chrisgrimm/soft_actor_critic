@@ -3,10 +3,10 @@ from os.path import join
 
 import numpy as np
 from gym import spaces
-from mujoco import ObjType
 
 from environment.base import at_goal
 from environment.mujoco import MujocoEnv
+from mujoco import ObjType
 
 
 def quaternion_multiply(quaternion1, quaternion0):
@@ -33,7 +33,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
                  max_steps,
                  min_lift_height=.02,
-                 geofence=.06,
+                 geofence=.04,
                  neg_reward=False,
                  history_len=1):
         self._goal_block_name = 'block1'
@@ -77,7 +77,6 @@ class PickAndPlaceEnv(MujocoEnv):
         #
         # self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
         # self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
-
 
         # self.init_qpos = np.array([4.886e-05,
         #                            - 2.152e-05,
@@ -155,7 +154,8 @@ class PickAndPlaceEnv(MujocoEnv):
         qpos, = obs
         gripper_at_goal = at_goal(
             self.gripper_pos(qpos), goal.gripper, self._geofence)
-        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self._geofence)
+        block_at_goal = at_goal(
+            self.block_pos(qpos), goal.block, self._geofence)
         return gripper_at_goal and block_at_goal
 
     def compute_terminal(self, goal, obs):

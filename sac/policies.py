@@ -1,23 +1,11 @@
-import tensorflow as tf
-import numpy as np
 from abc import abstractmethod
+
+import numpy as np
+import tensorflow as tf
 
 from sac.utils import ACT
 
 EPS = 1E-6
-
-
-class MLPPolicy(object):
-    def input_processing(self, s, activation=tf.nn.relu):
-        fc1 = tf.layers.dense(s, 256, activation, name='fc1')
-        print(fc1)
-        fc2 = tf.layers.dense(fc1, 256, activation, name='fc2')
-        print(fc2)
-        fc3 = tf.layers.dense(fc2, 256, activation, name='fc3')
-        print(fc3)
-        # fc4 = tf.layers.dense(fc3, 256, activation, name='fc4')
-        # fc5 = tf.layers.dense(fc4, 256, activation, name='fc5')
-        return fc3
 
 
 class GaussianPolicy(object):
@@ -29,7 +17,7 @@ class GaussianPolicy(object):
         mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params')
         sigma_params = tf.layers.dense(
             processed_s, a_shape, tf.nn.sigmoid, name='sigma_params')
-        return (mu_params, sigma_params + 0.0001)
+        return mu_params, sigma_params + 0.0001
 
     def policy_parameters_to_log_prob(self, u, parameters):
         (mu, sigma) = parameters
@@ -55,7 +43,6 @@ class GaussianPolicy(object):
         return tf.distributions.Normal(mu, sigma).entropy()
 
 
-
 class GaussianMixturePolicy(object):
     def produce_policy_parameters(self, a_shape, processed_s):
         pass
@@ -76,13 +63,13 @@ class CategoricalPolicy(object):
         logits = parameters
         out = tf.distributions.Categorical(logits=logits).log_prob(
             tf.argmax(a, axis=1))
-        #out = tf.Print(out, [out], summarize=10)
+        # out = tf.Print(out, [out], summarize=10)
         return out
 
     def policy_parameters_to_sample(self, parameters):
         logits = parameters
         a_shape = logits.get_shape()[1].value
-        #logits = tf.Print(logits, [tf.nn.softmax(logits)], message='logits are:', summarize=10)
+        # logits = tf.Print(logits, [tf.nn.softmax(logits)], message='logits are:', summarize=10)
         out = tf.one_hot(
             tf.distributions.Categorical(logits=logits).sample(), a_shape)
         return out
