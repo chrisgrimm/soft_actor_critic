@@ -19,6 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('--reward-scale', default=9e3, type=float)
     parser.add_argument('--max-steps', default=500, type=int)
     parser.add_argument('--geofence', default=.4, type=float)
+    parser.add_argument('--min-lift-height', default=.02, type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--render', action='store_true')
@@ -29,7 +30,9 @@ if __name__ == '__main__':
 
     HindsightTrainer(
         env=PickAndPlaceGoalWrapper(
-            PickAndPlaceEnv(max_steps=args.max_steps, geofence=args.geofence)),
+            PickAndPlaceEnv(max_steps=args.max_steps,
+                            min_lift_height=args.min_lift_height,
+                            geofence=args.geofence)),
         seed=args.seed,
         buffer_size=args.buffer_size,
         activation=args.activation,
