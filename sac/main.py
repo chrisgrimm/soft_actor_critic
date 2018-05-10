@@ -196,7 +196,7 @@ class HindsightTrainer(Trainer):
         return s2, r, t, i
 
     def reset(self):
-        for s1, a, r, s2, t in env.recompute_trajectory(self.trajectory):
+        for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
             self.buffer.append(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t)
         self.trajectory = []
         self.s1 = super().reset()
