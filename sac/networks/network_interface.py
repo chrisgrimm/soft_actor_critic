@@ -42,11 +42,10 @@ class AbstractSoftActorCritic(object):
             self.parameters = self.produce_policy_parameters(a_shape[0], processed_s)
 
         # generate actions:
-        with tf.control_dependencies(self.parameters):
-            self.A_max_likelihood = tf.stop_gradient(
-                self.get_best_action('pi'))
-            self.A_sampled1 = A_sampled1 = tf.stop_gradient(
-                self.sample_pi_network('pi', reuse=True))
+        self.A_max_likelihood = tf.stop_gradient(
+            self.get_best_action('pi'))
+        self.A_sampled1 = A_sampled1 = tf.stop_gradient(
+            self.sample_pi_network('pi', reuse=True))
 
         # constructing V loss
         with tf.control_dependencies([self.A_sampled1]):
