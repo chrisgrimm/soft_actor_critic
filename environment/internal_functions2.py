@@ -3,7 +3,8 @@
 Shows how to access internal functions from MuJoCo.
 """
 import numpy as np
-from mujoco_py import load_model_from_xml, MjSim, functions
+
+from mujoco_py import MjSim, functions, load_model_from_xml
 
 MODEL_XML = """
 <?xml version="1.0" ?>

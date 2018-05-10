@@ -3,10 +3,10 @@ from os.path import join
 
 import numpy as np
 from gym import spaces
-from mujoco import ObjType
 
 from environment.base import at_goal
 from environment.mujoco import MujocoEnv
+from mujoco import ObjType
 
 
 def quaternion_multiply(quaternion1, quaternion0):

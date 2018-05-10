@@ -1,6 +1,5 @@
 import argparse
 
-import gym
 import tensorflow as tf
 
 from environment.goal_wrapper import PickAndPlaceGoalWrapper

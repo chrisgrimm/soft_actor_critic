@@ -9,11 +9,12 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
-from environment.goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
+from environment.goal_wrapper import (GoalWrapper, MountaincarGoalWrapper,
+                                      PickAndPlaceGoalWrapper)
 from environment.pick_and_place import PickAndPlaceEnv
-from sac.chaser import ChaserEnv
 from sac.agent import AbstractSoftActorCritic
-from sac.policies import GaussianPolicy, CategoricalPolicy
+from sac.chaser import ChaserEnv
+from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer.replay_buffer import ReplayBuffer2
 
 

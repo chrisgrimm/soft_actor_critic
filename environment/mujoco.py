@@ -1,10 +1,10 @@
 import os
 from abc import abstractmethod
-
-import mujoco
-import numpy as np
 from copy import deepcopy
 
+import numpy as np
+
+import mujoco
 from environment.base import BaseEnv
 
 

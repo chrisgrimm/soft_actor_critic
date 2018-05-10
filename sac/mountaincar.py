@@ -1,10 +1,10 @@
 import argparse
 
 import gym
+import tensorflow as tf
 
 from environment.goal_wrapper import MountaincarGoalWrapper
 from sac.main import HindsightTrainer
-import tensorflow as tf
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

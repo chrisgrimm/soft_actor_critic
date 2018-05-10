@@ -1,5 +1,6 @@
-import tensorflow as tf
 from abc import abstractmethod
+
+import tensorflow as tf
 
 
 def mlp(inputs, layer_size, n_layers, activation):

@@ -1,9 +1,10 @@
 """Create gym environment for HSR"""
-import gym
-import numpy as np
 from abc import abstractmethod
 from collections import deque
 from copy import deepcopy
+
+import gym
+import numpy as np
 
 
 class BaseEnv(gym.Env):
