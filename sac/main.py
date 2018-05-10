@@ -232,14 +232,11 @@ if __name__ == '__main__':
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
 
-    env = string_to_env(args.env)
-
     # if args.mimic_file is not None:
     #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
 
-    trainer = HindsightTrainer if isinstance(env, GoalWrapper) else Trainer
-    trainer(
-        env=env,
+    Trainer(
+        env=gym.make(args.env),
         seed=args.seed,
         buffer_size=args.buffer_size,
         activation=args.activation,
