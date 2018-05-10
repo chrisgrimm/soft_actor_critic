@@ -4,7 +4,7 @@ import gym
 import tensorflow as tf
 
 from environment.goal_wrapper import MountaincarGoalWrapper
-from sac.main import HindsightTrainer
+from sac.train import HindsightTrainer
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
