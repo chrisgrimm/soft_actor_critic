@@ -3,9 +3,9 @@ from collections import namedtuple
 
 import gym
 import numpy as np
-
-from environment.pick_and_place import PickAndPlaceEnv, Goal
 from gym.spaces import Box
+
+from environment.pick_and_place import Goal, PickAndPlaceEnv
 
 State = namedtuple('State', 'obs goal')
 
@@ -87,7 +87,8 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
     def goal_from_obs_part(self, history):
         last_obs, = history[-1]
         return Goal(
-            gripper=self.env.gripper_pos(last_obs), block=self.env.block_pos())
+            gripper=self.env.gripper_pos(last_obs),
+            block=self.env.block_pos(last_obs))
 
     def reward(self, obs_part, goal):
         return sum(self.env.compute_reward(goal, obs) for obs in obs_part)
@@ -98,17 +99,6 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
     def final_goal(self):
         return self.env.goal()
 
-    def step(self, action):
-        s2, r, t, info = self.env.step(action)
-        new_r = self.reward(s2, self.final_goal())
-        if self.terminal(s2, self.final_goal()):
-            step_num = self.env._step_num
-            new_s2 = self.reset()
-            self.env._step_num = step_num
-        else:
-            new_s2 = State(obs=s2, goal=self.final_goal())
-        return new_s2, new_r, self.env.hit_max_steps(), {'base_reward': r}
-
     @staticmethod
     def obs_from_obs_part_and_goal(state):
         state = State(*state)
@@ -116,3 +106,9 @@ class PickAndPlaceGoalWrapper(GoalWrapper):
         return np.concatenate(
             [np.concatenate(state_history),
              np.concatenate(state.goal)])
+
+    def step(self, action):
+        s2, r, t, info = super().step(action)
+        if t:
+            s2 = self.reset()
+        return s2, r, t, info

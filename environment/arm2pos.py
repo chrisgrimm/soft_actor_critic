@@ -3,7 +3,7 @@ from os.path import join
 import numpy as np
 from gym import spaces
 
-from environment.base import at_goal, BaseEnv
+from environment.base import BaseEnv, at_goal
 from environment.mujoco import MujocoEnv
 
 

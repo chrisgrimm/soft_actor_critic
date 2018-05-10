@@ -1,27 +1,19 @@
-import tensorflow as tf
 from abc import abstractmethod
+
+import tensorflow as tf
 
 
 def mlp(inputs, layer_size, n_layers, activation):
     for i in range(n_layers):
         inputs = tf.layers.dense(
             inputs, layer_size, activation, name='fc' + str(i))
-        print(inputs)
     return inputs
 
 
 class AbstractSoftActorCritic(object):
     def __init__(self, s_shape, a_shape, activation: str, n_layers: int,
                  layer_size: int, learning_rate: float):
-        self.activation = dict(
-            relu=tf.nn.relu,
-            crelu=tf.nn.crelu,
-            selu=tf.nn.selu,
-            elu=tf.nn.elu,
-            leaky=tf.nn.leaky_relu,
-            leaky_relu=tf.nn.leaky_relu,
-            tanh=tf.nn.tanh,
-        )[activation]
+        self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
 
@@ -38,18 +30,23 @@ class AbstractSoftActorCritic(object):
         tau = 0.01
         # learning_rate = 3 * 10 ** -4
 
-        self.A_max_likelihood = tf.stop_gradient(
-            self.get_best_action(a_shape[0], S1, 'pi'))
+        with tf.variable_scope('pi'):
+            processed_s = self.input_processing(S1)
+            self.parameters = self.produce_policy_parameters(
+                a_shape[0], processed_s)
+
+        # generate actions:
+        self.A_max_likelihood = tf.stop_gradient(self.get_best_action('pi'))
+        self.A_sampled1 = A_sampled1 = tf.stop_gradient(
+            self.sample_pi_network('pi', reuse=True))
 
         # constructing V loss
-        with tf.control_dependencies([self.A_max_likelihood]):
-            self.A_sampled1 = A_sampled1 = tf.stop_gradient(
-                self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
+        with tf.control_dependencies([self.A_sampled1]):
             V_S1 = self.V_network(S1, 'V')
             Q_sampled1 = self.Q_network(
                 S1, self.transform_action_sample(A_sampled1), 'Q')
             log_pi_sampled1 = self.pi_network_log_prob(
-                A_sampled1, S1, 'pi', reuse=True)
+                A_sampled1, 'pi', reuse=True)
             self.V_loss = V_loss = tf.reduce_mean(
                 0.5 * tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
 
@@ -61,20 +58,14 @@ class AbstractSoftActorCritic(object):
             self.Q_loss = Q_loss = tf.reduce_mean(
                 0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
 
-            def pos_mean(x, epsilon: float = 0):
-                return tf.square(tf.reduce_mean(x)) + epsilon
-
-            self.r_to_log_pi = pos_mean(R) / pos_mean(
-                log_pi_sampled1, epsilon=1e-6)
-
         # constructing pi loss
         with tf.control_dependencies([self.Q_loss]):
             self.A_sampled2 = A_sampled2 = tf.stop_gradient(
-                self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
+                self.sample_pi_network('pi', reuse=True))
             Q_sampled2 = self.Q_network(
                 S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
             log_pi_sampled2 = self.pi_network_log_prob(
-                A_sampled2, S1, 'pi', reuse=True)
+                A_sampled2, 'pi', reuse=True)
             self.pi_loss = pi_loss = tf.reduce_mean(
                 log_pi_sampled2 *
                 tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
@@ -106,6 +97,7 @@ class AbstractSoftActorCritic(object):
             ]
             self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
             self.check = tf.add_check_numerics_ops()
+            self.entropy = self.compute_entropy()
             # ensure that xi and xi_bar are the same at initialization
 
         config = tf.ConfigProto(allow_soft_placement=True)
@@ -122,11 +114,10 @@ class AbstractSoftActorCritic(object):
         sess.run(hard_update_xi_bar)
 
     def train_step(self, S1, A, R, S2, T):
-        [r_to_log_pi, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
+        [_, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
-                self.r_to_log_pi, self.soft_update_xi_bar, self.train_V,
-                self.train_Q, self.train_pi, self.V_loss, self.Q_loss,
-                self.pi_loss
+                self.soft_update_xi_bar, self.train_V, self.train_Q,
+                self.train_pi, self.V_loss, self.Q_loss, self.pi_loss
             ],
             feed_dict={
                 self.S1: S1,
@@ -135,7 +126,7 @@ class AbstractSoftActorCritic(object):
                 self.S2: S2,
                 self.T: T
             })
-        return r_to_log_pi, V_loss, Q_loss, pi_loss
+        return V_loss, Q_loss, pi_loss
 
     def get_actions(self, S1, sample=True):
         if sample:
@@ -155,19 +146,11 @@ class AbstractSoftActorCritic(object):
     def Q_network(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
-            dense = tf.layers.dense(self.mlp(sa), 1, name='q')
-            print(dense)
-            reshape = tf.reshape(dense, [-1])
-            print(reshape)
-            return reshape
+            return tf.reshape(tf.layers.dense(self.mlp(sa), 1, name='q'), [-1])
 
     def V_network(self, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            dense = tf.layers.dense(self.mlp(s), 1, name='v')
-            print(dense)
-            reshape = tf.reshape(dense, [-1])
-            print(reshape)
-            return reshape
+            return tf.reshape(tf.layers.dense(self.mlp(s), 1, name='v'), [-1])
 
     def input_processing(self, s):
         return self.mlp(s)
@@ -192,25 +175,23 @@ class AbstractSoftActorCritic(object):
     def transform_action_sample(self, action_sample):
         pass
 
-    def pi_network_log_prob(self, a, s, name, reuse=None):
-        with tf.variable_scope(name, reuse=reuse):
-            processed_s = self.input_processing(s)
-            a_shape = a.get_shape()[1].value
-            parameters = self.produce_policy_parameters(a_shape, processed_s)
-            log_prob = self.policy_parameters_to_log_prob(a, parameters)
-        return log_prob
+    @abstractmethod
+    def entropy_from_params(self, params):
+        pass
 
-    def sample_pi_network(self, a_shape, s, name, reuse=None):
-        with tf.variable_scope(name, reuse=reuse):
-            processed_s = self.input_processing(s)
-            parameters = self.produce_policy_parameters(a_shape, processed_s)
-            sample = self.policy_parameters_to_sample(parameters)
-        return sample
+    def compute_entropy(self, reuse=None):
+        with tf.variable_scope('entropy', reuse=reuse):
+            return tf.reduce_mean(self.entropy_from_params(self.parameters))
 
-    def get_best_action(self, a_shape, s, name, reuse=None):
+    def pi_network_log_prob(self, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
-            processed_s = self.input_processing(s)
-            parameters = self.produce_policy_parameters(a_shape, processed_s)
-            actions = self.policy_parameters_to_max_likelihood_action(
-                parameters)
-        return actions
+            return self.policy_parameters_to_log_prob(a, self.parameters)
+
+    def sample_pi_network(self, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            return self.policy_parameters_to_sample(self.parameters)
+
+    def get_best_action(self, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            return self.policy_parameters_to_max_likelihood_action(
+                self.parameters)

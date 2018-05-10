@@ -1,21 +1,17 @@
 """Create gym environment for HSR"""
-
+from abc import abstractmethod
 from collections import deque
+from copy import deepcopy
 
 import gym
 import numpy as np
-from gym import utils
-
-from environment.server import Server
-from abc import abstractmethod
 
 
-class BaseEnv(utils.EzPickle, Server):
+class BaseEnv(gym.Env):
     """ The environment """
 
     def __init__(self, max_steps, history_len, image_dimensions, neg_reward,
                  steps_per_action):
-        utils.EzPickle.__init__(self)
 
         self._history_buffer = deque(maxlen=history_len)
         self._steps_per_action = steps_per_action
@@ -42,10 +38,8 @@ class BaseEnv(utils.EzPickle, Server):
             self._perform_action(action)
             done = False
             if self.compute_terminal(self.goal(), self._obs()):
-                # print('terminal')
                 done = True
             elif self.hit_max_steps():
-                # print('hit max steps')
                 done = True
             elif self._currently_failed():
                 done = True
@@ -53,7 +47,7 @@ class BaseEnv(utils.EzPickle, Server):
             step += 1
 
         self._history_buffer.append(self._obs())
-        return self._history_buffer, reward, done, {}
+        return deepcopy(self._history_buffer), reward, done, {}
 
     def hit_max_steps(self):
         return self._step_num >= self.max_steps
