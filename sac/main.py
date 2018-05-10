@@ -3,7 +3,6 @@ import itertools
 import pickle
 import time
 from collections import Counter
-from copy import deepcopy
 
 import gym
 import numpy as np
@@ -13,8 +12,8 @@ from gym import spaces
 from environment.goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
 from environment.pick_and_place import PickAndPlaceEnv
 from sac.chaser import ChaserEnv
-from sac.networks.network_interface import AbstractSoftActorCritic
-from sac.networks.policy_mixins import GaussianPolicy, CategoricalPolicy
+from sac.agent import AbstractSoftActorCritic
+from sac.policies import GaussianPolicy, CategoricalPolicy
 from sac.replay_buffer.replay_buffer import ReplayBuffer2
 
 

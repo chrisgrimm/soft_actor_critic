@@ -7,19 +7,6 @@ from sac.utils import ACT
 EPS = 1E-6
 
 
-class MLPPolicy(object):
-    def input_processing(self, s, activation=tf.nn.relu):
-        fc1 = tf.layers.dense(s, 256, activation, name='fc1')
-        print(fc1)
-        fc2 = tf.layers.dense(fc1, 256, activation, name='fc2')
-        print(fc2)
-        fc3 = tf.layers.dense(fc2, 256, activation, name='fc3')
-        print(fc3)
-        # fc4 = tf.layers.dense(fc3, 256, activation, name='fc4')
-        # fc5 = tf.layers.dense(fc4, 256, activation, name='fc5')
-        return fc3
-
-
 class GaussianPolicy(object):
     """
     Policy outputs a gaussian action that is clamped to the interval [-1, 1]
