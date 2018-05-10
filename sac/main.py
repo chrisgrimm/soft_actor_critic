@@ -210,11 +210,20 @@ class HindsightTrainer(Trainer):
         return self.env.obs_from_obs_part_and_goal(state)
 
 
+def activation(name):
+    activations = dict(relu=tf.nn.relu, crelu=tf.nn.crelu, selu=tf.nn.selu, elu=tf.nn.elu, leaky=tf.nn.leaky_relu,
+                       leaky_relu=tf.nn.leaky_relu, tanh=tf.nn.tanh, )
+    try:
+        return activations[name]
+    except KeyError:
+        raise argparse.ArgumentTypeError("Activation name must be one of the following:", '\n'.join(activations.keys()))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--activation', default='relu')
+    parser.add_argument('--activation', default=tf.nn.relu, type=activation)
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)

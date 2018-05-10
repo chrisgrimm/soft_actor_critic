@@ -3,9 +3,9 @@ from collections import namedtuple
 
 import gym
 import numpy as np
+from gym.spaces import Box
 
 from environment.pick_and_place import PickAndPlaceEnv, Goal
-from gym.spaces import Box
 
 State = namedtuple('State', 'obs goal')
 

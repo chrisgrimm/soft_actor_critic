@@ -12,15 +12,7 @@ def mlp(inputs, layer_size, n_layers, activation):
 class AbstractSoftActorCritic(object):
     def __init__(self, s_shape, a_shape, activation: str, n_layers: int,
                  layer_size: int, learning_rate: float):
-        self.activation = dict(
-            relu=tf.nn.relu,
-            crelu=tf.nn.crelu,
-            selu=tf.nn.selu,
-            elu=tf.nn.elu,
-            leaky=tf.nn.leaky_relu,
-            leaky_relu=tf.nn.leaky_relu,
-            tanh=tf.nn.tanh,
-        )[activation]
+        self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
 
