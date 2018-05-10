@@ -30,9 +30,10 @@ if __name__ == '__main__':
 
     HindsightTrainer(
         env=PickAndPlaceGoalWrapper(
-            PickAndPlaceEnv(max_steps=args.max_steps,
-                            min_lift_height=args.min_lift_height,
-                            geofence=args.geofence)),
+            PickAndPlaceEnv(
+                max_steps=args.max_steps,
+                min_lift_height=args.min_lift_height,
+                geofence=args.geofence)),
         seed=args.seed,
         buffer_size=args.buffer_size,
         activation=args.activation,
