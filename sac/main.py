@@ -2,15 +2,16 @@ import argparse
 import itertools
 import pickle
 import time
+from collections import Counter
+from copy import deepcopy
 
 import gym
 import numpy as np
 import tensorflow as tf
-from collections import Counter
 from gym import spaces
 
-from environment.pick_and_place import PickAndPlaceEnv
 from environment.goal_wrapper import MountaincarGoalWrapper, PickAndPlaceGoalWrapper, GoalWrapper
+from environment.pick_and_place import PickAndPlaceEnv
 from sac.chaser import ChaserEnv
 from sac.agent import AbstractSoftActorCritic
 from sac.policies import GaussianPolicy, CategoricalPolicy
@@ -131,12 +132,11 @@ class Trainer:
                             batch_size)
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
-                        [entropy, log_pi, v_loss, q_loss, pi_loss] = agent.train_step(
-                            s1_sample, a_sample, r_sample, s2_sample,
-                            t_sample)
+                        [v_loss,
+                         q_loss, pi_loss] = agent.train_step(
+                             s1_sample, a_sample, r_sample, s2_sample,
+                             t_sample)
                         episode_count += Counter({
-                            'entropy': entropy,
-                            'log(π)': log_pi,
                             'V loss': v_loss,
                             'Q loss': q_loss,
                             'pi loss': pi_loss
@@ -144,9 +144,9 @@ class Trainer:
             s1 = s2
             if t:
                 s1 = self.reset()
-                print('({}) Episode {}\t Time Steps: {}\t Reward: {}\t Entropy'.format(
+                print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                     'EVAL' if is_eval_period else 'TRAIN', (count['episode']),
-                    time_steps, episode_count['reward']), episode_count['entropy'])
+                    time_steps, episode_count['reward']))
                 count += Counter(reward=(episode_count['reward']), episode=1)
                 fps = int(episode_count['timesteps'] / (time.time() - tick))
                 if logdir:
@@ -160,10 +160,7 @@ class Trainer:
                         simple_value=(
                                 count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
-                    for k in [
-                        'entropy', 'log(π)', 'V loss', 'Q loss', 'pi loss',
-                        'reward'
-                    ]:
+                    for k in ['V loss', 'Q loss', 'pi loss', 'reward']:
                         summary.value.add(tag=k, simple_value=episode_count[k])
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
