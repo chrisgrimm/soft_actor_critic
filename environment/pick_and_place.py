@@ -129,10 +129,16 @@ class PickAndPlaceEnv(MujocoEnv):
         pass
 
     def _obs(self):
-        return self.sim.qpos,
+        return np.copy(self.sim.qpos),
 
-    def block_pos(self):
-        return self.sim.get_body_xpos(self._goal_block_name)
+    def block_pos(self, qpos=None):
+        return self.sim.get_body_xpos(self._goal_block_name, qpos)
+
+    def gripper_pos(self, qpos=None):
+        finger1, finger2 = [
+            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
+        ]
+        return (finger1 + finger2) / 2.
 
     def goal(self):
         goal_pos = self._initial_block_pos + \
@@ -146,9 +152,10 @@ class PickAndPlaceEnv(MujocoEnv):
         return False
 
     def _achieved_goal(self, goal, obs):
+        qpos, = obs
         gripper_at_goal = at_goal(
-            self.gripper_pos(obs[0]), goal.gripper, self._geofence)
-        block_at_goal = at_goal(self.block_pos(), goal.block, self._geofence)
+            self.gripper_pos(qpos), goal.gripper, self._geofence)
+        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self._geofence)
         return gripper_at_goal and block_at_goal
 
     def compute_terminal(self, goal, obs):
@@ -162,12 +169,6 @@ class PickAndPlaceEnv(MujocoEnv):
             return -.0001
         else:
             return 0
-
-    def gripper_pos(self, qpos=None):
-        finger1, finger2 = [
-            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
-        ]
-        return (finger1 + finger2) / 2.
 
     def step(self, action):
         action = np.clip(action, -1, 1)

@@ -1,8 +1,8 @@
 """Create gym environment for HSR"""
 
 from collections import deque
+from copy import deepcopy
 
-import gym
 import numpy as np
 from gym import utils
 
@@ -53,7 +53,7 @@ class BaseEnv(utils.EzPickle, Server):
             step += 1
 
         self._history_buffer.append(self._obs())
-        return self._history_buffer, reward, done, {}
+        return deepcopy(self._history_buffer), reward, done, {}
 
     def hit_max_steps(self):
         return self._step_num >= self.max_steps
