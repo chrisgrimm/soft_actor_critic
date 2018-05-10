@@ -24,7 +24,7 @@ class GaussianPolicy(object):
         # print(log_prob)
         return tf.reduce_sum(
             log_prob, axis=1) - tf.reduce_sum(
-            tf.log(1 - tf.square(tf.tanh(u)) + EPS), axis=1)
+                tf.log(1 - tf.square(tf.tanh(u)) + EPS), axis=1)
 
     def policy_parameters_to_max_likelihood_action(self, parameters):
         (mu, sigma) = parameters

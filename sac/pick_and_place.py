@@ -14,7 +14,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
-    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
+    parser.add_argument('--buffer-size', default=int(10**7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=9e3, type=float)

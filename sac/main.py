@@ -79,9 +79,9 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def __init__(self, env, seed, buffer_size, activation, n_layers, layer_size,
-                 learning_rate, reward_scale, batch_size, num_train_steps,
-                 logdir, render):
+    def __init__(self, env, seed, buffer_size, activation, n_layers,
+                 layer_size, learning_rate, reward_scale, batch_size,
+                 num_train_steps, logdir, render):
 
         if seed is not None:
             np.random.seed(seed)
@@ -131,10 +131,8 @@ class Trainer:
                             batch_size)
                         s1_sample = list(map(self.state_converter, s1_sample))
                         s2_sample = list(map(self.state_converter, s2_sample))
-                        [v_loss,
-                         q_loss, pi_loss] = agent.train_step(
-                             s1_sample, a_sample, r_sample, s2_sample,
-                             t_sample)
+                        [v_loss, q_loss, pi_loss] = agent.train_step(
+                            s1_sample, a_sample, r_sample, s2_sample, t_sample)
                         episode_count += Counter({
                             'V loss': v_loss,
                             'Q loss': q_loss,
@@ -157,7 +155,7 @@ class Trainer:
                     summary.value.add(
                         tag='average reward',
                         simple_value=(
-                                count['reward'] / float(count['episode'])))
+                            count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
                     for k in ['V loss', 'Q loss', 'pi loss', 'reward']:
                         summary.value.add(tag=k, simple_value=episode_count[k])
@@ -169,9 +167,9 @@ class Trainer:
 
 
 class HindsightTrainer(Trainer):
-    def __init__(self, env, seed, buffer_size, reward_scale, batch_size, num_train_steps,
-                 logdir, render, activation, n_layers, layer_size,
-                 learning_rate):
+    def __init__(self, env, seed, buffer_size, reward_scale, batch_size,
+                 num_train_steps, logdir, render, activation, n_layers,
+                 layer_size, learning_rate):
         assert isinstance(env, GoalWrapper)
         self.trajectory = []
         super().__init__(
@@ -207,12 +205,21 @@ class HindsightTrainer(Trainer):
 
 
 def activation(name):
-    activations = dict(relu=tf.nn.relu, crelu=tf.nn.crelu, selu=tf.nn.selu, elu=tf.nn.elu, leaky=tf.nn.leaky_relu,
-                       leaky_relu=tf.nn.leaky_relu, tanh=tf.nn.tanh, )
+    activations = dict(
+        relu=tf.nn.relu,
+        crelu=tf.nn.crelu,
+        selu=tf.nn.selu,
+        elu=tf.nn.elu,
+        leaky=tf.nn.leaky_relu,
+        leaky_relu=tf.nn.leaky_relu,
+        tanh=tf.nn.tanh,
+    )
     try:
         return activations[name]
     except KeyError:
-        raise argparse.ArgumentTypeError("Activation name must be one of the following:", '\n'.join(activations.keys()))
+        raise argparse.ArgumentTypeError(
+            "Activation name must be one of the following:", '\n'.join(
+                activations.keys()))
 
 
 if __name__ == '__main__':
@@ -223,7 +230,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
-    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
+    parser.add_argument('--buffer-size', default=int(10**7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)

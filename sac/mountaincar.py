@@ -17,7 +17,7 @@ if __name__ == '__main__':
     HindsightTrainer(
         env=MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0')),
         seed=args.seed,
-        buffer_size=10 ** 7,
+        buffer_size=10**7,
         activation=tf.nn.relu,
         n_layers=3,
         layer_size=256,

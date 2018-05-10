@@ -78,7 +78,6 @@ class PickAndPlaceEnv(MujocoEnv):
         # self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
         # self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
-
         # self.init_qpos = np.array([4.886e-05,
         #                            - 2.152e-05,
         #                            4.385e-01,
@@ -155,7 +154,8 @@ class PickAndPlaceEnv(MujocoEnv):
         qpos, = obs
         gripper_at_goal = at_goal(
             self.gripper_pos(qpos), goal.gripper, self._geofence)
-        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self._geofence)
+        block_at_goal = at_goal(
+            self.block_pos(qpos), goal.block, self._geofence)
         return gripper_at_goal and block_at_goal
 
     def compute_terminal(self, goal, obs):
