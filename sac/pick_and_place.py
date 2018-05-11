@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from environment.goal_wrapper import PickAndPlaceGoalWrapper
 from environment.pick_and_place import PickAndPlaceEnv
-from sac.train import HindsightTrainer, activation_type
+from sac.train import HindsightTrainer, activation_type, HindsightPropagationTrainer
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -22,14 +22,16 @@ if __name__ == '__main__':
     parser.add_argument('--min-lift-height', default=.02, type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
     parser.add_argument('--random-block', action='store_true')
+    parser.add_argument('--reward-prop', action='store_true')
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
 
     # if args.mimic_file is not None:
     #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
+    trainer = HindsightPropagationTrainer if args.reward_prop else HindsightTrainer
 
-    HindsightTrainer(
+    trainer(
         env=PickAndPlaceGoalWrapper(
             PickAndPlaceEnv(
                 max_steps=args.max_steps,
