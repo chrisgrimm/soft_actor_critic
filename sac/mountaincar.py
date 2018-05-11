@@ -14,7 +14,7 @@ if __name__ == '__main__':
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
 
-    HindsightPropagationTrainer(
+    HindsightTrainer(
         env=MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0')),
         seed=args.seed,
         buffer_size=10**7,
