@@ -12,7 +12,7 @@ from gym import spaces
 from environment.goal_wrapper import GoalWrapper
 from sac.agent import AbstractSoftActorCritic
 from sac.policies import CategoricalPolicy, GaussianPolicy
-from sac.replay_buffer import ReplayBuffer2
+from sac.replay_buffer import ReplayBuffer
 
 
 def build_agent(env, activation, n_layers, layer_size, learning_rate):
@@ -78,7 +78,7 @@ class Trainer:
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
-        self.buffer = ReplayBuffer2(buffer_size)
+        self.buffer = ReplayBuffer(buffer_size)
         self.reward_scale = reward_scale
 
         s1 = self.reset()
@@ -142,11 +142,10 @@ class Trainer:
                     episode_count[k] = 0
 
     def process_step(self, s1, a, r, s2, t):
-        self.buffer.append(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t)
+        self.buffer.append((s1, a, r * self.reward_scale, s2, t))
         if len(self.buffer) >= self.batch_size:
             for i in range(self.num_train_steps):
-                s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
-                    self.batch_size)
+                s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(self.batch_size)
                 s1_sample = list(map(self.state_converter, s1_sample))
                 s2_sample = list(map(self.state_converter, s2_sample))
                 [v_loss, q_loss, pi_loss] = self.agent.train_step(
