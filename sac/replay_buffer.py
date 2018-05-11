@@ -3,7 +3,7 @@ from collections import deque
 import numpy as np
 
 
-class RollingBuffer(object):
+class RollingBuffer:
     def __init__(self, maxlen):
         self.maxlen = maxlen
         self.rolling_buffer = [None for _ in range(maxlen)]
@@ -16,6 +16,10 @@ class RollingBuffer(object):
         if self.pos >= self.maxlen:
             self.full = True
             self.pos = 0
+
+    def extend(self, xs):
+        for x in xs:
+            self.append(x)
 
     def sample(self, batch_size):
         top_pos = self.maxlen if self.full else self.pos
@@ -30,17 +34,8 @@ class RollingBuffer(object):
         return self.maxlen if self.full else self.pos
 
 
-class ReplayBuffer(object):
-    def __init__(self, maxlen):
-        self.buffer = RollingBuffer(maxlen)
-
-    def append(self, x):
-        self.buffer.append(x)
-
+class ReplayBuffer(RollingBuffer):
     def sample(self, batch_size):
-        sample = self.buffer.sample(batch_size)
+        sample = super().sample(batch_size)
         return tuple(map(list, zip(*sample)))
-
-    def __len__(self):
-        return len(self.buffer)
 
