@@ -2,17 +2,17 @@ import argparse
 import itertools
 import pickle
 import time
-from collections import Counter
 
 import gym
 import numpy as np
 import tensorflow as tf
+from collections import Counter
 from gym import spaces
 
 from environment.goal_wrapper import GoalWrapper
 from sac.agent import AbstractSoftActorCritic
 from sac.policies import CategoricalPolicy, GaussianPolicy
-from sac.replay_buffer.replay_buffer import ReplayBuffer2
+from sac.replay_buffer import ReplayBuffer2
 
 
 def build_agent(env, activation, n_layers, layer_size, learning_rate):
@@ -75,13 +75,15 @@ class Trainer:
             tf.set_random_seed(seed)
             env.seed(seed)
 
+        self.num_train_steps = num_train_steps
+        self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer2(buffer_size)
         self.reward_scale = reward_scale
 
         s1 = self.reset()
 
-        agent = build_agent(
+        self.agent = agent = build_agent(
             env=env,
             activation=activation,
             n_layers=n_layers,
@@ -111,20 +113,12 @@ class Trainer:
 
             episode_count += Counter(reward=r, timesteps=1)
             if not is_eval_period:
-                self.buffer.append(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
-                if len(self.buffer) >= batch_size:
-                    for i in range(num_train_steps):
-                        s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
-                            batch_size)
-                        s1_sample = list(map(self.state_converter, s1_sample))
-                        s2_sample = list(map(self.state_converter, s2_sample))
-                        [v_loss, q_loss, pi_loss] = agent.train_step(
-                            s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                        episode_count += Counter({
-                            'V loss': v_loss,
-                            'Q loss': q_loss,
-                            'pi loss': pi_loss
-                        })
+                v_loss, q_loss, pi_loss = self.process_step(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
+                episode_count += Counter({
+                    'V loss': v_loss,
+                    'Q loss': q_loss,
+                    'pi loss': pi_loss
+                })
             s1 = s2
             if t:
                 s1 = self.reset()
@@ -151,6 +145,18 @@ class Trainer:
 
                 for k in episode_count:
                     episode_count[k] = 0
+
+    def process_step(self, s1, a, r, s2, t):
+        self.buffer.append(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t)
+        if len(self.buffer) >= self.batch_size:
+            for i in range(self.num_train_steps):
+                s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
+                    self.batch_size)
+                s1_sample = list(map(self.state_converter, s1_sample))
+                s2_sample = list(map(self.state_converter, s2_sample))
+                [v_loss, q_loss, pi_loss] = self.agent.train_step(
+                    s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                return [v_loss, q_loss, pi_loss]
 
 
 class HindsightTrainer(Trainer):
@@ -191,6 +197,12 @@ class HindsightTrainer(Trainer):
         return self.env.obs_from_obs_part_and_goal(state)
 
 
+# class PropogationTrainer(HindsightTrainer):
+#     def
+
+
+
+
 def activation(name):
     activations = dict(
         relu=tf.nn.relu,
@@ -217,7 +229,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
-    parser.add_argument('--buffer-size', default=int(10**7), type=int)
+    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)
