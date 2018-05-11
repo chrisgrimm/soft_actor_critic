@@ -92,6 +92,7 @@ class Trainer:
             learning_rate=learning_rate)
 
         tb_writer = None
+        saver = tf.train.Saver()
         if logdir:
             tb_writer = tf.summary.FileWriter(
                 logdir=logdir, graph=agent.sess.graph)
@@ -113,7 +114,10 @@ class Trainer:
             tick = time.time()
 
             episode_count += Counter(reward=r, timesteps=1)
-            if not is_eval_period:
+            if is_eval_period:
+                save_path = saver.save(agent.sess, "/tmp/model.ckpt")
+                print("Model saved in path: {}".format(save_path))
+            else:
                 self.buffer.append(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
                 if len(self.buffer) >= batch_size:
                     for i in range(num_train_steps):
