@@ -6,6 +6,7 @@ import numpy as np
 from gym.spaces import Box
 
 from environment.pick_and_place import Goal, PickAndPlaceEnv
+from sac.utils import Step
 
 State = namedtuple('State', 'obs goal')
 
@@ -56,7 +57,7 @@ class GoalWrapper(gym.Wrapper):
             new_sp = sp.obs, achieved_goal
             new_r = self.reward(sp.obs, achieved_goal)
             new_t = self.terminal(sp.obs, achieved_goal) or t
-            yield new_s, a, new_r, new_sp, new_t
+            yield Step(s1=new_s, a=a, r=new_r, s2=new_sp, t=new_t)
             if new_t:
                 break
 
