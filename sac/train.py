@@ -225,25 +225,29 @@ class PropagationTrainer(TrajectoryTrainer):
                 })
 
     def build_agent(self, env, activation, n_layers, layer_size, learning_rate, base_agent=AbstractAgent):
-        return super().build_agent(env, activation, n_layers, layer_size, learning_rate,
-                                   base_agent=PropagationAgent)
+        return super().build_agent(env=env, activation=activation,
+                                   n_layers=n_layers, layer_size=layer_size,
+                                   learning_rate=learning_rate, base_agent=PropagationAgent)
 
     def reset(self):
-        v2 = 0
-        for step, (s1, a, r, s2, t) in enumerate(self.trajectory):
-            v2 = .99 * v2 + r
-            self.buffer.append((s1, a, r * self.reward_scale, s2, t, v2))
+        self.buffer.extend(self.step_generator(self.trajectory))
         return super().reset()
+
+    def step_generator(self, trajectory):
+        v2 = 0
+        for s1, a, r, s2, t in reversed(trajectory):
+            v2 = .99 * v2 + r
+            yield PropStep(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t, v2=v2)
 
 
 class HindsightPropagationTrainer(HindsightTrainer, PropagationTrainer):
     def reset(self):
-        for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
-            self.buffer.append((s1, a, r * self.reward_scale, s2, t))
+        trajectory = list(self.env.recompute_trajectory(self.trajectory))
+        self.buffer.extend(self.step_generator(trajectory))
         return PropagationTrainer.reset(self)
 
 
-def activation(name):
+def activation_type(name):
     activations = dict(
         relu=tf.nn.relu,
         crelu=tf.nn.crelu,
@@ -265,7 +269,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--activation', default=tf.nn.relu, type=activation)
+    parser.add_argument('--activation', default=tf.nn.relu, type=activation_type)
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
