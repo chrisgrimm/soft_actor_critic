@@ -1,11 +1,12 @@
-from os.path import join
 import os
+from os.path import join
 
 import numpy as np
 from gym.spaces import Box, Discrete, Tuple
-from mujoco import GeomType, ObjType
 
-from environment.base import BaseEnv, escaped, quaternion2euler, at_goal, point_inside_object
+from environment.base import (BaseEnv, at_goal, escaped, point_inside_object,
+                              quaternion2euler)
+from mujoco import GeomType, ObjType
 
 
 class NavigateEnv(BaseEnv):

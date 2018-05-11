@@ -4,11 +4,11 @@
 import argparse
 
 import numpy as np
-from mujoco import ObjType
 
 from environment.base import print1
 from environment.goal_wrapper import PickAndPlaceGoalWrapper
 from environment.pick_and_place import PickAndPlaceEnv
+from mujoco import ObjType
 
 saved_pos = None
 
