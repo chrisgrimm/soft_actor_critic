@@ -21,6 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('--geofence', default=.4, type=float)
     parser.add_argument('--min-lift-height', default=.02, type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
+    parser.add_argument('--random-block', action='store_true')
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
@@ -32,6 +33,7 @@ if __name__ == '__main__':
         env=PickAndPlaceGoalWrapper(
             PickAndPlaceEnv(
                 max_steps=args.max_steps,
+                random_block=args.random_block,
                 min_lift_height=args.min_lift_height,
                 geofence=args.geofence)),
         seed=args.seed,
