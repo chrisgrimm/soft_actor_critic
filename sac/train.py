@@ -158,11 +158,10 @@ class Trainer:
                 })
 
 
-class HindsightTrainer(Trainer):
+class TrajectoryTrainer(Trainer):
     def __init__(self, env, seed, buffer_size, reward_scale, batch_size,
                  num_train_steps, logdir, render, activation, n_layers,
                  layer_size, learning_rate):
-        assert isinstance(env, GoalWrapper)
         self.trajectory = []
         super().__init__(
             env=env,
@@ -196,7 +195,16 @@ class HindsightTrainer(Trainer):
         return self.env.obs_from_obs_part_and_goal(state)
 
 
-class PropogationTrainer(HindsightTrainer):
+class HindsightTrainer(TrajectoryTrainer):
+    def __init__(self, env, seed, buffer_size, reward_scale, batch_size, num_train_steps, logdir, render, activation,
+                 n_layers, layer_size, learning_rate):
+        assert isinstance(env, GoalWrapper)
+        super().__init__(env, seed, buffer_size, reward_scale, batch_size, num_train_steps, logdir, render, activation,
+                         n_layers, layer_size, learning_rate)
+
+
+
+class PropogationTrainer(TrajectoryTrainer):
     def process_step(self, s1, a, r, s2, t):
         if len(self.buffer) >= self.batch_size:
             for i in range(self.num_train_steps):
