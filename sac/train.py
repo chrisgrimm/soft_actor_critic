@@ -198,7 +198,7 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def reset(self):
         for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
-            self.buffer.append(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t)
+            self.buffer.append((s1, a, r * self.reward_scale, s2, t))
         return super().reset()
 
     def state_converter(self, state):
@@ -231,6 +231,13 @@ class PropagationTrainer(TrajectoryTrainer):
             v2 = .99 * v2 + r
             self.buffer.append((s1, a, r * self.reward_scale, s2, t, v2))
         return super().reset()
+
+
+class HindsightPropagationTrainer(HindsightTrainer, PropagationTrainer):
+    def reset(self):
+        for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
+            self.buffer.append((s1, a, r * self.reward_scale, s2, t))
+        return PropagationTrainer.reset(self)
 
 
 def activation(name):
