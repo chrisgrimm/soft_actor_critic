@@ -63,6 +63,7 @@ def run(port, value_tensor=None, sess=None):
         if not pause and not np.allclose(action, 0):
             print('.', end='')
             a = np.clip(action * .05, -1, 1)
+            print1(a)
             s2, r, done, _ = env.step(a)
             print1(r)
             if s1 is not None:
