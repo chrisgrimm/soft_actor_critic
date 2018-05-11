@@ -113,12 +113,14 @@ class Trainer:
 
             episode_count += Counter(reward=r, timesteps=1)
             if not is_eval_period:
-                v_loss, q_loss, pi_loss = self.process_step(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
-                episode_count += Counter({
-                    'V loss': v_loss,
-                    'Q loss': q_loss,
-                    'pi loss': pi_loss
-                })
+                step_result = self.process_step(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
+                if step_result is not None:
+                    v_loss, q_loss, pi_loss = step_result
+                    episode_count += Counter({
+                        'V loss': v_loss,
+                        'Q loss': q_loss,
+                        'pi loss': pi_loss
+                    })
             s1 = s2
             if t:
                 s1 = self.reset()
