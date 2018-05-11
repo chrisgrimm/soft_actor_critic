@@ -1,5 +1,7 @@
 import numpy as np
 import tensorflow as tf
+from collections import namedtuple
+
 
 def leaky_relu(x, alpha=0.2):
     return tf.maximum(x, alpha * x)
@@ -45,3 +47,7 @@ def component(function):
             return out, variables
 
     return wrapper
+
+
+Step = namedtuple('Step', 's1 a r s2 t')
+PropStep = namedtuple('PropStep', 's1 a r s2 t v2')

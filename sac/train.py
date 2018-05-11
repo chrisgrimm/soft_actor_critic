@@ -13,6 +13,7 @@ from environment.goal_wrapper import GoalWrapper
 from sac.agent import AbstractAgent, PropagationAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
+from sac.utils import Step, PropStep
 
 
 def inject_mimic_experiences(mimic_file, buffer, N=1):
@@ -21,7 +22,7 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
     for trajectory in mimic_trajectories:
         for (s1, a, r, s2, t) in trajectory:
             for _ in range(N):
-                buffer.append(s1=s1, a=a, r=r, s2=s2, t=t)
+                buffer.append(Step(s1=s1, a=a, r=r, s2=s2, t=t))
 
 
 class Trainer:
@@ -141,7 +142,7 @@ class Trainer:
         return Agent(state_shape, action_shape)
 
     def process_step(self, s1, a, r, s2, t):
-        self.buffer.append((s1, a, r * self.reward_scale, s2, t))
+        self.buffer.append(Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
         if len(self.buffer) >= self.batch_size:
             for i in range(self.num_train_steps):
                 s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
@@ -179,7 +180,7 @@ class TrajectoryTrainer(Trainer):
 
     def step(self, action):
         s2, r, t, i = super().step(action)
-        self.trajectory.append((self.s1, action, r, s2, t))
+        self.trajectory.append(Step(s1=self.s1, a=action, r=r, s2=s2, t=t))
         self.s1 = s2
         return s2, r, t, i
 
@@ -187,6 +188,7 @@ class TrajectoryTrainer(Trainer):
         self.trajectory = []
         self.s1 = super().reset()
         return self.s1
+
 
 class HindsightTrainer(TrajectoryTrainer):
     def __init__(self, env, seed, buffer_size, reward_scale, batch_size, num_train_steps, logdir, render, activation,
