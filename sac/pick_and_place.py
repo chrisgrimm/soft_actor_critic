@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from environment.goal_wrapper import PickAndPlaceGoalWrapper
 from environment.pick_and_place import PickAndPlaceEnv
-from sac.main import HindsightTrainer, activation
+from sac.train import HindsightTrainer, activation
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -14,11 +14,12 @@ if __name__ == '__main__':
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
     parser.add_argument('--buffer-size', default=int(10**7), type=int)
-    parser.add_argument('--num-train-steps', default=1, type=int)
+    parser.add_argument('--num-train-steps', default=4, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=9e3, type=float)
     parser.add_argument('--max-steps', default=500, type=int)
     parser.add_argument('--geofence', default=.4, type=float)
+    parser.add_argument('--min-lift-height', default=.02, type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--render', action='store_true')
@@ -29,7 +30,10 @@ if __name__ == '__main__':
 
     HindsightTrainer(
         env=PickAndPlaceGoalWrapper(
-            PickAndPlaceEnv(max_steps=args.max_steps, geofence=args.geofence)),
+            PickAndPlaceEnv(
+                max_steps=args.max_steps,
+                min_lift_height=args.min_lift_height,
+                geofence=args.geofence)),
         seed=args.seed,
         buffer_size=args.buffer_size,
         activation=args.activation,
