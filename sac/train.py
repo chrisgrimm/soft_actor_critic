@@ -15,7 +15,7 @@ from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 
 
-def build_agent(env, activation, n_layers, layer_size, learning_rate):
+def build_agent(env, activation, n_layers, layer_size, learning_rate, mixins=None):
     state_shape = env.observation_space.shape
     if isinstance(env.action_space, spaces.Discrete):
         action_shape = [env.action_space.n]
@@ -24,7 +24,10 @@ def build_agent(env, activation, n_layers, layer_size, learning_rate):
         action_shape = env.action_space.shape
         PolicyType = GaussianPolicy
 
-    class Agent(PolicyType, AbstractAgent):
+    if mixins is None:
+        mixins = []
+
+    class Agent(PolicyType, AbstractAgent, *mixins):
         def __init__(self, s_shape, a_shape):
             super(Agent, self).__init__(
                 s_shape=s_shape,
@@ -145,7 +148,8 @@ class Trainer:
         self.buffer.append((s1, a, r * self.reward_scale, s2, t))
         if len(self.buffer) >= self.batch_size:
             for i in range(self.num_train_steps):
-                s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(self.batch_size)
+                s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
+                    self.batch_size)
                 s1_sample = list(map(self.state_converter, s1_sample))
                 s2_sample = list(map(self.state_converter, s2_sample))
                 [v_loss, q_loss, pi_loss] = self.agent.train_step(
@@ -205,7 +209,7 @@ class HindsightTrainer(TrajectoryTrainer):
         return self.env.obs_from_obs_part_and_goal(state)
 
 
-class PropogationTrainer(TrajectoryTrainer):
+class PropagationTrainer(TrajectoryTrainer):
     def process_step(self, s1, a, r, s2, t):
         if len(self.buffer) >= self.batch_size:
             for i in range(self.num_train_steps):
@@ -222,7 +226,7 @@ class PropogationTrainer(TrajectoryTrainer):
                 })
 
     def reset(self):
-        for s1, a, r, s2, t in self.trajectory:
+        for step, (s1, a, r, s2, t) in enumerate(self.trajectory):
             self.buffer.append(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t)
         return super().reset()
 
@@ -266,7 +270,7 @@ if __name__ == '__main__':
     # if args.mimic_file is not None:
     #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
 
-    trainer = PropogationTrainer if args.reward_prop else Trainer
+    trainer = PropagationTrainer if args.reward_prop else Trainer
     trainer(
         env=gym.make(args.env),
         seed=args.seed,
