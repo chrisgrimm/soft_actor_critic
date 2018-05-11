@@ -48,7 +48,7 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 
 class Trainer:
     def step(self, action):
-        return self.env.step(action)
+        return self.env.step(self.action_converter(action))
 
     def reset(self):
         return self.env.reset()
@@ -103,7 +103,7 @@ class Trainer:
                 [self.state_converter(s1)], sample=(not is_eval_period))
             if render:
                 env.render()
-            s2, r, t, info = self.step(self.action_converter(a))
+            s2, r, t, info = self.step(a)
             if t:
                 print('reward:', r)
 
