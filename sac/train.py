@@ -96,7 +96,7 @@ class Trainer:
                 logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
-        episode_count = Counter()
+        self.episode_count = episode_count = Counter()
         evaluation_period = 10
 
         for time_steps in itertools.count():
@@ -113,14 +113,7 @@ class Trainer:
 
             episode_count += Counter(reward=r, timesteps=1)
             if not is_eval_period:
-                step_result = self.process_step(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
-                if step_result is not None:
-                    v_loss, q_loss, pi_loss = step_result
-                    episode_count += Counter({
-                        'V loss': v_loss,
-                        'Q loss': q_loss,
-                        'pi loss': pi_loss
-                    })
+                self.process_step(s1=s1, a=a, r=r, s2=s2, t=t)
             s1 = s2
             if t:
                 s1 = self.reset()
@@ -158,7 +151,11 @@ class Trainer:
                 s2_sample = list(map(self.state_converter, s2_sample))
                 [v_loss, q_loss, pi_loss] = self.agent.train_step(
                     s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                return [v_loss, q_loss, pi_loss]
+                self.episode_count += Counter({
+                    'V loss': v_loss,
+                    'Q loss': q_loss,
+                    'pi loss': pi_loss
+                })
 
 
 class HindsightTrainer(Trainer):
@@ -199,10 +196,26 @@ class HindsightTrainer(Trainer):
         return self.env.obs_from_obs_part_and_goal(state)
 
 
-# class PropogationTrainer(HindsightTrainer):
-#     def
+class PropogationTrainer(HindsightTrainer):
+    def process_step(self, s1, a, r, s2, t):
+        if len(self.buffer) >= self.batch_size:
+            for i in range(self.num_train_steps):
+                s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
+                    self.batch_size)
+                s1_sample = list(map(self.state_converter, s1_sample))
+                s2_sample = list(map(self.state_converter, s2_sample))
+                [v_loss, q_loss, pi_loss] = self.agent.train_step(
+                    s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                self.episode_count += Counter({
+                    'V loss': v_loss,
+                    'Q loss': q_loss,
+                    'pi loss': pi_loss
+                })
 
-
+    def reset(self):
+        for s1, a, r, s2, t in self.trajectory:
+            self.buffer.append(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t)
+        return super().reset()
 
 
 def activation(name):
@@ -238,12 +251,14 @@ if __name__ == '__main__':
     parser.add_argument('--mimic-file', default=None, type=str)
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--render', action='store_true')
+    parser.add_argument('--reward-prop', action='store_true')
     args = parser.parse_args()
 
     # if args.mimic_file is not None:
     #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
 
-    Trainer(
+    trainer = PropogationTrainer if args.reward_prop else Trainer
+    trainer(
         env=gym.make(args.env),
         seed=args.seed,
         buffer_size=args.buffer_size,
