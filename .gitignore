@@ -8,3 +8,4 @@ runs.yml
 .venv
 MUJOCO_LOG.TXT
 runs.pkl
+.pyre

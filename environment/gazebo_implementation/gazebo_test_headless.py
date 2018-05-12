@@ -1,4 +1,5 @@
 import numpy as np
+
 from hsr_gazebo import HSRGazeboEnv
 
 if __name__ == '__main__':

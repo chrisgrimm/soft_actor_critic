@@ -5,20 +5,17 @@ import pickle
 from threading import Lock
 
 import cv2
-import rospy
 import numpy as np
 import scipy.misc
 
-from gazebo_gym_env import GazeboEnv
-
-from std_srvs.srv import Empty
-from gazebo_msgs.msg import ModelStates, ModelState
-from sensor_msgs.msg import LaserScan, Image
-from geometry_msgs.msg import Twist, Pose, Quaternion
-from rosgraph_msgs.msg import Clock
-
+import rospy
 from cv_bridge import CvBridge, CvBridgeError
-
+from gazebo_gym_env import GazeboEnv
+from gazebo_msgs.msg import ModelState, ModelStates
+from geometry_msgs.msg import Pose, Quaternion, Twist
+from rosgraph_msgs.msg import Clock
+from sensor_msgs.msg import Image, LaserScan
+from std_srvs.srv import Empty
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 EPSILON = 1e-4
