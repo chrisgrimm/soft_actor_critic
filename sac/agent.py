@@ -2,6 +2,8 @@ from abc import abstractmethod
 
 import tensorflow as tf
 
+from sac.utils import Step, PropStep
+
 
 def mlp(inputs, layer_size, n_layers, activation):
     for i in range(n_layers):
@@ -10,7 +12,7 @@ def mlp(inputs, layer_size, n_layers, activation):
     return inputs
 
 
-class AbstractAgent(object):
+class AbstractAgent:
     def __init__(self, s_shape, a_shape, activation: str, n_layers: int,
                  layer_size: int, learning_rate: float):
         self.activation = activation
@@ -113,13 +115,14 @@ class AbstractAgent(object):
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
 
-    def train_step(self, S1, A, R, S2, T, extra_feeds=None):
+    def train_step(self, step, extra_feeds=None):
+        assert isinstance(step, Step)
         feed_dict = {
-            self.S1: S1,
-            self.A: A,
-            self.R: R,
-            self.S2: S2,
-            self.T: T
+            self.S1: step.s1,
+            self.A: step.a,
+            self.R: step.r,
+            self.S2: step.s2,
+            self.T: step.t
         }
         if extra_feeds:
             feed_dict.update(extra_feeds)
@@ -203,3 +206,17 @@ class AbstractAgent(object):
         with tf.variable_scope(name, reuse=reuse):
             return self.policy_parameters_to_max_likelihood_action(
                 self.parameters)
+
+
+class PropagationAgent(AbstractAgent):
+    def __init__(self, s_shape, a_shape, activation: str, n_layers: int, layer_size: int, learning_rate: float):
+        self.sampled_V2 = tf.placeholder(tf.float32, [None], name='R')
+        super().__init__(s_shape, a_shape, activation, n_layers, layer_size, learning_rate)
+
+    def V_bar_S2(self):
+        return tf.maximum(self.sampled_V2, super().V_S2())
+
+    def train_step(self, step, extra_feeds=None):
+        extra_feeds[self.sampled_V2] = step.V2
+        assert isinstance(step, PropStep)
+        return super().train_step(step, extra_feeds)

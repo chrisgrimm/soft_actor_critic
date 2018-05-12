@@ -151,7 +151,7 @@ class Trainer:
                 s1_sample = list(map(self.state_converter, s1_sample))
                 s2_sample = list(map(self.state_converter, s2_sample))
                 [v_loss, q_loss, pi_loss] = self.agent.train_step(
-                    s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                    Step(s1=s1_sample, a=a_sample, r=r_sample, s2=s2_sample, t=t_sample))
                 self.episode_count += Counter({
                     'V loss': v_loss,
                     'Q loss': q_loss,
