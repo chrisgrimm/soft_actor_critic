@@ -180,7 +180,7 @@ class HindsightTrainer(Trainer):
 
     def step(self, action):
         s2, r, t, i = super().step(action)
-        self.trajectory.append((self.s1, action, r, s2, t))
+        self.trajectory.append(Step(s1=self.s1, a=action, r=r, s2=s2, t=t))
         self.s1 = s2
         return s2, r, t, i
 
