@@ -84,7 +84,7 @@ class Trainer:
 
         s1 = self.reset()
 
-        self.agent = agent = self.build_agent(
+        self.agent = agent = build_agent(
             env=env,
             activation=activation,
             n_layers=n_layers,
