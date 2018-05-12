@@ -10,7 +10,7 @@ def mlp(inputs, layer_size, n_layers, activation):
     return inputs
 
 
-class AbstractSoftActorCritic(object):
+class AbstractAgent(object):
     def __init__(self, s_shape, a_shape, activation: str, n_layers: int,
                  layer_size: int, learning_rate: float):
         self.activation = activation
@@ -113,19 +113,21 @@ class AbstractSoftActorCritic(object):
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
 
-    def train_step(self, S1, A, R, S2, T):
+    def train_step(self, S1, A, R, S2, T, extra_feeds=None):
+        feed_dict = {
+            self.S1: S1,
+            self.A: A,
+            self.R: R,
+            self.S2: S2,
+            self.T: T
+        }
+        if extra_feeds:
+            feed_dict.update(extra_feeds)
         [_, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
             [
                 self.soft_update_xi_bar, self.train_V, self.train_Q,
                 self.train_pi, self.V_loss, self.Q_loss, self.pi_loss
-            ],
-            feed_dict={
-                self.S1: S1,
-                self.A: A,
-                self.R: R,
-                self.S2: S2,
-                self.T: T
-            })
+            ], feed_dict)
         return V_loss, Q_loss, pi_loss
 
     def get_actions(self, S1, sample=True):
