@@ -16,7 +16,8 @@ State = namedtuple('State', 'obs goal')
 class HindsightWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        vector_state = self.vectorize(self.reset())
+        reset = self.reset()
+        vector_state = self.vectorize(reset)
         self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
@@ -93,17 +94,16 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
             block=self.env.block_pos(last_obs))
 
     def reward(self, obs, goal):
-        return sum(self.env.reward(goal, obs) for obs in obs)
+        return sum(self.env.reward(goal, o) for o in obs)
 
     def terminal(self, obs, goal):
-        return any(self.env.terminal(goal, obs) for obs in obs)
+        return any(self.env.terminal(goal, o) for o in obs)
 
     def desired_goal(self):
         return self.env.goal()
 
     @staticmethod
     def vectorize(state):
-        state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
         return np.concatenate(
             [np.concatenate(state_history),
@@ -121,7 +121,7 @@ ACHIEVED_GOAL = 'achieved_goal'
 
 class FetchReachHindsightWrapper(HindsightWrapper):
     def __init__(self, env):
-        assert isinstance(env, FetchReachEnv)
+        assert isinstance(env.unwrapped, FetchReachEnv)
         super().__init__(env)
 
     def achieved_goal(self, obs):
@@ -131,7 +131,15 @@ class FetchReachHindsightWrapper(HindsightWrapper):
         return self.env.compute_reward(obs[ACHIEVED_GOAL], goal, {})
 
     def terminal(self, obs, goal):
-        return goal_distance(obs[ACHIEVED_GOAL], goal) < self.env.distance_threshold
+        return goal_distance(obs[ACHIEVED_GOAL], goal) < self.env.unwrapped.distance_threshold
 
     def desired_goal(self):
-        return self.env.goal.copy()
+        return self.env.unwrapped.goal.copy()
+
+    @staticmethod
+    def vectorize(state):
+        return np.concatenate([
+            state.obs['achieved_goal'],
+            state.obs['desired_goal'],
+            state.obs['observation']
+        ])
