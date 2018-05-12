@@ -14,29 +14,7 @@ from environment.goal_wrapper import (HindsightWrapper)
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Step
-
-
-def build_agent(env, activation, n_layers, layer_size, learning_rate):
-    state_shape = env.observation_space.shape
-    if isinstance(env.action_space, spaces.Discrete):
-        action_shape = [env.action_space.n]
-        PolicyType = CategoricalPolicy
-    else:
-        action_shape = env.action_space.shape
-        PolicyType = GaussianPolicy
-
-    class Agent(PolicyType, AbstractAgent):
-        def __init__(self, s_shape, a_shape):
-            super(Agent, self).__init__(
-                s_shape=s_shape,
-                a_shape=a_shape,
-                activation=activation,
-                n_layers=n_layers,
-                layer_size=layer_size,
-                learning_rate=learning_rate)
-
-    return Agent(state_shape, action_shape)
+from sac.utils import Step, PropStep
 
 
 def inject_mimic_experiences(mimic_file, buffer, N=1):
@@ -85,7 +63,7 @@ class Trainer:
 
         s1 = self.reset()
 
-        self.agent = agent = build_agent(
+        self.agent = agent = self.build_agent(
             env=env,
             activation=activation,
             n_layers=n_layers,
@@ -115,20 +93,7 @@ class Trainer:
 
             episode_count += Counter(reward=r, timesteps=1)
             if not is_eval_period:
-                self.buffer.append(Step(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t))
-                if len(self.buffer) >= batch_size:
-                    for i in range(num_train_steps):
-                        s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
-                            batch_size)
-                        s1_sample = list(map(self.state_converter, s1_sample))
-                        s2_sample = list(map(self.state_converter, s2_sample))
-                        [v_loss, q_loss, pi_loss] = agent.train_step(
-                            s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                        episode_count += Counter({
-                            'V loss': v_loss,
-                            'Q loss': q_loss,
-                            'pi loss': pi_loss
-                        })
+                self.process_step(s1=s1, a=a, r=r, s2=s2, t=t)
             s1 = s2
             if t:
                 s1 = self.reset()
@@ -156,8 +121,45 @@ class Trainer:
                 for k in episode_count:
                     episode_count[k] = 0
 
+    def build_agent(self, env, activation, n_layers, layer_size, learning_rate, base_agent=AbstractAgent):
+        state_shape = env.observation_space.shape
+        if isinstance(env.action_space, spaces.Discrete):
+            action_shape = [env.action_space.n]
+            PolicyType = CategoricalPolicy
+        else:
+            action_shape = env.action_space.shape
+            PolicyType = GaussianPolicy
 
-class HindsightTrainer(Trainer):
+        class Agent(PolicyType, base_agent):
+            def __init__(self, s_shape, a_shape):
+                super(Agent, self).__init__(
+                    s_shape=s_shape,
+                    a_shape=a_shape,
+                    activation=activation,
+                    n_layers=n_layers,
+                    layer_size=layer_size,
+                    learning_rate=learning_rate)
+
+        return Agent(state_shape, action_shape)
+
+    def process_step(self, s1, a, r, s2, t):
+        self.buffer.append(Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
+        if len(self.buffer) >= self.batch_size:
+            for i in range(self.num_train_steps):
+                s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
+                    self.batch_size)
+                s1_sample = list(map(self.state_converter, s1_sample))
+                s2_sample = list(map(self.state_converter, s2_sample))
+                [v_loss, q_loss, pi_loss] = self.agent.train_step(
+                    s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                self.episode_count += Counter({
+                    'V loss': v_loss,
+                    'Q loss': q_loss,
+                    'pi loss': pi_loss
+                })
+
+
+class TrajectoryTrainer(Trainer):
     def __init__(self, env, seed, buffer_size, reward_scale, batch_size,
                  num_train_steps, logdir, render, activation, n_layers,
                  layer_size, learning_rate):
@@ -185,14 +187,27 @@ class HindsightTrainer(Trainer):
         return s2, r, t, i
 
     def reset(self):
+        self.trajectory = []
+        self.s1 = super().reset()
+        return self.s1
+
+
+class HindsightTrainer(TrajectoryTrainer):
+    def __init__(self, env, seed, buffer_size, reward_scale, batch_size, num_train_steps, logdir, render, activation,
+                 n_layers, layer_size, learning_rate):
+        assert isinstance(env, HindsightWrapper)
+        super().__init__(env=env, seed=seed, buffer_size=buffer_size, reward_scale=reward_scale,
+                         batch_size=batch_size, num_train_steps=num_train_steps, logdir=logdir,
+                         render=render, activation=activation, n_layers=n_layers,
+                         layer_size=layer_size, learning_rate=learning_rate)
+
+    def reset(self):
         assert isinstance(self.env, HindsightWrapper)
         for step in self.env.recompute_trajectory(self.trajectory):
             assert isinstance(step, Step)
             # noinspection PyProtectedMember
             self.buffer.append(step._replace(r=step.r * self.reward_scale))
-        self.trajectory = []
-        self.s1 = super().reset()
-        return self.s1
+        return super().reset()
 
     def state_converter(self, state):
         assert isinstance(self.env, HindsightWrapper)
