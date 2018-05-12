@@ -185,13 +185,17 @@ class HindsightTrainer(Trainer):
         return s2, r, t, i
 
     def reset(self):
-        for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
-            self.buffer.append(Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
+        assert isinstance(self.env, HindsightWrapper)
+        for step in self.env.recompute_trajectory(self.trajectory):
+            assert isinstance(step, Step)
+            # noinspection PyProtectedMember
+            self.buffer.append(step._replace(r=step.r * self.reward_scale))
         self.trajectory = []
         self.s1 = super().reset()
         return self.s1
 
     def state_converter(self, state):
+        assert isinstance(self.env, HindsightWrapper)
         return self.env.vectorize(state)
 
 
