@@ -2,20 +2,17 @@ import argparse
 import itertools
 import pickle
 import time
-from collections import Counter
 
 import gym
 import numpy as np
 import tensorflow as tf
+from collections import Counter
 from gym import spaces
 
-from environment.goal_wrapper import (GoalWrapper, MountaincarGoalWrapper,
-                                      PickAndPlaceGoalWrapper)
-from environment.pick_and_place import PickAndPlaceEnv
-from sac.agent import AbstractSoftActorCritic
-from sac.chaser import ChaserEnv
+from environment.goal_wrapper import (HindsightWrapper)
+from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
-from sac.replay_buffer.replay_buffer import ReplayBuffer2
+from sac.replay_buffer import ReplayBuffer2
 
 
 def build_agent(env, activation, n_layers, layer_size, learning_rate):
@@ -27,7 +24,7 @@ def build_agent(env, activation, n_layers, layer_size, learning_rate):
         action_shape = env.action_space.shape
         PolicyType = GaussianPolicy
 
-    class Agent(PolicyType, AbstractSoftActorCritic):
+    class Agent(PolicyType, AbstractAgent):
         def __init__(self, s_shape, a_shape):
             super(Agent, self).__init__(
                 s_shape=s_shape,
@@ -160,7 +157,7 @@ class HindsightTrainer(Trainer):
     def __init__(self, env, seed, buffer_size, reward_scale, batch_size,
                  num_train_steps, logdir, render, activation, n_layers,
                  layer_size, learning_rate):
-        assert isinstance(env, GoalWrapper)
+        assert isinstance(env, HindsightWrapper)
         self.trajectory = []
         super().__init__(
             env=env,
@@ -191,7 +188,7 @@ class HindsightTrainer(Trainer):
         return self.s1
 
     def state_converter(self, state):
-        return self.env.obs_from_obs_part_and_goal(state)
+        return self.env.vectorize(state)
 
 
 def activation(name):

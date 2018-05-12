@@ -1,9 +1,4 @@
-from abc import abstractmethod
-
-import numpy as np
 import tensorflow as tf
-
-from sac.utils import ACT
 
 EPS = 1E-6
 

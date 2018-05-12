@@ -52,8 +52,7 @@ class BaseEnv(gym.Env):
     def hit_max_steps(self):
         return self._step_num >= self.max_steps
 
-    @staticmethod
-    def seed(seed):
+    def seed(self, seed=None):
         np.random.seed(seed)
 
     def __enter__(self):

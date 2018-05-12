@@ -22,20 +22,18 @@ def quaternion_multiply(quaternion1, quaternion0):
         dtype=np.float64)
 
 
-def failed(resting_block_height, goal_block_height):
-    return False
-
-
 Goal = namedtuple('Goal', 'gripper block')
 
 
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
                  max_steps,
+                 random_block,
                  min_lift_height=.02,
                  geofence=.04,
                  neg_reward=False,
                  history_len=1):
+        self._random_block = random_block
         self._goal_block_name = 'block1'
         self._min_lift_height = min_lift_height + geofence
         self._geofence = geofence
@@ -73,10 +71,11 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
-        block_joint = self.sim.jnt_qposadr('block1joint')
+        if self._random_block:
+            block_joint = self.sim.jnt_qposadr('block1joint')
 
-        self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
-        self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
+            self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
+            self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
         # self.init_qpos = np.array([4.886e-05,
         #                            - 2.152e-05,
@@ -150,7 +149,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def _currently_failed(self):
         return False
 
-    def _achieved_goal(self, goal, obs):
+    def _at_goal(self, goal, obs):
         qpos, = obs
         gripper_at_goal = at_goal(
             self.gripper_pos(qpos), goal.gripper, self._geofence)
@@ -160,10 +159,10 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def compute_terminal(self, goal, obs):
         # return False
-        return self._achieved_goal(goal, obs)
+        return self._at_goal(goal, obs)
 
     def compute_reward(self, goal, obs):
-        if self._achieved_goal(goal, obs):
+        if self._at_goal(goal, obs):
             return 1
         elif self._neg_reward:
             return -.0001
