@@ -13,7 +13,8 @@ from gym import spaces
 from environment.goal_wrapper import (HindsightWrapper)
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
-from sac.replay_buffer import ReplayBuffer2
+from sac.replay_buffer import ReplayBuffer
+from sac.utils import Step
 
 
 def build_agent(env, activation, n_layers, layer_size, learning_rate):
@@ -44,7 +45,7 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
     for trajectory in mimic_trajectories:
         for (s1, a, r, s2, t) in trajectory:
             for _ in range(N):
-                buffer.append(s1=s1, a=a, r=r, s2=s2, t=t)
+                buffer.append(Step(s1=s1, a=a, r=r, s2=s2, t=t))
 
 
 class Trainer:
@@ -79,7 +80,7 @@ class Trainer:
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
-        self.buffer = ReplayBuffer2(buffer_size)
+        self.buffer = ReplayBuffer(buffer_size)
         self.reward_scale = reward_scale
 
         s1 = self.reset()
@@ -114,7 +115,7 @@ class Trainer:
 
             episode_count += Counter(reward=r, timesteps=1)
             if not is_eval_period:
-                self.buffer.append(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t)
+                self.buffer.append(Step(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t))
                 if len(self.buffer) >= batch_size:
                     for i in range(num_train_steps):
                         s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
