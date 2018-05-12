@@ -3,6 +3,8 @@ from collections import namedtuple
 
 import gym
 import numpy as np
+from gym.envs.robotics import FetchReachEnv
+from gym.envs.robotics.fetch_env import goal_distance
 from gym.spaces import Box
 
 from environment.pick_and_place import Goal, PickAndPlaceEnv
@@ -18,7 +20,7 @@ class HindsightWrapper(gym.Wrapper):
         self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
-    def achieved_goal(self, obs_part):
+    def achieved_goal(self, obs):
         raise NotImplementedError
 
     @abstractmethod
@@ -66,8 +68,8 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     new obs is [pos, vel, goal_pos]
     """
 
-    def achieved_goal(self, obs_part):
-        return np.array([obs_part[0]])
+    def achieved_goal(self, obs):
+        return np.array([obs[0]])
 
     def reward(self, obs, goal):
         return 100 if obs[0] >= goal[0] else 0
@@ -112,3 +114,24 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         if t:
             s2 = self.reset()
         return s2, r, t, info
+
+
+ACHIEVED_GOAL = 'achieved_goal'
+
+
+class FetchReachHindsightWrapper(HindsightWrapper):
+    def __init__(self, env):
+        assert isinstance(env, FetchReachEnv)
+        super().__init__(env)
+
+    def achieved_goal(self, obs):
+        return obs[ACHIEVED_GOAL]
+
+    def reward(self, obs, goal):
+        return self.env.compute_reward(obs[ACHIEVED_GOAL], goal, {})
+
+    def terminal(self, obs, goal):
+        return goal_distance(obs[ACHIEVED_GOAL], goal) < self.env.distance_threshold
+
+    def desired_goal(self):
+        return self.env.goal.copy()
