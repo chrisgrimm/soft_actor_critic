@@ -1,11 +1,11 @@
-import gym
-import rospy
 import os
 import signal
 import subprocess
-
 from os import path
 
+import gym
+
+import rospy
 from std_srvs.srv import Empty
 
 

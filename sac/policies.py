@@ -1,32 +1,23 @@
-import tensorflow as tf
-import numpy as np
 from abc import abstractmethod
+
+import numpy as np
+import tensorflow as tf
+
+from sac.utils import ACT
 
 EPS = 1E-6
 
 
-def leaky_relu(x, alpha=0.2):
-    return tf.maximum(x, alpha * x)
-
-
-class MLPPolicy(object):
-    def input_processing(self, s):
-        fc1 = tf.layers.dense(s, 256, tf.nn.relu, name='fc1')
-        fc2 = tf.layers.dense(fc1, 256, tf.nn.relu, name='fc2')
-        fc3 = tf.layers.dense(fc2, 256, tf.nn.relu, name='fc3')
-        return fc3
-
-
 class GaussianPolicy(object):
-    '''
+    """
     Policy outputs a gaussian action that is clamped to the interval [-1, 1]
-    '''
+    """
 
     def produce_policy_parameters(self, a_shape, processed_s):
         mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params')
         sigma_params = tf.layers.dense(
             processed_s, a_shape, tf.nn.sigmoid, name='sigma_params')
-        return (mu_params, sigma_params + 0.0001)
+        return mu_params, sigma_params + 0.0001
 
     def policy_parameters_to_log_prob(self, u, parameters):
         (mu, sigma) = parameters
@@ -46,6 +37,10 @@ class GaussianPolicy(object):
 
     def transform_action_sample(self, action_sample):
         return tf.tanh(action_sample)
+
+    def entropy_from_params(self, parameters):
+        (mu, sigma) = parameters
+        return tf.distributions.Normal(mu, sigma).entropy()
 
 
 class GaussianMixturePolicy(object):
@@ -68,13 +63,13 @@ class CategoricalPolicy(object):
         logits = parameters
         out = tf.distributions.Categorical(logits=logits).log_prob(
             tf.argmax(a, axis=1))
-        #out = tf.Print(out, [out], summarize=10)
+        # out = tf.Print(out, [out], summarize=10)
         return out
 
     def policy_parameters_to_sample(self, parameters):
         logits = parameters
         a_shape = logits.get_shape()[1].value
-        #logits = tf.Print(logits, [tf.nn.softmax(logits)], message='logits are:', summarize=10)
+        # logits = tf.Print(logits, [tf.nn.softmax(logits)], message='logits are:', summarize=10)
         out = tf.one_hot(
             tf.distributions.Categorical(logits=logits).sample(), a_shape)
         return out
@@ -86,3 +81,6 @@ class CategoricalPolicy(object):
 
     def transform_action_sample(self, action_sample):
         return action_sample
+
+    def entropy_from_params(self, logits):
+        return tf.distributions.Categorical(logits).entropy()

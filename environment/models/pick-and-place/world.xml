@@ -121,8 +121,8 @@
         <!--<motor gear="1000.0" name="arm_roll_motor" joint="arm_roll_joint"/>-->
         <!--<motor gear="1000.0" name="wrist_flex_motor" joint="wrist_flex_joint"/>-->
         <!--<motor gear="1000.0" name="wrist_roll_motor" joint="wrist_roll_joint" forcelimited="true" forcerange="-.03 .03"/>/>-->
-        <!--<position gear="1" kp="1000" name="wrist_roll_motor" joint="wrist_roll_joint"-->
-                  <!--forcelimited="true" forcerange="-20 20"/>-->
+        <position gear="1" kp="1000" name="wrist_roll_motor" joint="wrist_roll_joint"
+                  forcelimited="true" forcerange="-20 20"/>
         <position gear="1" kp="1000" name="hand_l_proximal_motor" joint="hand_l_proximal_joint"
                   forcelimited="true" forcerange="-20 20"/>
         <position gear="1" kp="1000" name="hand_r_proximal_motor" joint="hand_r_proximal_joint"

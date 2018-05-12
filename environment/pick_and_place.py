@@ -3,10 +3,10 @@ from os.path import join
 
 import numpy as np
 from gym import spaces
-from mujoco import ObjType
 
 from environment.base import at_goal
 from environment.mujoco import MujocoEnv
+from mujoco import ObjType
 
 
 def quaternion_multiply(quaternion1, quaternion0):
@@ -33,7 +33,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
                  max_steps,
                  min_lift_height=.02,
-                 geofence=.06,
+                 geofence=.04,
                  neg_reward=False,
                  history_len=1):
         self._goal_block_name = 'block1'
@@ -45,7 +45,7 @@ class PickAndPlaceEnv(MujocoEnv):
             xml_filepath=join('models', 'pick-and-place', 'world.xml'),
             history_len=history_len,
             neg_reward=neg_reward,
-            steps_per_action=10,
+            steps_per_action=20,
             image_dimensions=None)
 
         self.initial_qpos = np.copy(self.init_qpos)
@@ -73,6 +73,22 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
+        block_joint = self.sim.jnt_qposadr('block1joint')
+
+        self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
+        self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
+
+        # self.init_qpos = np.array([4.886e-05,
+        #                            - 2.152e-05,
+        #                            4.385e-01,
+        #                            1.000e+00,
+        #                            2.254e-17,
+        #                            - 2.388e-19,
+        #                            1.290e-05,
+        #                            - 9.773e-01,
+        #                            2.773e-02,
+        #                            3.573e-01,
+        #                            3.574e-01, ])
         # if np.random.uniform(0, 1) < .5:
         #     self.init_qpos = np.array([
         #         7.450e-05,
@@ -89,11 +105,6 @@ class PickAndPlaceEnv(MujocoEnv):
         #     ])
         # else:
         #     self.init_qpos = self.initial_qpos
-
-        # block_joint = self.sim.jnt_qposadr('block1joint')
-
-        # self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
-        # self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
         # self.init_qpos[block_joint + 3:block_joint + 7] = np.random.random(
         #     4) * 2 * np.pi
@@ -117,10 +128,16 @@ class PickAndPlaceEnv(MujocoEnv):
         pass
 
     def _obs(self):
-        return self.sim.qpos,
+        return np.copy(self.sim.qpos),
 
-    def block_pos(self):
-        return self.sim.get_body_xpos(self._goal_block_name)
+    def block_pos(self, qpos=None):
+        return self.sim.get_body_xpos(self._goal_block_name, qpos)
+
+    def gripper_pos(self, qpos=None):
+        finger1, finger2 = [
+            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
+        ]
+        return (finger1 + finger2) / 2.
 
     def goal(self):
         goal_pos = self._initial_block_pos + \
@@ -134,28 +151,24 @@ class PickAndPlaceEnv(MujocoEnv):
         return False
 
     def _achieved_goal(self, goal, obs):
+        qpos, = obs
         gripper_at_goal = at_goal(
-            self.gripper_pos(obs[0]), goal.gripper, self._geofence)
-        block_at_goal = at_goal(self.block_pos(), goal.block, self._geofence)
+            self.gripper_pos(qpos), goal.gripper, self._geofence)
+        block_at_goal = at_goal(
+            self.block_pos(qpos), goal.block, self._geofence)
         return gripper_at_goal and block_at_goal
 
     def compute_terminal(self, goal, obs):
+        # return False
         return self._achieved_goal(goal, obs)
 
     def compute_reward(self, goal, obs):
         if self._achieved_goal(goal, obs):
-            print('Achieved goal')
             return 1
         elif self._neg_reward:
             return -.0001
         else:
             return 0
-
-    def gripper_pos(self, qpos=None):
-        finger1, finger2 = [
-            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
-        ]
-        return (finger1 + finger2) / 2.
 
     def step(self, action):
         action = np.clip(action, -1, 1)
