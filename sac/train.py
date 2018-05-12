@@ -2,6 +2,7 @@ import argparse
 import itertools
 import pickle
 import time
+from typing import Callable
 
 import gym
 import numpy as np
@@ -45,9 +46,9 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def __init__(self, env, seed, buffer_size, activation, n_layers,
-                 layer_size, learning_rate, reward_scale, batch_size,
-                 num_train_steps, logdir, render):
+    def __init__(self, env: gym.Env, seed: int, buffer_size: int, activation: Callable,
+                 n_layers: int, layer_size: int, learning_rate: float, reward_scale: float,
+                 batch_size: int, num_train_steps: int, logdir: str, render: bool):
 
         if seed is not None:
             np.random.seed(seed)
