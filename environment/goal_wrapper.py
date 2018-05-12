@@ -6,6 +6,7 @@ import numpy as np
 from gym.spaces import Box
 
 from environment.pick_and_place import Goal, PickAndPlaceEnv
+from sac.utils import Step
 
 State = namedtuple('State', 'obs goal')
 
@@ -50,14 +51,13 @@ class HindsightWrapper(gym.Wrapper):
     def recompute_trajectory(self, trajectory):
         if not trajectory:
             return ()
-        (_, _, _, sp_final, _) = trajectory[-1]
-        achieved_goal = self.achieved_goal(sp_final.obs)
-        for (s, a, r, sp, t) in trajectory:
-            new_s = s.obs, achieved_goal
-            new_sp = sp.obs, achieved_goal
-            new_r = self.reward(sp.obs, achieved_goal)
-            new_t = self.terminal(sp.obs, achieved_goal) or t
-            yield new_s, a, new_r, new_sp, new_t
+        achieved_goal = self.achieved_goal(trajectory[-1].s2.obs)
+        for step in trajectory:
+            new_s = State(obs=step.s1.obs, goal=achieved_goal)
+            new_sp = State(obs=step.s2.obs, goal=achieved_goal)
+            new_r = self.reward(obs=step.s2.obs, goal=achieved_goal)
+            new_t = self.terminal(obs=step.s2.obs, goal=achieved_goal) or step.t
+            yield Step(s1=new_s, a=step.a, r=new_r, s2=new_sp, t=new_t)
             if new_t:
                 break
 
