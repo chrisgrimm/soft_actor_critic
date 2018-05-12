@@ -2,6 +2,7 @@ import argparse
 import itertools
 import pickle
 import time
+from typing import Callable
 
 import gym
 import numpy as np
@@ -66,22 +67,24 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def __init__(self, env, seed, buffer_size, activation, n_layers,
-                 layer_size, learning_rate, reward_scale, batch_size,
-                 num_train_steps, logdir, render):
+    def __init__(self, env: gym.Env, seed: int, buffer_size: int, activation: Callable,
+                 n_layers: int, layer_size: int, learning_rate: float, reward_scale: float,
+                 batch_size: int, num_train_steps: int, logdir: str, render: bool):
 
         if seed is not None:
             np.random.seed(seed)
             tf.set_random_seed(seed)
             env.seed(seed)
 
+        self.num_train_steps = num_train_steps
+        self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer2(buffer_size)
         self.reward_scale = reward_scale
 
         s1 = self.reset()
 
-        agent = build_agent(
+        self.agent = agent = self.build_agent(
             env=env,
             activation=activation,
             n_layers=n_layers,
@@ -94,7 +97,7 @@ class Trainer:
                 logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
-        episode_count = Counter()
+        self.episode_count = episode_count = Counter()
         evaluation_period = 10
 
         for time_steps in itertools.count():
@@ -191,7 +194,7 @@ class HindsightTrainer(Trainer):
         return self.env.vectorize(state)
 
 
-def activation(name):
+def activation_type(name):
     activations = dict(
         relu=tf.nn.relu,
         crelu=tf.nn.crelu,
@@ -213,11 +216,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--activation', default=tf.nn.relu, type=activation)
+    parser.add_argument('--activation', default=tf.nn.relu, type=activation_type)
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
-    parser.add_argument('--buffer-size', default=int(10**7), type=int)
+    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)

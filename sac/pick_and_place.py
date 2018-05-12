@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from environment.goal_wrapper import PickAndPlaceHindsightWrapper
 from environment.pick_and_place import PickAndPlaceEnv
-from sac.train import HindsightTrainer, activation
+from sac.train import HindsightTrainer, activation_type
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
