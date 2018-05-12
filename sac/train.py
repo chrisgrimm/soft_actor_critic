@@ -9,7 +9,7 @@ import tensorflow as tf
 from collections import Counter
 from gym import spaces
 
-from environment.goal_wrapper import GoalWrapper
+from environment.goal_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent, PropagationAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
@@ -193,7 +193,7 @@ class TrajectoryTrainer(Trainer):
 class HindsightTrainer(TrajectoryTrainer):
     def __init__(self, env, seed, buffer_size, reward_scale, batch_size, num_train_steps, logdir, render, activation,
                  n_layers, layer_size, learning_rate):
-        assert isinstance(env, GoalWrapper)
+        assert isinstance(env, HindsightWrapper)
         super().__init__(env=env, seed=seed, buffer_size=buffer_size, reward_scale=reward_scale,
                          batch_size=batch_size, num_train_steps=num_train_steps, logdir=logdir,
                          render=render, activation=activation, n_layers=n_layers,
@@ -205,7 +205,7 @@ class HindsightTrainer(TrajectoryTrainer):
         return super().reset()
 
     def state_converter(self, state):
-        return self.env.obs_from_obs_part_and_goal(state)
+        return self.env.vectorize(state)
 
 
 class PropagationTrainer(TrajectoryTrainer):

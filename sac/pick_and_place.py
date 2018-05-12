@@ -2,7 +2,7 @@ import argparse
 
 import tensorflow as tf
 
-from environment.goal_wrapper import PickAndPlaceGoalWrapper
+from environment.goal_wrapper import PickAndPlaceHindsightWrapper
 from environment.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer, activation_type, HindsightPropagationTrainer
 
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     trainer = HindsightPropagationTrainer if args.reward_prop else HindsightTrainer
 
     trainer(
-        env=PickAndPlaceGoalWrapper(
+        env=PickAndPlaceHindsightWrapper(
             PickAndPlaceEnv(
                 max_steps=args.max_steps,
                 random_block=args.random_block,

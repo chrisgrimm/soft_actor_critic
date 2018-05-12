@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 
 from environment.base import print1
-from environment.goal_wrapper import PickAndPlaceGoalWrapper
+from environment.goal_wrapper import PickAndPlaceHindsightWrapper
 from environment.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
 
@@ -18,7 +18,7 @@ def run(port, value_tensor=None, sess=None):
     #env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    env = PickAndPlaceGoalWrapper(PickAndPlaceEnv(max_steps=1000))
+    env = PickAndPlaceHindsightWrapper(PickAndPlaceEnv(max_steps=1000))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 

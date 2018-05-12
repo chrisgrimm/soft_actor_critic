@@ -3,7 +3,7 @@ import argparse
 import gym
 import tensorflow as tf
 
-from environment.goal_wrapper import MountaincarGoalWrapper
+from environment.goal_wrapper import MountaincarHindsightWrapper
 from sac.train import HindsightTrainer, HindsightPropagationTrainer
 
 if __name__ == '__main__':
@@ -15,7 +15,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     HindsightPropagationTrainer(
-        env=MountaincarGoalWrapper(gym.make('MountainCarContinuous-v0')),
+        env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
         seed=args.seed,
         buffer_size=10**7,
         activation=tf.nn.relu,

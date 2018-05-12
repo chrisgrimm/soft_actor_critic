@@ -11,97 +11,96 @@ from sac.utils import Step
 State = namedtuple('State', 'obs goal')
 
 
-class GoalWrapper(gym.Wrapper):
+class HindsightWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        concatenate = self.obs_from_obs_part_and_goal(self.reset())
-        self.observation_space = Box(-1, 1, concatenate.shape)
+        vector_state = self.vectorize(self.reset())
+        self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
-    def goal_from_obs_part(self, obs_part):
+    def achieved_goal(self, obs_part):
         raise NotImplementedError
 
     @abstractmethod
-    def reward(self, obs_part, goal):
+    def reward(self, obs, goal):
         raise NotImplementedError
 
     @abstractmethod
-    def terminal(self, obs_part, goal):
+    def terminal(self, obs, goal):
         raise NotImplementedError
 
     @abstractmethod
-    def final_goal(self):
+    def desired_goal(self):
         raise NotImplementedError
 
     @staticmethod
-    def obs_from_obs_part_and_goal(state):
+    def vectorize(state):
         return np.concatenate(state)
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
-        new_s2 = State(obs=s2, goal=self.final_goal())
-        new_r = self.reward(s2, self.final_goal())
-        new_t = self.terminal(s2, self.final_goal()) or t
+        new_s2 = State(obs=s2, goal=self.desired_goal())
+        new_r = self.reward(s2, self.desired_goal())
+        new_t = self.terminal(s2, self.desired_goal()) or t
         return new_s2, new_r, new_t, {'base_reward': r}
 
     def reset(self):
-        return State(obs=self.env.reset(), goal=self.final_goal())
+        return State(obs=self.env.reset(), goal=self.desired_goal())
 
     def recompute_trajectory(self, trajectory):
         if not trajectory:
             return ()
-        (_, _, _, sp_final, _) = trajectory[-1]
-        achieved_goal = self.goal_from_obs_part(sp_final.obs)
-        for (s, a, r, sp, t) in trajectory:
-            new_s = s.obs, achieved_goal
-            new_sp = sp.obs, achieved_goal
-            new_r = self.reward(sp.obs, achieved_goal)
-            new_t = self.terminal(sp.obs, achieved_goal) or t
-            yield Step(s1=new_s, a=a, r=new_r, s2=new_sp, t=new_t)
+        achieved_goal = self.achieved_goal(trajectory[-1].s2.obs)
+        for step in trajectory:
+            new_s = State(obs=step.s1.obs, goal=achieved_goal)
+            new_sp = State(obs=step.s2.obs, goal=achieved_goal)
+            new_r = self.reward(obs=step.s2.obs, goal=achieved_goal)
+            new_t = self.terminal(obs=step.s2.obs, goal=achieved_goal) or step.t
+            yield Step(s1=new_s, a=step.a, r=new_r, s2=new_sp, t=new_t)
             if new_t:
                 break
 
 
-class MountaincarGoalWrapper(GoalWrapper):
+class MountaincarHindsightWrapper(HindsightWrapper):
     """
     new obs is [pos, vel, goal_pos]
     """
 
-    def goal_from_obs_part(self, obs_part):
+    def achieved_goal(self, obs_part):
         return np.array([obs_part[0]])
 
-    def reward(self, obs_part, goal):
-        return 100 if obs_part[0] >= goal[0] else 0
+    def reward(self, obs, goal):
+        return 100 if obs[0] >= goal[0] else 0
 
-    def terminal(self, obs_part, goal):
-        return obs_part[0] >= goal[0]
+    def terminal(self, obs, goal):
+        return obs[0] >= goal[0]
 
-    def final_goal(self):
+    def desired_goal(self):
         return np.array([0.45])
 
 
-class PickAndPlaceGoalWrapper(GoalWrapper):
+class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def __init__(self, env):
         assert isinstance(env, PickAndPlaceEnv)
         super().__init__(env)
 
-    def goal_from_obs_part(self, history):
+    def achieved_goal(self, history):
         last_obs, = history[-1]
         return Goal(
             gripper=self.env.gripper_pos(last_obs),
             block=self.env.block_pos(last_obs))
 
-    def reward(self, obs_part, goal):
-        return sum(self.env.compute_reward(goal, obs) for obs in obs_part)
+    def reward(self, obs, goal):
+        return sum(self.env.reward(goal, obs) for obs in obs)
 
-    def terminal(self, obs_part, goal):
-        return any(self.env.compute_terminal(goal, obs) for obs in obs_part)
+    def terminal(self, obs, goal):
+        return any(self.env.terminal(goal, obs) for obs in obs)
 
-    def final_goal(self):
+    def desired_goal(self):
         return self.env.goal()
 
     @staticmethod
-    def obs_from_obs_part_and_goal(state):
+    def vectorize(state):
         state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
         return np.concatenate(
