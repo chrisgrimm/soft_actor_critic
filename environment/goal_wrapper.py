@@ -1,8 +1,7 @@
-from abc import abstractmethod
-from collections import namedtuple
-
 import gym
 import numpy as np
+from abc import abstractmethod
+from collections import namedtuple
 from gym.spaces import Box
 
 from environment.pick_and_place import Goal, PickAndPlaceEnv
@@ -113,3 +112,5 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         if t:
             s2 = self.reset()
         return s2, r, t, info
+
+
