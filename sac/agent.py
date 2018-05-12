@@ -42,7 +42,7 @@ class AbstractAgent(object):
 
         # constructing V loss
         with tf.control_dependencies([self.A_sampled1]):
-            V_S1 = self.V_network(S1, 'V')
+            V_S1 = self.V_S1()
             Q_sampled1 = self.Q_network(
                 S1, self.transform_action_sample(A_sampled1), 'Q')
             log_pi_sampled1 = self.pi_network_log_prob(
@@ -52,11 +52,11 @@ class AbstractAgent(object):
 
         # constructing Q loss
         with tf.control_dependencies([self.V_loss]):
-            V_bar_S2 = self.V_network(S2, 'V_bar')
+            V_S2 = self.V_S2()
             Q = self.Q_network(
                 S1, self.transform_action_sample(A), 'Q', reuse=True)
             self.Q_loss = Q_loss = tf.reduce_mean(
-                0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
+                0.5 * tf.square(Q - (R + (1 - T) * gamma * V_S2)))
 
         # constructing pi loss
         with tf.control_dependencies([self.Q_loss]):
@@ -108,7 +108,7 @@ class AbstractAgent(object):
         # ensure that xi and xi_bar are the same at initialization
         hard_update_xi_bar_ops = [
             tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
-        ]
+            ]
 
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
@@ -153,6 +153,12 @@ class AbstractAgent(object):
     def V_network(self, s, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
             return tf.reshape(tf.layers.dense(self.mlp(s), 1, name='v'), [-1])
+
+    def V_S1(self):
+        return self.V_network(self.S1, 'V')
+
+    def V_S2(self):
+        return self.V_network(self.S2, 'V_bar')
 
     def input_processing(self, s):
         return self.mlp(s)
