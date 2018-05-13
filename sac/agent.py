@@ -57,11 +57,10 @@ class AbstractAgent:
 
         # constructing Q loss
         with tf.control_dependencies([self.V_loss]):
-            V_S2 = self.V_S2()
             Q = self.Q_network(
                 S1, self.transform_action_sample(A), 'Q', reuse=True)
             self.Q_loss = Q_loss = tf.reduce_mean(
-                0.5 * tf.square(Q - (R + (1 - T) * gamma * V_S2)))
+                0.5 * tf.square(Q - (R + (1 - T) * gamma * self.V_S2())))
 
         # constructing pi loss
         with tf.control_dependencies([self.Q_loss]):

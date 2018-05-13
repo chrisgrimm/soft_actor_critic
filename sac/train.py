@@ -28,20 +28,19 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 
 class Trainer:
     def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
-        # noinspection PyTypeChecker
-        return self.env.step(action)
-
-    def reset(self) -> State:
-        return self.env.reset()
-
-    def action_converter(self, action: np.ndarray) -> Union[np.ndarray, int]:
         """ Preprocess action before feeding to env """
         if type(self.env.action_space) is spaces.Discrete:
-            return np.argmax(action)
+            # noinspection PyTypeChecker
+            return self.env.step(np.argmax(action))
         else:
             action = np.tanh(action)
             hi, lo = self.env.action_space.high, self.env.action_space.low
-            return ((action + 1) / 2) * (hi - lo) + lo
+            # noinspection PyUnresolvedReferences
+            # noinspection PyTypeChecker
+            return self.env.step((action + 1) / 2 * (hi - lo) + lo)
+
+    def reset(self) -> State:
+        return self.env.reset()
 
     def vectorize_state(self, state: State) -> np.ndarray:
         """ Preprocess state before feeding to network """
@@ -88,7 +87,7 @@ class Trainer:
                 [self.vectorize_state(s1)], sample=(not is_eval_period))
             if render:
                 env.render()
-            s2, r, t, info = self.step(self.action_converter(a))
+            s2, r, t, info = self.step(a)
             if t:
                 print('reward:', r)
 
