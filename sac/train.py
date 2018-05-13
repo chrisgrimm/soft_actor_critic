@@ -2,7 +2,7 @@ import argparse
 import itertools
 import pickle
 import time
-from typing import Callable, Tuple, Union
+from typing import Callable, Tuple, Union, Generator, Iterable, Iterator
 
 import gym
 import numpy as np
@@ -153,7 +153,7 @@ class Trainer:
 
         return Agent(state_shape, action_shape)
 
-    def process_step(self, s1, a, r, s2, t):
+    def process_step(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
         self.buffer.append(
             Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
         if len(self.buffer) >= self.batch_size:
@@ -182,13 +182,13 @@ class TrajectoryTrainer(Trainer):
         super().__init__(**kwargs)
         self.s1 = self.reset()
 
-    def step(self, action):
+    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
         s2, r, t, i = super().step(action)
         self.trajectory.append(Step(s1=self.s1, a=action, r=r, s2=s2, t=t))
         self.s1 = s2
         return s2, r, t, i
 
-    def reset(self):
+    def reset(self) -> State:
         self.trajectory = []
         self.s1 = super().reset()
         return self.s1
@@ -199,19 +199,19 @@ class HindsightTrainer(TrajectoryTrainer):
         assert isinstance(env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 
-    def reset(self):
+    def reset(self) -> State:
         assert isinstance(self.env, HindsightWrapper)
         for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
             self.buffer.append((s1, a, r * self.reward_scale, s2, t))
         return super().reset()
 
-    def vectorize_state(self, state):
+    def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
         return self.env.vectorize_state(state)
 
 
 class PropagationTrainer(TrajectoryTrainer):
-    def process_step(self, s1, a, r, s2, t):
+    def process_step(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
         if len(self.buffer) >= self.batch_size:
             for i in range(self.num_train_steps):
                 sample = self.buffer.sample(self.batch_size)
@@ -233,11 +233,11 @@ class PropagationTrainer(TrajectoryTrainer):
                 })
 
     def build_agent(self,
-                    activation,
-                    n_layers,
-                    layer_size,
-                    learning_rate,
-                    base_agent=AbstractAgent):
+                    activation: Callable,
+                    n_layers: int,
+                    layer_size: int,
+                    learning_rate: float,
+                    base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
         return super().build_agent(
             activation=activation,
             n_layers=n_layers,
@@ -245,27 +245,27 @@ class PropagationTrainer(TrajectoryTrainer):
             learning_rate=learning_rate,
             base_agent=PropagationAgent)
 
-    def reset(self):
+    def reset(self) -> State:
         self.buffer.extend(self.step_generator(self.trajectory))
         return super().reset()
 
-    def step_generator(self, trajectory):
+    def step_generator(self, trajectory: Iterable[Step]) -> Iterator[PropStep]:
         v2 = 0
-        for s1, a, r, s2, t in reversed(trajectory):
-            v2 = .99 * v2 + r
-            yield PropStep(
-                s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t, v2=v2)
+        for step in reversed(trajectory):
+            v2 = .99 * v2 + step.r
+            # noinspection PyProtectedMember
+            yield step._replace(r=step.r * self.reward_scale)
 
 
 class HindsightPropagationTrainer(HindsightTrainer, PropagationTrainer):
-    def reset(self):
+    def reset(self) -> State:
         assert isinstance(self.env, HindsightWrapper)
         trajectory = list(self.env.recompute_trajectory(self.trajectory))
         self.buffer.extend(self.step_generator(trajectory))
         return PropagationTrainer.reset(self)
 
 
-def activation_type(name):
+def activation_type(name: str) -> Callable:
     activations = dict(
         relu=tf.nn.relu,
         crelu=tf.nn.crelu,
