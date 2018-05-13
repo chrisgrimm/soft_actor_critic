@@ -49,7 +49,8 @@ class Trainer:
     def __init__(self, env: gym.Env, seed: int, buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,
                  learning_rate: float, reward_scale: float, batch_size: int,
-                 num_train_steps: int, logdir: str, render: bool):
+                 num_train_steps: int, logdir: str, save_path: str,
+                 render: bool):
 
         if seed is not None:
             np.random.seed(seed)
@@ -65,12 +66,12 @@ class Trainer:
         s1 = self.reset()
 
         self.agent = agent = self.build_agent(
-            env=env,
             activation=activation,
             n_layers=n_layers,
             layer_size=layer_size,
             learning_rate=learning_rate)
 
+        saver = tf.train.Saver()
         tb_writer = None
         if logdir:
             tb_writer = tf.summary.FileWriter(
@@ -93,6 +94,9 @@ class Trainer:
             tick = time.time()
 
             episode_count += Counter(reward=r, timesteps=1)
+            if save_path and time_steps % 5000 == 0:
+                print("model saved in path:",
+                      saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
                 self.process_step(s1=s1, a=a, r=r, s2=s2, t=t)
             s1 = s2
@@ -123,18 +127,17 @@ class Trainer:
                     episode_count[k] = 0
 
     def build_agent(self,
-                    env,
                     activation,
                     n_layers,
                     layer_size,
                     learning_rate,
                     base_agent=AbstractAgent):
-        state_shape = env.observation_space.shape
-        if isinstance(env.action_space, spaces.Discrete):
-            action_shape = [env.action_space.n]
+        state_shape = self.env.observation_space.shape
+        if isinstance(self.env.action_space, spaces.Discrete):
+            action_shape = [self.env.action_space.n]
             PolicyType = CategoricalPolicy
         else:
-            action_shape = env.action_space.shape
+            action_shape = self.env.action_space.shape
             PolicyType = GaussianPolicy
 
         class Agent(PolicyType, base_agent):
@@ -173,23 +176,9 @@ class Trainer:
 
 
 class TrajectoryTrainer(Trainer):
-    def __init__(self, env, seed, buffer_size, reward_scale, batch_size,
-                 num_train_steps, logdir, render, activation, n_layers,
-                 layer_size, learning_rate):
+    def __init__(self, **kwargs):
         self.trajectory = []
-        super().__init__(
-            env=env,
-            seed=seed,
-            buffer_size=buffer_size,
-            activation=activation,
-            n_layers=n_layers,
-            layer_size=layer_size,
-            learning_rate=learning_rate,
-            reward_scale=reward_scale,
-            batch_size=batch_size,
-            num_train_steps=num_train_steps,
-            logdir=logdir,
-            render=render)
+        super().__init__(**kwargs)
         self.s1 = self.reset()
 
     def step(self, action):
@@ -205,23 +194,9 @@ class TrajectoryTrainer(Trainer):
 
 
 class HindsightTrainer(TrajectoryTrainer):
-    def __init__(self, env, seed, buffer_size, reward_scale, batch_size,
-                 num_train_steps, logdir, render, activation, n_layers,
-                 layer_size, learning_rate):
+    def __init__(self, env, **kwargs):
         assert isinstance(env, HindsightWrapper)
-        super().__init__(
-            env=env,
-            seed=seed,
-            buffer_size=buffer_size,
-            reward_scale=reward_scale,
-            batch_size=batch_size,
-            num_train_steps=num_train_steps,
-            logdir=logdir,
-            render=render,
-            activation=activation,
-            n_layers=n_layers,
-            layer_size=layer_size,
-            learning_rate=learning_rate)
+        super().__init__(env=env, **kwargs)
 
     def reset(self):
         assert isinstance(self.env, HindsightWrapper)
@@ -257,14 +232,12 @@ class PropagationTrainer(TrajectoryTrainer):
                 })
 
     def build_agent(self,
-                    env,
                     activation,
                     n_layers,
                     layer_size,
                     learning_rate,
                     base_agent=AbstractAgent):
         return super().build_agent(
-            env=env,
             activation=activation,
             n_layers=n_layers,
             layer_size=layer_size,

@@ -26,6 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--random-block', action='store_true')
     parser.add_argument('--reward-prop', action='store_true')
     parser.add_argument('--logdir', default=None, type=str)
+    parser.add_argument('--save-path', default=None, type=str)
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
 
@@ -50,4 +51,5 @@ if __name__ == '__main__':
         batch_size=args.batch_size,
         num_train_steps=args.num_train_steps,
         logdir=args.logdir,
+        save_path=args.save_path,
         render=args.render)
