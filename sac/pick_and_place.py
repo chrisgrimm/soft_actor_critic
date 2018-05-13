@@ -56,4 +56,5 @@ if __name__ == '__main__':
         num_train_steps=args.num_train_steps,
         logdir=args.logdir,
         save_path=args.save_path,
+        load_path=args.load_path,
         render=args.render)

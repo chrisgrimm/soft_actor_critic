@@ -147,7 +147,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def _currently_failed(self):
         return False
 
-    def _at_goal(self, goal, obs):
+    def at_goal(self, goal, obs):
         qpos, = obs
         gripper_at_goal = at_goal(
             self.gripper_pos(qpos), goal.gripper, self._geofence)
@@ -157,10 +157,10 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def compute_terminal(self, goal, obs):
         # return False
-        return self._at_goal(goal, obs)
+        return self.at_goal(goal, obs)
 
     def compute_reward(self, goal, obs):
-        if self._at_goal(goal, obs):
+        if self.at_goal(goal, obs):
             return 1
         elif self._neg_reward:
             return -.0001
