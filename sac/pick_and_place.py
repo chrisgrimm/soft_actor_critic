@@ -29,6 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--reward-prop', action='store_true')
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--save-path', default=None, type=str)
+    parser.add_argument('--load-path', default=None, type=str)
     parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
 
@@ -41,7 +42,6 @@ if __name__ == '__main__':
             TimeLimit(
                 max_episode_steps=args.max_steps,
                 env=PickAndPlaceEnv(
-                    max_steps=args.max_steps,
                     random_block=args.random_block,
                     min_lift_height=args.min_lift_height,
                     geofence=args.geofence))),

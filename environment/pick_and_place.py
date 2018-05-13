@@ -27,7 +27,6 @@ Goal = namedtuple('Goal', 'gripper block')
 
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
-                 max_steps,
                  random_block,
                  min_lift_height=.02,
                  geofence=.04,
@@ -39,7 +38,6 @@ class PickAndPlaceEnv(MujocoEnv):
         self._geofence = geofence
 
         super().__init__(
-            max_steps=max_steps,
             xml_filepath=join('models', 'pick-and-place', 'world.xml'),
             history_len=history_len,
             neg_reward=neg_reward,
