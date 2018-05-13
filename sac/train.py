@@ -141,7 +141,7 @@ class Trainer:
             action_shape = self.env.action_space.shape
             PolicyType = GaussianPolicy
 
-        class Agent(base_agent, PolicyType):
+        class Agent(PolicyType, base_agent):
             def __init__(self, s_shape, a_shape):
                 super(Agent, self).__init__(
                     s_shape=s_shape,
