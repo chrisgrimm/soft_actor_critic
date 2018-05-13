@@ -50,7 +50,7 @@ class AbstractAgent:
             log_pi_sampled1 = self.pi_network_log_prob(
                 A_sampled1, 'pi', reuse=True)
             self.V_loss = V_loss = tf.reduce_mean(
-                0.5 * tf.square(self.V_S1() - (Q_sampled1 - log_pi_sampled1)))
+                0.5 * tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
 
         # constructing Q loss
         with tf.control_dependencies([self.V_loss]):
@@ -70,7 +70,7 @@ class AbstractAgent:
                 A_sampled2, 'pi', reuse=True)
             self.pi_loss = pi_loss = tf.reduce_mean(
                 log_pi_sampled2 *
-                tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + self.V_S1(reuse=True)))
+                tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
 
         # grabbing all the relevant variables
         phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
