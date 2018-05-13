@@ -218,6 +218,6 @@ class PropagationAgent(AbstractAgent):
         return tf.maximum(self.sampled_V2, super().V_S2())
 
     def train_step(self, step: PropStep, extra_feeds: dict = None) -> Tuple[float, float, float]:
-        extra_feeds[self.sampled_V2] = step.V2
+        extra_feeds[self.sampled_V2] = step.v2
         assert isinstance(step, PropStep)
         return super().train_step(step, extra_feeds)
