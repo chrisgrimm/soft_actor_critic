@@ -82,23 +82,28 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def __init__(self, env):
-        assert isinstance(env, PickAndPlaceEnv)
+        if isinstance(env, gym.Wrapper):
+            assert isinstance(env.unwrapped, PickAndPlaceEnv)
+            self.unwrapped_env = env.unwrapped
+        else:
+            assert isinstance(env, PickAndPlaceEnv)
+            self.unwrapped_env = env
         super().__init__(env)
 
     def achieved_goal(self, history):
         last_obs, = history[-1]
         return Goal(
-            gripper=self.env.gripper_pos(last_obs),
-            block=self.env.block_pos(last_obs))
+            gripper=self.unwrapped_env.gripper_pos(last_obs),
+            block=self.unwrapped_env.block_pos(last_obs))
 
     def reward(self, obs, goal):
-        return sum(self.env.compute_reward(goal, o) for o in obs)
+        return sum(self.unwrapped_env.compute_reward(goal, o) for o in obs)
 
     def terminal(self, obs, goal):
-        return any(self.env.compute_terminal(goal, o) for o in obs)
+        return any(self.unwrapped_env.compute_terminal(goal, o) for o in obs)
 
     def desired_goal(self):
-        return self.env.goal()
+        return self.unwrapped_env.goal()
 
     @staticmethod
     def vectorize_state(state):

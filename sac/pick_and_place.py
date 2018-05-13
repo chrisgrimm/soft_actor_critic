@@ -1,11 +1,13 @@
 import argparse
 
 import tensorflow as tf
+from gym.wrappers import TimeLimit
 
 from environment.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environment.pick_and_place import PickAndPlaceEnv
 from sac.train import (HindsightPropagationTrainer, HindsightTrainer,
                        activation_type)
+import gym
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -36,13 +38,15 @@ if __name__ == '__main__':
 
     trainer(
         env=PickAndPlaceHindsightWrapper(
-            PickAndPlaceEnv(
-                max_steps=args.max_steps,
-                random_block=args.random_block,
-                min_lift_height=args.min_lift_height,
-                geofence=args.geofence)),
+            TimeLimit(
+                max_episode_steps=args.max_steps,
+                env=PickAndPlaceEnv(
+                    max_steps=args.max_steps,
+                    random_block=args.random_block,
+                    min_lift_height=args.min_lift_height,
+                    geofence=args.geofence))),
         seed=args.seed,
-        buffer_size=args.buffer_size,
+        buffer_size=int(args.buffer_size),
         activation=args.activation,
         n_layers=args.n_layers,
         layer_size=args.layer_size,
