@@ -1,10 +1,7 @@
-from abc import abstractmethod
-from collections import namedtuple
-
 import gym
 import numpy as np
-from gym.envs.robotics import FetchReachEnv
-from gym.envs.robotics.fetch_env import goal_distance
+from abc import abstractmethod
+from collections import namedtuple
 from gym.spaces import Box
 
 from environment.pick_and_place import Goal, PickAndPlaceEnv
@@ -94,16 +91,17 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
             block=self.env.block_pos(last_obs))
 
     def reward(self, obs, goal):
-        return sum(self.env.reward(goal, o) for o in obs)
+        return sum(self.env.compute_reward(goal, o) for o in obs)
 
     def terminal(self, obs, goal):
-        return any(self.env.terminal(goal, o) for o in obs)
+        return any(self.env.compute_terminal(goal, o) for o in obs)
 
     def desired_goal(self):
         return self.env.goal()
 
     @staticmethod
     def vectorize(state):
+        state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
         return np.concatenate(
             [np.concatenate(state_history),
@@ -116,30 +114,3 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         return s2, r, t, info
 
 
-ACHIEVED_GOAL = 'achieved_goal'
-
-
-class FetchReachHindsightWrapper(HindsightWrapper):
-    def __init__(self, env):
-        assert isinstance(env.unwrapped, FetchReachEnv)
-        super().__init__(env)
-
-    def achieved_goal(self, obs):
-        return obs[ACHIEVED_GOAL]
-
-    def reward(self, obs, goal):
-        return self.env.compute_reward(obs[ACHIEVED_GOAL], goal, {})
-
-    def terminal(self, obs, goal):
-        return goal_distance(obs[ACHIEVED_GOAL], goal) < self.env.unwrapped.distance_threshold
-
-    def desired_goal(self):
-        return self.env.unwrapped.goal.copy()
-
-    @staticmethod
-    def vectorize(state):
-        return np.concatenate([
-            state.obs['achieved_goal'],
-            state.obs['desired_goal'],
-            state.obs['observation']
-        ])

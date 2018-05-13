@@ -151,7 +151,7 @@ class Trainer:
                 s1_sample = list(map(self.state_converter, s1_sample))
                 s2_sample = list(map(self.state_converter, s2_sample))
                 [v_loss, q_loss, pi_loss] = self.agent.train_step(
-                    s1_sample, a_sample, r_sample, s2_sample, t_sample)
+                    Step(s1=s1_sample, a=a_sample, r=r_sample, s2=s2_sample, t=t_sample))
                 self.episode_count += Counter({
                     'V loss': v_loss,
                     'Q loss': q_loss,
@@ -201,11 +201,13 @@ class HindsightTrainer(TrajectoryTrainer):
                          layer_size=layer_size, learning_rate=learning_rate)
 
     def reset(self):
+        assert isinstance(self.env, HindsightWrapper)
         for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
             self.buffer.append((s1, a, r * self.reward_scale, s2, t))
         return super().reset()
 
     def state_converter(self, state):
+        assert isinstance(self.env, HindsightWrapper)
         return self.env.vectorize(state)
 
 
@@ -218,7 +220,7 @@ class PropagationTrainer(TrajectoryTrainer):
                 s1_sample = list(map(self.state_converter, s1_sample))
                 s2_sample = list(map(self.state_converter, s2_sample))
                 [v_loss, q_loss, pi_loss] = self.agent.train_step(
-                    s1_sample, a_sample, r_sample, s2_sample, t_sample, v2_sample)
+                    PropStep(s1=s1_sample, a=a_sample, r=r_sample, s2=s2_sample, t=t_sample, v2=v2_sample))
                 self.episode_count += Counter({
                     'V loss': v_loss,
                     'Q loss': q_loss,
@@ -243,6 +245,7 @@ class PropagationTrainer(TrajectoryTrainer):
 
 class HindsightPropagationTrainer(HindsightTrainer, PropagationTrainer):
     def reset(self):
+        assert isinstance(self.env, HindsightWrapper)
         trajectory = list(self.env.recompute_trajectory(self.trajectory))
         self.buffer.extend(self.step_generator(trajectory))
         return PropagationTrainer.reset(self)

@@ -1,11 +1,42 @@
 import argparse
 
 import gym
+import numpy as np
 import tensorflow as tf
+from gym.envs.robotics import FetchReachEnv
+from gym.envs.robotics.fetch_env import goal_distance
 
-from environment.goal_wrapper import PickAndPlaceHindsightWrapper, FetchReachHindsightWrapper
-from environment.pick_and_place import PickAndPlaceEnv
-from sac.train import HindsightTrainer, activation_type, HindsightPropagationTrainer
+from environment.goal_wrapper import HindsightWrapper
+from sac.train import HindsightTrainer, activation_type
+
+ACHIEVED_GOAL = 'achieved_goal'
+
+
+class FetchReachHindsightWrapper(HindsightWrapper):
+    def __init__(self, env):
+        assert isinstance(env.unwrapped, FetchReachEnv)
+        super().__init__(env)
+
+    def achieved_goal(self, obs):
+        return obs[ACHIEVED_GOAL]
+
+    def reward(self, obs, goal):
+        return self.env.compute_reward(obs[ACHIEVED_GOAL], goal, {})
+
+    def terminal(self, obs, goal):
+        return goal_distance(obs[ACHIEVED_GOAL], goal) < self.env.unwrapped.distance_threshold
+
+    def desired_goal(self):
+        return self.env.unwrapped.goal.copy()
+
+    @staticmethod
+    def vectorize(state):
+        return np.concatenate([
+            state.obs['achieved_goal'],
+            state.obs['desired_goal'],
+            state.obs['observation']
+        ])
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -26,9 +57,8 @@ if __name__ == '__main__':
 
     # if args.mimic_file is not None:
     #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
-    trainer = HindsightPropagationTrainer if args.reward_prop else HindsightTrainer
 
-    trainer(
+    HindsightTrainer(
         env=FetchReachHindsightWrapper(gym.make('FetchReach-v0')),
         seed=args.seed,
         buffer_size=args.buffer_size,

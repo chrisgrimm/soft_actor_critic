@@ -2,6 +2,8 @@ from abc import abstractmethod
 
 import tensorflow as tf
 
+from sac.utils import Step, PropStep
+
 
 def mlp(inputs, layer_size, n_layers, activation):
     for i in range(n_layers):
@@ -10,7 +12,7 @@ def mlp(inputs, layer_size, n_layers, activation):
     return inputs
 
 
-class AbstractAgent(object):
+class AbstractAgent:
     def __init__(self, s_shape, a_shape, activation: str, n_layers: int,
                  layer_size: int, learning_rate: float):
         self.activation = activation
@@ -42,6 +44,7 @@ class AbstractAgent(object):
 
         # constructing V loss
         with tf.control_dependencies([self.A_sampled1]):
+            V_S1 = self.V_S1()
             Q_sampled1 = self.Q_network(
                 S1, self.transform_action_sample(A_sampled1), 'Q')
             log_pi_sampled1 = self.pi_network_log_prob(
@@ -51,10 +54,11 @@ class AbstractAgent(object):
 
         # constructing Q loss
         with tf.control_dependencies([self.V_loss]):
+            V_S2 = self.V_S2()
             Q = self.Q_network(
                 S1, self.transform_action_sample(A), 'Q', reuse=True)
             self.Q_loss = Q_loss = tf.reduce_mean(
-                0.5 * tf.square(Q - (R + (1 - T) * gamma * self.V_bar_S2())))
+                0.5 * tf.square(Q - (R + (1 - T) * gamma * V_S2)))
 
         # constructing pi loss
         with tf.control_dependencies([self.Q_loss]):
@@ -111,13 +115,14 @@ class AbstractAgent(object):
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
 
-    def train_step(self, S1, A, R, S2, T, extra_feeds=None):
+    def train_step(self, step, extra_feeds=None):
+        assert isinstance(step, Step)
         feed_dict = {
-            self.S1: S1,
-            self.A: A,
-            self.R: R,
-            self.S2: S2,
-            self.T: T
+            self.S1: step.s1,
+            self.A: step.a,
+            self.R: step.r,
+            self.S2: step.s2,
+            self.T: step.t
         }
         if extra_feeds:
             feed_dict.update(extra_feeds)
@@ -152,10 +157,10 @@ class AbstractAgent(object):
         with tf.variable_scope(name, reuse=reuse):
             return tf.reshape(tf.layers.dense(self.mlp(s), 1, name='v'), [-1])
 
-    def V_S1(self, reuse=None):
-        return self.V_network(self.S1, 'V', reuse=reuse)
+    def V_S1(self):
+        return self.V_network(self.S1, 'V')
 
-    def V_bar_S2(self):
+    def V_S2(self):
         return self.V_network(self.S2, 'V_bar')
 
     def input_processing(self, s):
@@ -209,7 +214,9 @@ class PropagationAgent(AbstractAgent):
         super().__init__(s_shape, a_shape, activation, n_layers, layer_size, learning_rate)
 
     def V_bar_S2(self):
-        return tf.maximum(self.sampled_V2, super().V_bar_S2())
+        return tf.maximum(self.sampled_V2, super().V_S2())
 
-    def train_step(self, S1, A, R, S2, T, V2):
-        return super().train_step(S1, A, R, S2, T, extra_feeds={self.sampled_V2: V2})
+    def train_step(self, step, extra_feeds=None):
+        extra_feeds[self.sampled_V2] = step.V2
+        assert isinstance(step, PropStep)
+        return super().train_step(step, extra_feeds)

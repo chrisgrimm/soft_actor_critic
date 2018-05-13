@@ -9,4 +9,3 @@ runs.yml
 MUJOCO_LOG.TXT
 runs.pkl
 .pyre
-test_pyre.py
