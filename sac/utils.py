@@ -1,3 +1,5 @@
+from typing import Any, Union
+
 from collections import namedtuple
 
 import numpy as np
@@ -50,6 +52,18 @@ def component(function):
 
     return wrapper
 
+State = Any
 
 Step = namedtuple('Step', 's1 a r s2 t')
 PropStep = namedtuple('PropStep', 's1 a r s2 t v2')
+
+# class Step(NamedTuple):
+#     s1: State
+#     a: Union[int, np.ndarray]
+#     r: float
+#     s2: State
+#     t: bool
+#
+#
+# class PropStep(Step):
+#     v2: float

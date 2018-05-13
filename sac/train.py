@@ -2,19 +2,19 @@ import argparse
 import itertools
 import pickle
 import time
-from collections import Counter
-from typing import Callable
+from typing import Callable, Tuple, Union
 
 import gym
 import numpy as np
 import tensorflow as tf
+from collections import Counter
 from gym import spaces
 
 from environment.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent, PropagationAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import PropStep, Step
+from sac.utils import PropStep, Step, State
 
 
 def inject_mimic_experiences(mimic_file, buffer, N=1):
@@ -27,13 +27,14 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 
 
 class Trainer:
-    def step(self, action):
+    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
+        # noinspection PyTypeChecker
         return self.env.step(action)
 
-    def reset(self):
+    def reset(self) -> State:
         return self.env.reset()
 
-    def action_converter(self, action):
+    def action_converter(self, action: np.ndarray) -> Union[np.ndarray, int]:
         """ Preprocess action before feeding to env """
         if type(self.env.action_space) is spaces.Discrete:
             return np.argmax(action)
@@ -42,7 +43,7 @@ class Trainer:
             hi, lo = self.env.action_space.high, self.env.action_space.low
             return ((action + 1) / 2) * (hi - lo) + lo
 
-    def vectorize_state(self, state):
+    def vectorize_state(self, state: State) -> np.ndarray:
         """ Preprocess state before feeding to network """
         return state
 
@@ -127,11 +128,11 @@ class Trainer:
                     episode_count[k] = 0
 
     def build_agent(self,
-                    activation,
-                    n_layers,
-                    layer_size,
-                    learning_rate,
-                    base_agent=AbstractAgent):
+                    activation: Callable,
+                    n_layers: int,
+                    layer_size: int,
+                    learning_rate: float,
+                    base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
@@ -140,7 +141,7 @@ class Trainer:
             action_shape = self.env.action_space.shape
             PolicyType = GaussianPolicy
 
-        class Agent(PolicyType, base_agent):
+        class Agent(base_agent, PolicyType):
             def __init__(self, s_shape, a_shape):
                 super(Agent, self).__init__(
                     s_shape=s_shape,
