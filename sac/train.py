@@ -82,7 +82,7 @@ class Trainer:
         evaluation_period = 10
 
         for time_steps in itertools.count():
-            is_eval_period = count['episode'] % evaluation_period == 0
+            is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
             a = agent.get_actions(
                 [self.vectorize_state(s1)], sample=(not is_eval_period))
             if render:
