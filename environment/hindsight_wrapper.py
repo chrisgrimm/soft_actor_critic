@@ -22,10 +22,6 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     @abstractmethod
-    def reward(self, obs, goal):
-        return float(self.at_goal(obs, goal))
-
-    @abstractmethod
     def at_goal(self, obs, goal):
         raise NotImplementedError
 
@@ -40,7 +36,7 @@ class HindsightWrapper(gym.Wrapper):
     def step(self, action):
         s2, r, t, info = self.env.step(action)
         new_s2 = State(obs=s2, goal=self.desired_goal())
-        new_r = self.reward(s2, self.desired_goal())
+        new_r = float(self.at_goal(s2, self.desired_goal()))
         new_t = self.at_goal(s2, self.desired_goal()) or t
         return new_s2, new_r, new_t, {'base_reward': r}
 
@@ -54,7 +50,7 @@ class HindsightWrapper(gym.Wrapper):
         for step in trajectory:
             new_s = State(obs=step.s1.obs, goal=achieved_goal)
             new_sp = State(obs=step.s2.obs, goal=achieved_goal)
-            new_r = self.reward(obs=step.s2.obs, goal=achieved_goal)
+            new_r = float(self.at_goal(step.s2.obs, achieved_goal))
             new_t = self.at_goal(
                 obs=step.s2.obs, goal=achieved_goal) or step.t
             yield Step(s1=new_s, a=step.a, r=new_r, s2=new_sp, t=new_t)
