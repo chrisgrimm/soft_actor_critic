@@ -38,4 +38,3 @@ class ReplayBuffer(RollingBuffer):
     def sample(self, batch_size):
         sample = super().sample(batch_size)
         return tuple(map(list, zip(*sample)))
-

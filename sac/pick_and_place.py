@@ -2,14 +2,16 @@ import argparse
 
 import tensorflow as tf
 
-from environment.goal_wrapper import PickAndPlaceHindsightWrapper
+from environment.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environment.pick_and_place import PickAndPlaceEnv
-from sac.train import HindsightTrainer, activation_type, HindsightPropagationTrainer
+from sac.train import (HindsightPropagationTrainer, HindsightTrainer,
+                       activation_type)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--activation', default=tf.nn.relu, type=activation_type)
+    parser.add_argument(
+        '--activation', default=tf.nn.relu, type=activation_type)
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)

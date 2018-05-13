@@ -1,10 +1,12 @@
+from collections import namedtuple
+
 import numpy as np
 import tensorflow as tf
-from collections import namedtuple
 
 
 def leaky_relu(x, alpha=0.2):
     return tf.maximum(x, alpha * x)
+
 
 def onehot(idx, num_entries):
     x = np.zeros(num_entries)

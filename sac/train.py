@@ -2,19 +2,19 @@ import argparse
 import itertools
 import pickle
 import time
+from collections import Counter
 from typing import Callable
 
 import gym
 import numpy as np
 import tensorflow as tf
-from collections import Counter
 from gym import spaces
 
-from environment.goal_wrapper import HindsightWrapper
+from environment.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent, PropagationAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Step, PropStep
+from sac.utils import PropStep, Step
 
 
 def inject_mimic_experiences(mimic_file, buffer, N=1):
@@ -42,13 +42,14 @@ class Trainer:
             hi, lo = self.env.action_space.high, self.env.action_space.low
             return ((action + 1) / 2) * (hi - lo) + lo
 
-    def state_converter(self, state):
+    def vectorize_state(self, state):
         """ Preprocess state before feeding to network """
         return state
 
-    def __init__(self, env: gym.Env, seed: int, buffer_size: int, activation: Callable,
-                 n_layers: int, layer_size: int, learning_rate: float, reward_scale: float,
-                 batch_size: int, num_train_steps: int, logdir: str, render: bool):
+    def __init__(self, env: gym.Env, seed: int, buffer_size: int,
+                 activation: Callable, n_layers: int, layer_size: int,
+                 learning_rate: float, reward_scale: float, batch_size: int,
+                 num_train_steps: int, logdir: str, render: bool):
 
         if seed is not None:
             np.random.seed(seed)
@@ -82,7 +83,7 @@ class Trainer:
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % evaluation_period == 0
             a = agent.get_actions(
-                [self.state_converter(s1)], sample=(not is_eval_period))
+                [self.vectorize_state(s1)], sample=(not is_eval_period))
             if render:
                 env.render()
             s2, r, t, info = self.step(self.action_converter(a))
@@ -121,7 +122,13 @@ class Trainer:
                 for k in episode_count:
                     episode_count[k] = 0
 
-    def build_agent(self, env, activation, n_layers, layer_size, learning_rate, base_agent=AbstractAgent):
+    def build_agent(self,
+                    env,
+                    activation,
+                    n_layers,
+                    layer_size,
+                    learning_rate,
+                    base_agent=AbstractAgent):
         state_shape = env.observation_space.shape
         if isinstance(env.action_space, spaces.Discrete):
             action_shape = [env.action_space.n]
@@ -143,15 +150,21 @@ class Trainer:
         return Agent(state_shape, action_shape)
 
     def process_step(self, s1, a, r, s2, t):
-        self.buffer.append(Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
+        self.buffer.append(
+            Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
         if len(self.buffer) >= self.batch_size:
             for i in range(self.num_train_steps):
                 s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
                     self.batch_size)
-                s1_sample = list(map(self.state_converter, s1_sample))
-                s2_sample = list(map(self.state_converter, s2_sample))
+                s1_sample = list(map(self.vectorize_state, s1_sample))
+                s2_sample = list(map(self.vectorize_state, s2_sample))
                 [v_loss, q_loss, pi_loss] = self.agent.train_step(
-                    Step(s1=s1_sample, a=a_sample, r=r_sample, s2=s2_sample, t=t_sample))
+                    Step(
+                        s1=s1_sample,
+                        a=a_sample,
+                        r=r_sample,
+                        s2=s2_sample,
+                        t=t_sample))
                 self.episode_count += Counter({
                     'V loss': v_loss,
                     'Q loss': q_loss,
@@ -192,13 +205,23 @@ class TrajectoryTrainer(Trainer):
 
 
 class HindsightTrainer(TrajectoryTrainer):
-    def __init__(self, env, seed, buffer_size, reward_scale, batch_size, num_train_steps, logdir, render, activation,
-                 n_layers, layer_size, learning_rate):
+    def __init__(self, env, seed, buffer_size, reward_scale, batch_size,
+                 num_train_steps, logdir, render, activation, n_layers,
+                 layer_size, learning_rate):
         assert isinstance(env, HindsightWrapper)
-        super().__init__(env=env, seed=seed, buffer_size=buffer_size, reward_scale=reward_scale,
-                         batch_size=batch_size, num_train_steps=num_train_steps, logdir=logdir,
-                         render=render, activation=activation, n_layers=n_layers,
-                         layer_size=layer_size, learning_rate=learning_rate)
+        super().__init__(
+            env=env,
+            seed=seed,
+            buffer_size=buffer_size,
+            reward_scale=reward_scale,
+            batch_size=batch_size,
+            num_train_steps=num_train_steps,
+            logdir=logdir,
+            render=render,
+            activation=activation,
+            n_layers=n_layers,
+            layer_size=layer_size,
+            learning_rate=learning_rate)
 
     def reset(self):
         assert isinstance(self.env, HindsightWrapper)
@@ -206,9 +229,9 @@ class HindsightTrainer(TrajectoryTrainer):
             self.buffer.append((s1, a, r * self.reward_scale, s2, t))
         return super().reset()
 
-    def state_converter(self, state):
+    def vectorize_state(self, state):
         assert isinstance(self.env, HindsightWrapper)
-        return self.env.vectorize(state)
+        return self.env.vectorize_state(state)
 
 
 class PropagationTrainer(TrajectoryTrainer):
@@ -217,20 +240,36 @@ class PropagationTrainer(TrajectoryTrainer):
             for i in range(self.num_train_steps):
                 sample = self.buffer.sample(self.batch_size)
                 s1_sample, a_sample, r_sample, s2_sample, t_sample, v2_sample = sample
-                s1_sample = list(map(self.state_converter, s1_sample))
-                s2_sample = list(map(self.state_converter, s2_sample))
+                s1_sample = list(map(self.vectorize_state, s1_sample))
+                s2_sample = list(map(self.vectorize_state, s2_sample))
                 [v_loss, q_loss, pi_loss] = self.agent.train_step(
-                    PropStep(s1=s1_sample, a=a_sample, r=r_sample, s2=s2_sample, t=t_sample, v2=v2_sample))
+                    PropStep(
+                        s1=s1_sample,
+                        a=a_sample,
+                        r=r_sample,
+                        s2=s2_sample,
+                        t=t_sample,
+                        v2=v2_sample))
                 self.episode_count += Counter({
                     'V loss': v_loss,
                     'Q loss': q_loss,
                     'pi loss': pi_loss
                 })
 
-    def build_agent(self, env, activation, n_layers, layer_size, learning_rate, base_agent=AbstractAgent):
-        return super().build_agent(env=env, activation=activation,
-                                   n_layers=n_layers, layer_size=layer_size,
-                                   learning_rate=learning_rate, base_agent=PropagationAgent)
+    def build_agent(self,
+                    env,
+                    activation,
+                    n_layers,
+                    layer_size,
+                    learning_rate,
+                    base_agent=AbstractAgent):
+        return super().build_agent(
+            env=env,
+            activation=activation,
+            n_layers=n_layers,
+            layer_size=layer_size,
+            learning_rate=learning_rate,
+            base_agent=PropagationAgent)
 
     def reset(self):
         self.buffer.extend(self.step_generator(self.trajectory))
@@ -240,7 +279,8 @@ class PropagationTrainer(TrajectoryTrainer):
         v2 = 0
         for s1, a, r, s2, t in reversed(trajectory):
             v2 = .99 * v2 + r
-            yield PropStep(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t, v2=v2)
+            yield PropStep(
+                s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t, v2=v2)
 
 
 class HindsightPropagationTrainer(HindsightTrainer, PropagationTrainer):
@@ -273,11 +313,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--activation', default=tf.nn.relu, type=activation_type)
+    parser.add_argument(
+        '--activation', default=tf.nn.relu, type=activation_type)
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
-    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
+    parser.add_argument('--buffer-size', default=int(10**7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)

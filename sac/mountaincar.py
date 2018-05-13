@@ -3,8 +3,8 @@ import argparse
 import gym
 import tensorflow as tf
 
-from environment.goal_wrapper import MountaincarHindsightWrapper
-from sac.train import HindsightTrainer, HindsightPropagationTrainer
+from environment.hindsight_wrapper import MountaincarHindsightWrapper
+from sac.train import HindsightPropagationTrainer, HindsightTrainer
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

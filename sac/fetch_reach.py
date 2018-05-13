@@ -6,7 +6,7 @@ import tensorflow as tf
 from gym.envs.robotics import FetchReachEnv
 from gym.envs.robotics.fetch_env import goal_distance
 
-from environment.goal_wrapper import HindsightWrapper
+from environment.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer, activation_type
 
 ACHIEVED_GOAL = 'achieved_goal'
@@ -24,16 +24,16 @@ class FetchReachHindsightWrapper(HindsightWrapper):
         return self.env.compute_reward(obs[ACHIEVED_GOAL], goal, {})
 
     def terminal(self, obs, goal):
-        return goal_distance(obs[ACHIEVED_GOAL], goal) < self.env.unwrapped.distance_threshold
+        return goal_distance(obs[ACHIEVED_GOAL],
+                             goal) < self.env.unwrapped.distance_threshold
 
     def desired_goal(self):
         return self.env.unwrapped.goal.copy()
 
     @staticmethod
-    def vectorize(state):
+    def vectorize_state(state):
         return np.concatenate([
-            state.obs['achieved_goal'],
-            state.obs['desired_goal'],
+            state.obs['achieved_goal'], state.obs['desired_goal'],
             state.obs['observation']
         ])
 
@@ -41,7 +41,8 @@ class FetchReachHindsightWrapper(HindsightWrapper):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--activation', default=tf.nn.relu, type=activation_type)
+    parser.add_argument(
+        '--activation', default=tf.nn.relu, type=activation_type)
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
