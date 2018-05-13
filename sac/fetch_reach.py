@@ -20,7 +20,7 @@ class FetchReachHindsightWrapper(HindsightWrapper):
     def achieved_goal(self, obs):
         return obs[ACHIEVED_GOAL]
 
-    def reward(self, obs, goal):
+    def at_goal(self, obs, goal):
         return self.env.compute_reward(obs[ACHIEVED_GOAL], goal, {})
 
     def terminal(self, obs, goal):

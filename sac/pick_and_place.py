@@ -1,11 +1,13 @@
 import argparse
 
 import tensorflow as tf
+from gym.wrappers import TimeLimit
 
 from environment.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environment.pick_and_place import PickAndPlaceEnv
 from sac.train import (HindsightPropagationTrainer, HindsightTrainer,
                        activation_type)
+import gym
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -15,7 +17,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
-    parser.add_argument('--buffer-size', default=int(10**7), type=int)
+    parser.add_argument('--buffer-size', default=1e7, type=float)
     parser.add_argument('--num-train-steps', default=4, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=9e3, type=float)
@@ -37,13 +39,14 @@ if __name__ == '__main__':
 
     trainer(
         env=PickAndPlaceHindsightWrapper(
-            PickAndPlaceEnv(
-                max_steps=args.max_steps,
-                random_block=args.random_block,
-                min_lift_height=args.min_lift_height,
-                geofence=args.geofence)),
+            TimeLimit(
+                max_episode_steps=args.max_steps,
+                env=PickAndPlaceEnv(
+                    random_block=args.random_block,
+                    min_lift_height=args.min_lift_height,
+                    geofence=args.geofence))),
         seed=args.seed,
-        buffer_size=args.buffer_size,
+        buffer_size=int(args.buffer_size),
         activation=args.activation,
         n_layers=args.n_layers,
         layer_size=args.layer_size,

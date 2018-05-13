@@ -22,8 +22,10 @@ if __name__ == '__main__':
         n_layers=3,
         layer_size=256,
         learning_rate=3e-4,
-        reward_scale=10,
+        reward_scale=1e3,
         batch_size=32,
         num_train_steps=1,
         logdir=args.logdir,
+        save_path=None,
+        load_path=None,
         render=args.render)

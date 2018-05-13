@@ -10,7 +10,7 @@ import numpy as np
 class BaseEnv(gym.Env):
     """ The environment """
 
-    def __init__(self, max_steps, history_len, image_dimensions, neg_reward,
+    def __init__(self, history_len, image_dimensions, neg_reward,
                  steps_per_action):
 
         self._history_buffer = deque(maxlen=history_len)
@@ -18,7 +18,6 @@ class BaseEnv(gym.Env):
         self._step_num = 0
         self._neg_reward = neg_reward
         self._image_dimensions = image_dimensions
-        self.max_steps = max_steps
 
         self._history_buffer += [self._obs()] * history_len
         self.observation_space = self.action_space = None
@@ -39,8 +38,6 @@ class BaseEnv(gym.Env):
             done = False
             if self.compute_terminal(self.goal(), self._obs()):
                 done = True
-            elif self.hit_max_steps():
-                done = True
             elif self._currently_failed():
                 done = True
             reward += self.compute_reward(self.goal(), self._obs())
@@ -48,9 +45,6 @@ class BaseEnv(gym.Env):
 
         self._history_buffer.append(self._obs())
         return deepcopy(self._history_buffer), reward, done, {}
-
-    def hit_max_steps(self):
-        return self._step_num >= self.max_steps
 
     def seed(self, seed=None):
         np.random.seed(seed)
