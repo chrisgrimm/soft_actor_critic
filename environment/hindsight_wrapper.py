@@ -23,10 +23,10 @@ class HindsightWrapper(gym.Wrapper):
 
     @abstractmethod
     def reward(self, obs, goal):
-        raise NotImplementedError
+        return float(self.at_goal(obs, goal))
 
     @abstractmethod
-    def terminal(self, obs, goal):
+    def at_goal(self, obs, goal):
         raise NotImplementedError
 
     @abstractmethod
@@ -41,7 +41,7 @@ class HindsightWrapper(gym.Wrapper):
         s2, r, t, info = self.env.step(action)
         new_s2 = State(obs=s2, goal=self.desired_goal())
         new_r = self.reward(s2, self.desired_goal())
-        new_t = self.terminal(s2, self.desired_goal()) or t
+        new_t = self.at_goal(s2, self.desired_goal()) or t
         return new_s2, new_r, new_t, {'base_reward': r}
 
     def reset(self):
@@ -55,7 +55,7 @@ class HindsightWrapper(gym.Wrapper):
             new_s = State(obs=step.s1.obs, goal=achieved_goal)
             new_sp = State(obs=step.s2.obs, goal=achieved_goal)
             new_r = self.reward(obs=step.s2.obs, goal=achieved_goal)
-            new_t = self.terminal(
+            new_t = self.at_goal(
                 obs=step.s2.obs, goal=achieved_goal) or step.t
             yield Step(s1=new_s, a=step.a, r=new_r, s2=new_sp, t=new_t)
             if new_t:
@@ -73,7 +73,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def reward(self, obs, goal):
         return 100 if obs[0] >= goal[0] else 0
 
-    def terminal(self, obs, goal):
+    def at_goal(self, obs, goal):
         return obs[0] >= goal[0]
 
     def desired_goal(self):
@@ -96,10 +96,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
             gripper=self.unwrapped_env.gripper_pos(last_obs),
             block=self.unwrapped_env.block_pos(last_obs))
 
-    def reward(self, obs, goal):
-        return sum(self.unwrapped_env.compute_reward(goal, o) for o in obs)
-
-    def terminal(self, obs, goal):
+    def at_goal(self, obs, goal):
         return any(self.unwrapped_env.compute_terminal(goal, o) for o in obs)
 
     def desired_goal(self):

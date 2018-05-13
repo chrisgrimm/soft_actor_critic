@@ -23,7 +23,7 @@ class FetchReachHindsightWrapper(HindsightWrapper):
     def reward(self, obs, goal):
         return self.env.compute_reward(obs[ACHIEVED_GOAL], goal, {})
 
-    def terminal(self, obs, goal):
+    def at_goal(self, obs, goal):
         return goal_distance(obs[ACHIEVED_GOAL],
                              goal) < self.env.unwrapped.distance_threshold
 
