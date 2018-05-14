@@ -50,7 +50,7 @@ class Trainer:
     def __init__(self, env: gym.Env, seed: int, buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,
                  learning_rate: float, reward_scale: float, batch_size: int,
-                 num_train_steps: int, logdir: str, save_path: str,
+                 num_train_steps: int, logdir: str, save_path: str, load_path: str,
                  render: bool):
 
         if seed is not None:
@@ -74,6 +74,9 @@ class Trainer:
 
         saver = tf.train.Saver()
         tb_writer = None
+        if load_path:
+            saver.restore(agent.sess, load_path)
+            print("Model restored from", load_path)
         if logdir:
             tb_writer = tf.summary.FileWriter(
                 logdir=logdir, graph=agent.sess.graph)
