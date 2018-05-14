@@ -87,7 +87,7 @@ class Trainer:
                 self.process_step(s1=s1, a=a, r=r, s2=s2, t=hit_max_steps)
             s1 = s2
             # noinspection PyProtectedMember
-            if hit_max_steps:
+            if hit_max_steps or t:
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                     'EVAL' if is_eval_period else 'TRAIN', (count['episode']),
                     time_steps, episode_count['reward']))
