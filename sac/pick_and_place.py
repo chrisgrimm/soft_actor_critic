@@ -2,7 +2,7 @@ import argparse
 
 import tensorflow as tf
 
-from environment.goal_wrapper import PickAndPlaceHindsightWrapper
+from environment.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environment.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer, activation_type
 

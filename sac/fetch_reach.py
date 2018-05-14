@@ -6,7 +6,7 @@ import tensorflow as tf
 from gym.envs.robotics import FetchReachEnv
 from gym.envs.robotics.fetch_env import goal_distance
 
-from environment.goal_wrapper import HindsightWrapper
+from environment.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer, activation_type
 
 ACHIEVED_GOAL = 'achieved_goal'
@@ -30,7 +30,7 @@ class FetchReachHindsightWrapper(HindsightWrapper):
         return self.env.unwrapped.goal.copy()
 
     @staticmethod
-    def vectorize(state):
+    def vectorize_state(state):
         return np.concatenate([
             state.obs['achieved_goal'],
             state.obs['desired_goal'],

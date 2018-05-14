@@ -13,8 +13,7 @@ State = namedtuple('State', 'obs goal')
 class HindsightWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        reset = self.reset()
-        vector_state = self.vectorize(reset)
+        vector_state = self.vectorize_state(self.reset())
         self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
@@ -34,7 +33,7 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     @staticmethod
-    def vectorize(state):
+    def vectorize_state(state):
         return np.concatenate(state)
 
     def step(self, action):
@@ -100,7 +99,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         return self.env.goal()
 
     @staticmethod
-    def vectorize(state):
+    def vectorize_state(state):
         state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
         return np.concatenate(

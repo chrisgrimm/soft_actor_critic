@@ -10,7 +10,7 @@ import tensorflow as tf
 from collections import Counter
 from gym import spaces
 
-from environment.goal_wrapper import (HindsightWrapper)
+from environment.hindsight_wrapper import (HindsightWrapper)
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
@@ -196,7 +196,7 @@ class HindsightTrainer(Trainer):
 
     def state_converter(self, state):
         assert isinstance(self.env, HindsightWrapper)
-        return self.env.vectorize(state)
+        return self.env.vectorize_state(state)
 
 
 def activation_type(name):
