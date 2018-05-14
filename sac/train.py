@@ -198,8 +198,16 @@ class TrajectoryTrainer(Trainer):
 
 class HindsightTrainer(TrajectoryTrainer):
     def __init__(self, env, **kwargs):
-        assert isinstance(env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
+
+    def step(self, action: np.ndarray):
+        assert isinstance(self.env, HindsightWrapper)
+        assert isinstance(self.env.env, gym.wrappers.TimeLimit)
+        s2, r, t, i = super().step(action)
+        if t:
+            self.env.unwrapped.reset()
+        # noinspection PyProtectedMember
+        return s2, r, self.env.env._past_limit(), i
 
     def reset(self) -> State:
         assert isinstance(self.env, HindsightWrapper)
