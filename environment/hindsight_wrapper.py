@@ -48,12 +48,12 @@ class HindsightWrapper(gym.Wrapper):
             return ()
         achieved_goal = self.achieved_goal(trajectory[-1].s2.obs)
         for step in trajectory:
-            new_s = State(obs=step.s1.obs, goal=achieved_goal)
-            new_sp = State(obs=step.s2.obs, goal=achieved_goal)
-            new_r = float(self.at_goal(step.s2.obs, achieved_goal))
-            new_t = self.at_goal(
-                obs=step.s2.obs, goal=achieved_goal) or step.t
-            yield Step(s1=new_s, a=step.a, r=new_r, s2=new_sp, t=new_t)
+            new_t = self.at_goal(step.s2.obs, achieved_goal) or step.t
+            yield Step(s1=State(obs=step.s1.obs, goal=achieved_goal),
+                       a=step.a,
+                       r=float(self.at_goal(step.s2.obs, achieved_goal)),
+                       s2=State(obs=step.s2.obs, goal=achieved_goal),
+                       t=new_t)
             if new_t:
                 break
 
@@ -65,9 +65,6 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
     def achieved_goal(self, obs):
         return np.array([obs[0]])
-
-    def reward(self, obs, goal):
-        return 100 if obs[0] >= goal[0] else 0
 
     def at_goal(self, obs, goal):
         return obs[0] >= goal[0]
@@ -105,9 +102,3 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         return np.concatenate(
             [np.concatenate(state_history),
              np.concatenate(state.goal)])
-
-    def step(self, action):
-        s2, r, t, info = super().step(action)
-        if t:
-            s2 = self.reset()
-        return s2, r, t, info
