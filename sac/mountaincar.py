@@ -20,8 +20,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     HindsightTrainer(
-        env=MountaincarHindsightWrapper(Continuous_MountainCarEnv()),
-        max_steps=999,
+        env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
         seed=args.seed,
         buffer_size=10**7,
         activation=args.activation,
