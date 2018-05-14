@@ -158,6 +158,8 @@ class Trainer:
         return state
 
     def process_step(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
+        if r > 0 or t:
+            print(Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
         self.buffer.append(
             Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
         if len(self.buffer) >= self.batch_size:
