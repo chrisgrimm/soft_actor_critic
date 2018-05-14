@@ -75,11 +75,11 @@ class Trainer:
             if t:
                 s1 = self.reset()
                 print('reward:', r)
-            hit_max_steps = time_steps % max_steps == 0
+            hit_max_steps = episode_count['elapsed_steps'] % max_steps == max_steps - 1
 
             tick = time.time()
 
-            episode_count += Counter(reward=r, timesteps=1)
+            episode_count += Counter(reward=r, timesteps=1, elapsed_steps=1)
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:",
                       saver.save(agent.sess, save_path=save_path))
@@ -88,6 +88,7 @@ class Trainer:
             s1 = s2
             # noinspection PyProtectedMember
             if hit_max_steps or t:
+                print('elapsed steps', episode_count['elapsed_steps'])
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                     'EVAL' if is_eval_period else 'TRAIN', (count['episode']),
                     time_steps, episode_count['reward']))

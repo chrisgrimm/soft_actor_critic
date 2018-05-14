@@ -2,6 +2,7 @@ import argparse
 
 import gym
 import tensorflow as tf
+from gym.envs.classic_control import Continuous_MountainCarEnv
 
 from environment.hindsight_wrapper import MountaincarHindsightWrapper
 from sac.train import HindsightPropagationTrainer, HindsightTrainer, activation_type
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     HindsightTrainer(
-        env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
+        env=MountaincarHindsightWrapper(Continuous_MountainCarEnv()),
         max_steps=999,
         seed=args.seed,
         buffer_size=10**7,
