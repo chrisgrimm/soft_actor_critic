@@ -39,13 +39,12 @@ if __name__ == '__main__':
 
     trainer(
         env=PickAndPlaceHindsightWrapper(
-            TimeLimit(
-                max_episode_steps=args.max_steps,
-                env=PickAndPlaceEnv(
-                    random_block=args.random_block,
-                    min_lift_height=args.min_lift_height,
-                    geofence=args.geofence))),
+            env=PickAndPlaceEnv(
+                random_block=args.random_block,
+                min_lift_height=args.min_lift_height,
+                geofence=args.geofence)),
         seed=args.seed,
+        max_steps=args.max_steps,
         buffer_size=int(args.buffer_size),
         activation=args.activation,
         n_layers=args.n_layers,

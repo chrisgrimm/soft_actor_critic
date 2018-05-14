@@ -27,7 +27,7 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 
 
 class Trainer:
-    def __init__(self, env: gym.Env, seed: int, buffer_size: int,
+    def __init__(self, env: gym.Env, seed: int, max_steps: int, buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,
                  learning_rate: float, reward_scale: float, batch_size: int,
                  num_train_steps: int, logdir: str, save_path: str, load_path: str,
@@ -73,7 +73,9 @@ class Trainer:
                 env.render()
             s2, r, t, info = self.step(a)
             if t:
+                s1 = self.reset()
                 print('reward:', r)
+            hit_max_steps = time_steps % max_steps == 0
 
             tick = time.time()
 
@@ -82,15 +84,10 @@ class Trainer:
                 print("model saved in path:",
                       saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
-                self.process_step(s1=s1, a=a, r=r, s2=s2, t=self.env.env._past_limit())
+                self.process_step(s1=s1, a=a, r=r, s2=s2, t=hit_max_steps)
             s1 = s2
             # noinspection PyProtectedMember
-            if t:
-                elapsed_steps = self.env.env._elapsed_steps
-                past_limit = self.env.env._past_limit()
-                s1 = self.reset()
-                if not past_limit:
-                    self.env.env._elapsed_steps = elapsed_steps
+            if hit_max_steps:
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                     'EVAL' if is_eval_period else 'TRAIN', (count['episode']),
                     time_steps, episode_count['reward']))

@@ -18,6 +18,7 @@ if __name__ == '__main__':
 
     HindsightTrainer(
         env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
+        max_steps=999,
         seed=args.seed,
         buffer_size=10**7,
         activation=tf.nn.relu,
