@@ -4,7 +4,7 @@ from os.path import join
 import numpy as np
 from gym import spaces
 
-from environment.base import at_goal
+from environment.base import at_goal, print1
 from environment.mujoco import MujocoEnv
 from mujoco import ObjType
 
@@ -31,14 +31,18 @@ class PickAndPlaceEnv(MujocoEnv):
                  min_lift_height=.02,
                  geofence=.04,
                  neg_reward=False,
-                 history_len=1):
+                 history_len=1,
+                 discrete=False):
+        self.grip = 0
         self._random_block = random_block
         self._goal_block_name = 'block1'
         self._min_lift_height = min_lift_height + geofence
         self._geofence = geofence
+        self._discrete = discrete
 
         super().__init__(
-            xml_filepath=join('models', 'pick-and-place', 'world.xml'),
+            xml_filepath=join('models', 'pick-and-place',
+                              'discrete.xml' if discrete else 'world.xml'),
             history_len=history_len,
             neg_reward=neg_reward,
             steps_per_action=20,
@@ -55,9 +59,12 @@ class PickAndPlaceEnv(MujocoEnv):
             map(np.size, self.goal()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
-        self.action_space = spaces.Box(
-            -1, 1, shape=(self.sim.nu - 1, ), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
+        if discrete:
+            self.action_space = spaces.Discrete(7)
+        else:
+            self.action_space = spaces.Box(
+                -1, 1, shape=(self.sim.nu - 1,), dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
 
@@ -133,12 +140,12 @@ class PickAndPlaceEnv(MujocoEnv):
     def gripper_pos(self, qpos=None):
         finger1, finger2 = [
             self.sim.get_body_xpos(name, qpos) for name in self._finger_names
-        ]
+            ]
         return (finger1 + finger2) / 2.
 
     def goal(self):
         goal_pos = self._initial_block_pos + \
-            np.array([0, 0, self._min_lift_height])
+                   np.array([0, 0, self._min_lift_height])
         return Goal(gripper=goal_pos, block=goal_pos)
 
     def goal_3d(self):
@@ -168,28 +175,36 @@ class PickAndPlaceEnv(MujocoEnv):
             return 0
 
     def step(self, action):
+        if self._discrete:
+            a = np.zeros(4)
+            if action > 0:
+                action -= 1
+                joint = action // 2
+                assert 0 <= joint <= 2
+                direction = (-1) ** (action % 2)
+                joint_scale = [.2, .05, .5]
+                a[2] = self.grip
+                a[joint] = direction * joint_scale[joint]
+                self.grip = a[2]
+            action = a
         action = np.clip(action, -1, 1)
-        for name in self._rotation_actuators:
-            i = self.sim.name2id(ObjType.ACTUATOR, name)
-            action[i] *= np.pi / 2
+        if not self._discrete:
+            for name in self._rotation_actuators:
+                i = self.sim.name2id(ObjType.ACTUATOR, name)
+                action[i] *= np.pi / 2
 
-        mirrored = [
-            'hand_l_proximal_motor',
-            # 'hand_l_distal_motor'
-        ]
-        mirroring = [
-            'hand_r_proximal_motor',
-            # 'hand_r_distal_motor'
-        ]
-
-        def get_indexes(names):
-            return [self.sim.name2id(ObjType.ACTUATOR, name) for name in names]
+        mirrored = 'hand_l_proximal_motor'
+        mirroring = 'hand_r_proximal_motor'
 
         # insert mirrored values at the appropriate indexes
-        mirrored_indexes, mirroring_indexes = map(get_indexes,
-                                                  [mirrored, mirroring])
+        mirrored_index, mirroring_index = [self.sim.name2id(ObjType.ACTUATOR, n)
+                                           for n in [mirrored, mirroring]]
         # necessary because np.insert can't append multiple values to end:
-        mirroring_indexes = np.minimum(mirroring_indexes,
-                                       self.action_space.shape)
-        action = np.insert(action, mirroring_indexes, action[mirrored_indexes])
+        if self._discrete:
+            action[mirroring_index] = action[mirrored_index]
+        else:
+            mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
+            action = np.insert(action, mirroring_index, action[mirrored_index])
+        print1(action)
+        print1(' ' * 20)
         return super().step(action)

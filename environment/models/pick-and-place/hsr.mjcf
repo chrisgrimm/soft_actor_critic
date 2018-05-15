@@ -129,7 +129,7 @@
                 <inertial pos="0.000632 0.006404 0.118529" quat="0.999966 -0.00826681 1.5355e-06 -1.33584e-06"
                           mass="1.33929" diaginertia="2.51222 2.51222 2.51222"/>
                 <!--<joint name="arm_flex_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-55 0" damping="100"/>-->
-                <joint name="arm_flex_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-63 0" damping="100"/>
+                <joint name="arm_flex_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-63 0" damping="1000"/>
                 <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="arm_flex_light"/>
                 <geom type="mesh" mesh="arm_flex"/>
                 <body name="arm_roll_link" pos="0.005 0 0.345">

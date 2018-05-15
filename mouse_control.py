@@ -13,21 +13,24 @@ from mujoco import ObjType
 saved_pos = None
 
 
-def run(port, value_tensor=None, sess=None):
+def run(port, discrete, value_tensor=None, sess=None):
     # env = NavigateEnv(continuous=True, max_steps=1000, geofence=.5)
     #env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    env = PickAndPlaceHindsightWrapper(PickAndPlaceEnv(max_steps=1000))
+    env = PickAndPlaceHindsightWrapper(PickAndPlaceEnv(random_block=False, discrete=discrete))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
-    shape, = env.action_space.shape
+    if discrete:
+        shape = env.action_space.n
+    else:
+        shape, = env.action_space.shape
 
     i = 0
     j = 0
-    action = np.zeros(shape)
-    moving = False
+    action = 0 if discrete else np.zeros(shape)
+    moving = True
     pause = False
     done = False
     total_reward = 0
@@ -37,7 +40,13 @@ def run(port, value_tensor=None, sess=None):
     while True:
         lastkey = env.env.sim.get_last_key_press()
         if moving:
-            action[i] += env.env.sim.get_mouse_dy()
+            if discrete:
+                for k in range(1, 7):
+                    if lastkey == str(k):
+                        action = int(lastkey)
+
+            else:
+                action[i] += env.env.sim.get_mouse_dy()
         # else:
         # for name in ['wrist_roll_motor']:
         # for name in ['slide_x_motor', 'slide_y_motor']:
@@ -52,22 +61,25 @@ def run(port, value_tensor=None, sess=None):
         if lastkey is 'P':
             print(env.env.sim.qpos)
 
-        for k in range(10):
-            if lastkey == str(k):
-                i = k - 1
-                print('')
-                print(env.env.sim.id2name(ObjType.ACTUATOR, i))
+        if not discrete:
+            for k in range(10):
+                if lastkey == str(k):
+                    i = k - 1
+                    print('')
+                    print(env.env.sim.id2name(ObjType.ACTUATOR, i))
 
         # action[1] = .5
         # action *= .05
-        if not pause and not np.allclose(action, 0):
-            print('.', end='')
-            a = np.clip(action * .05, -1, 1)
-            print1(a)
+        if not pause and discrete or not np.allclose(action, 0):
+            if discrete:
+                a = action
+            else:
+                a = np.clip(action * .05, -1, 1)
             s2, r, done, _ = env.step(a)
-            print1(r)
-            if s1 is not None:
-                traj.append((s1, a, r, s2, done))
+            if discrete:
+                action = 0
+            # if s1 is not None:
+            #     traj.append((s1, a, r, s2, done))
             s1 = s2
             total_reward += r
             # run_tests(env, s2)
@@ -112,6 +124,7 @@ def assert_equal(val1, val2, atol=1e-5):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--port', type=int, default=None)
+    parser.add_argument('-d', '--discrete', action='store_true')
     args = parser.parse_args()
 
-    run(args.port)
+    run(args.port, args.discrete)
