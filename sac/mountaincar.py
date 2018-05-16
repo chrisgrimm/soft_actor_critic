@@ -10,6 +10,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--seed', default=0, type=int)
+    parser.add_argument('--default-reward', default=0, type=float)
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--save-path', default=None, type=str)
@@ -17,7 +18,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     HindsightTrainer(
-        env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
+        env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0'),
+                                        default_reward=args.default_reward),
         seed=args.seed,
         buffer_size=10**7,
         activation=tf.nn.relu,
