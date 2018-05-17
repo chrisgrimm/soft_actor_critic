@@ -87,8 +87,9 @@ class AbstractAgent:
         for loss, var_list in zip([V_loss, Q_loss, pi_loss], [xi, theta, phi]):
             with tf.control_dependencies([dependency]):
                 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-                gradients = optimizer.compute_gradients(loss, var_list=var_list)
-                train_ops.append(optimizer.apply_gradients(gradients))
+                grads_and_vars = optimizer.compute_gradients(loss, var_list=var_list)
+                clipped = [(tf.clip_by_norm(g, 1), v) for g, v in grads_and_vars]
+                train_ops.append(optimizer.apply_gradients(clipped))
                 dependency = train_ops[-1]
 
         self.train_V, self.train_Q, self.train_pi = train_ops
