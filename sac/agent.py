@@ -82,18 +82,16 @@ class AbstractAgent:
         xi_bar = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
 
-        with tf.control_dependencies([self.pi_loss]):
-            self.train_V = tf.train.AdamOptimizer(
-                learning_rate=learning_rate).minimize(
-                    V_loss, var_list=xi)
-        with tf.control_dependencies([self.train_V]):
-            self.train_Q = tf.train.AdamOptimizer(
-                learning_rate=learning_rate).minimize(
-                    Q_loss, var_list=theta)
-        with tf.control_dependencies([self.train_Q]):
-            self.train_pi = tf.train.AdamOptimizer(
-                learning_rate=learning_rate).minimize(
-                    pi_loss, var_list=phi)
+        dependency = self.pi_loss
+        train_ops = []
+        for loss, var_list in zip([V_loss, Q_loss, pi_loss], [xi, theta, phi]):
+            with tf.control_dependencies([dependency]):
+                optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+                gradients = optimizer.compute_gradients(loss, var_list=var_list)
+                train_ops.append(optimizer.apply_gradients(gradients))
+                dependency = train_ops[-1]
+
+        self.train_V, self.train_Q, self.train_pi = train_ops
 
         with tf.control_dependencies([self.train_pi]):
             soft_update_xi_bar_ops = [
@@ -118,7 +116,7 @@ class AbstractAgent:
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
 
-    def train_step(self, step: Step, extra_feeds: object = None) -> Tuple[float, float, float]:
+    def train_step(self, step: Step, extra_feeds: object = None) -> Tuple[float, float, float, float]:
         feed_dict = {
             self.S1: step.s1,
             self.A: step.a,
@@ -128,7 +126,7 @@ class AbstractAgent:
         }
         if extra_feeds:
             feed_dict.update(extra_feeds)
-        [entropy, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run([
+        [entropy, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run([
             self.entropy, self.soft_update_xi_bar, self.train_V, self.train_Q, self.train_pi,
             self.V_loss, self.Q_loss, self.pi_loss
         ], feed_dict)
