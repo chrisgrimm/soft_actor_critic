@@ -27,30 +27,10 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 
 
 class Trainer:
-    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
-        # noinspection PyTypeChecker
-        return self.env.step(action)
-
-    def reset(self) -> State:
-        return self.env.reset()
-
-    def action_converter(self, action: np.ndarray) -> Union[np.ndarray, int]:
-        """ Preprocess action before feeding to env """
-        if type(self.env.action_space) is spaces.Discrete:
-            return np.argmax(action)
-        else:
-            action = np.tanh(action)
-            hi, lo = self.env.action_space.high, self.env.action_space.low
-            return ((action + 1) / 2) * (hi - lo) + lo
-
-    def vectorize_state(self, state: State) -> np.ndarray:
-        """ Preprocess state before feeding to network """
-        return state
-
     def __init__(self, env: gym.Env, seed: int, buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,
                  learning_rate: float, reward_scale: float, batch_size: int,
-                 num_train_steps: int, logdir: str, save_path: str,
+                 num_train_steps: int, logdir: str, save_path: str, load_path: str,
                  render: bool):
 
         if seed is not None:
@@ -74,6 +54,9 @@ class Trainer:
 
         saver = tf.train.Saver()
         tb_writer = None
+        if load_path:
+            saver.restore(agent.sess, load_path)
+            print("Model restored from", load_path)
         if logdir:
             tb_writer = tf.summary.FileWriter(
                 logdir=logdir, graph=agent.sess.graph)
@@ -83,12 +66,12 @@ class Trainer:
         evaluation_period = 10
 
         for time_steps in itertools.count():
-            is_eval_period = count['episode'] % evaluation_period == 0
+            is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
             a = agent.get_actions(
                 [self.vectorize_state(s1)], sample=(not is_eval_period))
             if render:
                 env.render()
-            s2, r, t, info = self.step(self.action_converter(a))
+            s2, r, t, info = self.step(a)
             if t:
                 print('reward:', r)
 
@@ -152,6 +135,25 @@ class Trainer:
                     learning_rate=learning_rate)
 
         return Agent(state_shape, action_shape)
+
+    def reset(self) -> State:
+        return self.env.reset()
+
+    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
+        """ Preprocess action before feeding to env """
+        if type(self.env.action_space) is spaces.Discrete:
+            # noinspection PyTypeChecker
+            return self.env.step(np.argmax(action))
+        else:
+            action = np.tanh(action)
+            hi, lo = self.env.action_space.high, self.env.action_space.low
+            # noinspection PyUnresolvedReferences
+            # noinspection PyTypeChecker
+            return self.env.step((action + 1) / 2 * (hi - lo) + lo)
+
+    def vectorize_state(self, state: State) -> np.ndarray:
+        """ Preprocess state before feeding to network """
+        return state
 
     def process_step(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
         self.buffer.append(
@@ -292,7 +294,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-layers', default=3, type=int)
     parser.add_argument('--layer-size', default=256, type=int)
     parser.add_argument('--learning-rate', default=3e-4, type=float)
-    parser.add_argument('--buffer-size', default=int(10**7), type=int)
+    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)

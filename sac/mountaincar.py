@@ -12,9 +12,11 @@ if __name__ == '__main__':
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--logdir', default=None, type=str)
     parser.add_argument('--render', action='store_true')
+    parser.add_argument('--save-path', default=None, type=str)
+    parser.add_argument('--load-path', default=None, type=str)
     args = parser.parse_args()
 
-    HindsightPropagationTrainer(
+    HindsightTrainer(
         env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
         seed=args.seed,
         buffer_size=10**7,
@@ -22,8 +24,10 @@ if __name__ == '__main__':
         n_layers=3,
         layer_size=256,
         learning_rate=3e-4,
-        reward_scale=10,
+        reward_scale=1e3,
         batch_size=32,
         num_train_steps=1,
         logdir=args.logdir,
+        save_path=args.save_path,
+        load_path=args.load_path,
         render=args.render)
