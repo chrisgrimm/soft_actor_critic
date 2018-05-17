@@ -128,11 +128,11 @@ class AbstractAgent:
         }
         if extra_feeds:
             feed_dict.update(extra_feeds)
-        [_, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run([
-            self.soft_update_xi_bar, self.train_V, self.train_Q, self.train_pi,
+        [entropy, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run([
+            self.entropy, self.soft_update_xi_bar, self.train_V, self.train_Q, self.train_pi,
             self.V_loss, self.Q_loss, self.pi_loss
         ], feed_dict)
-        return V_loss, Q_loss, pi_loss
+        return entropy, V_loss, Q_loss, pi_loss
 
     def get_actions(self, S1: np.ndarray, sample: bool = True) -> np.ndarray:
         if sample:
