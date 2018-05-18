@@ -88,7 +88,7 @@ class AbstractAgent:
             with tf.control_dependencies([dependency]):
                 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
                 grads_and_vars = optimizer.compute_gradients(loss, var_list=var_list)
-                clipped = [(tf.clip_by_norm(g, 1), v) for g, v in grads_and_vars]
+                clipped = [(tf.clip_by_norm(g, 10), v) for g, v in grads_and_vars]
                 train_ops.append(optimizer.apply_gradients(clipped))
                 dependency = train_ops[-1]
 
