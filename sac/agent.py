@@ -93,18 +93,15 @@ class AbstractAgent:
         xi_bar = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
 
-        with tf.control_dependencies([self.pi_loss]):
-            self.train_V = tf.train.AdamOptimizer(
-                learning_rate=learning_rate).minimize(
-                    V_loss, var_list=xi)
-        with tf.control_dependencies([self.train_V]):
-            self.train_Q = tf.train.AdamOptimizer(
-                learning_rate=learning_rate).minimize(
-                    Q_loss, var_list=theta)
-        with tf.control_dependencies([self.train_Q]):
-            self.train_pi = tf.train.AdamOptimizer(
-                learning_rate=learning_rate).minimize(
-                    pi_loss, var_list=phi)
+        def train_op(loss, var_list, dependency):
+            with tf.control_dependencies([dependency]):
+                return tf.train.AdamOptimizer(
+                    learning_rate=learning_rate).minimize(
+                    loss, var_list=var_list)
+
+        self.train_V = train_op(V_loss, xi, dependency=self.pi_loss)
+        self.train_Q = train_op(Q_loss, theta, dependency=self.train_V)
+        self.train_pi = train_op(pi_loss, phi, dependency=self.train_Q)
 
         with tf.control_dependencies([self.train_pi]):
             soft_update_xi_bar_ops = [
