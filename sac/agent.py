@@ -3,6 +3,7 @@ from typing import Tuple, Iterable, Callable
 from abc import abstractmethod
 
 import tensorflow as tf
+from collections import namedtuple
 
 from sac.utils import PropStep, Step
 import numpy as np
@@ -13,6 +14,11 @@ def mlp(inputs, layer_size, n_layers, activation):
         inputs = tf.layers.dense(
             inputs, layer_size, activation, name='fc' + str(i))
     return inputs
+
+
+TRAIN_VALUES = 'entropy soft_update_xi_bar train_V train_Q' \
+               ' train_pi V_loss Q_loss pi_loss'.split()
+TrainStep = namedtuple('TrainStep', TRAIN_VALUES)
 
 
 class AbstractAgent:
@@ -112,12 +118,12 @@ class AbstractAgent:
         # ensure that xi and xi_bar are the same at initialization
         hard_update_xi_bar_ops = [
             tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
-        ]
+            ]
 
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
 
-    def train_step(self, step: Step, extra_feeds: object = None) -> Tuple[float, float, float, float]:
+    def train_step(self, step: Step, extra_feeds: object = None) -> TrainStep:
         feed_dict = {
             self.S1: step.s1,
             self.A: step.a,
@@ -127,11 +133,8 @@ class AbstractAgent:
         }
         if extra_feeds:
             feed_dict.update(extra_feeds)
-        [entropy, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run([
-            self.entropy, self.soft_update_xi_bar, self.train_V, self.train_Q, self.train_pi,
-            self.V_loss, self.Q_loss, self.pi_loss
-        ], feed_dict)
-        return entropy, V_loss, Q_loss, pi_loss
+        return TrainStep(*self.sess.run(
+            [getattr(self, attr) for attr in TRAIN_VALUES], feed_dict))
 
     def get_actions(self, S1: np.ndarray, sample: bool = True) -> np.ndarray:
         if sample:
