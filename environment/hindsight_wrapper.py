@@ -12,7 +12,8 @@ State = namedtuple('State', 'obs goal')
 
 
 class HindsightWrapper(gym.Wrapper):
-    def __init__(self, env):
+    def __init__(self, env, default_reward=0):
+        self._default_reward = default_reward
         super().__init__(env)
         vector_state = self.vectorize_state(self.reset())
         self.observation_space = Box(-1, 1, vector_state.shape)
@@ -49,9 +50,10 @@ class HindsightWrapper(gym.Wrapper):
         achieved_goal = self.achieved_goal(trajectory[-1].s2.obs)
         for step in trajectory:
             new_t = self.at_goal(step.s2.obs, achieved_goal) or step.t
+            r = 1 if self.at_goal(step.s2.obs, achieved_goal) else self._default_reward
             yield Step(s1=State(obs=step.s1.obs, goal=achieved_goal),
                        a=step.a,
-                       r=float(self.at_goal(step.s2.obs, achieved_goal)),
+                       r=r,
                        s2=State(obs=step.s2.obs, goal=achieved_goal),
                        t=new_t)
             if new_t:
@@ -74,14 +76,14 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
-    def __init__(self, env):
+    def __init__(self, env, default_reward):
         if isinstance(env, gym.Wrapper):
             assert isinstance(env.unwrapped, PickAndPlaceEnv)
             self.unwrapped_env = env.unwrapped
         else:
             assert isinstance(env, PickAndPlaceEnv)
             self.unwrapped_env = env
-        super().__init__(env)
+        super().__init__(env, default_reward)
 
     def achieved_goal(self, history):
         last_obs, = history[-1]
