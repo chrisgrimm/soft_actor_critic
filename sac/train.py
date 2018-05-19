@@ -11,7 +11,7 @@ from collections import Counter
 from gym import spaces
 
 from environment.hindsight_wrapper import HindsightWrapper
-from sac.agent import AbstractAgent, PropagationAgent
+from sac.agent import AbstractAgent, PropagationAgent, TrainStep
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import PropStep, Step, State
@@ -102,7 +102,7 @@ class Trainer:
                         simple_value=(
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
-                    for k in ['V loss', 'Q loss', 'pi loss', 'reward']:
+                    for k in ['V loss', 'Q loss', 'pi loss', 'entropy', 'reward']:
                         summary.value.add(tag=k, simple_value=episode_count[k])
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
@@ -164,7 +164,7 @@ class Trainer:
                     self.batch_size)
                 s1_sample = list(map(self.vectorize_state, s1_sample))
                 s2_sample = list(map(self.vectorize_state, s2_sample))
-                [v_loss, q_loss, pi_loss] = self.agent.train_step(
+                step = self.agent.train_step(
                     Step(
                         s1=s1_sample,
                         a=a_sample,
@@ -172,9 +172,10 @@ class Trainer:
                         s2=s2_sample,
                         t=t_sample))
                 self.episode_count += Counter({
-                    'V loss': v_loss,
-                    'Q loss': q_loss,
-                    'pi loss': pi_loss
+                    'V loss': step.V_loss,
+                    'Q loss': step.Q_loss,
+                    'pi loss': step.pi_loss,
+                    'entropy': step.entropy
                 })
 
 
