@@ -175,6 +175,9 @@ class Trainer:
                     'V loss': step.V_loss,
                     'Q loss': step.Q_loss,
                     'pi loss': step.pi_loss,
+                    'V grad': np.mean(step.V_grad),
+                    'Q grad': np.mean(step.Q_grad),
+                    'pi grad': np.mean(step.pi_grad),
                     'entropy': step.entropy
                 })
 
