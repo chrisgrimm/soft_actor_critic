@@ -205,6 +205,4 @@ class PickAndPlaceEnv(MujocoEnv):
         else:
             mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
             action = np.insert(action, mirroring_index, action[mirrored_index])
-        print1(action)
-        print1(' ' * 20)
         return super().step(action)

@@ -107,8 +107,7 @@ class Trainer:
             s1 = s2
             if t:
                 s1 = self.reset()
-                print('({}) Episode {}\t Time Steps: {}\t Reward: {}\t'
-                      'V Loss: {}\t Q Loss: {}'.format(
+                print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                     'EVAL' if is_eval_period else 'TRAIN', (count['episode']),
                     time_steps, episode_count['reward'], episode_count['V loss'], episode_count['Q loss']))
                 count += Counter(reward=(episode_count['reward']), episode=1)
