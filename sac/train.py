@@ -62,7 +62,7 @@ class Trainer:
                 logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
-        self.episode_count = episode_count = Counter()
+        episode_count = Counter()
         evaluation_period = 10
 
         for time_steps in itertools.count():
@@ -83,6 +83,27 @@ class Trainer:
                       saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
                 self.process_step(s1=s1, a=a, r=r, s2=s2, t=t)
+                if len(self.buffer) >= self.batch_size:
+                    for i in range(self.num_train_steps):
+                        s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
+                            self.batch_size)
+                        s1_sample = list(map(self.vectorize_state, s1_sample))
+                        s2_sample = list(map(self.vectorize_state, s2_sample))
+                        step = self.agent.train_step(Step(
+                                s1=s1_sample,
+                                a=a_sample,
+                                r=r_sample,
+                                s2=s2_sample,
+                                t=t_sample))
+                        episode_count += Counter({
+                            'V loss': step.V_loss,
+                            'Q loss': step.Q_loss,
+                            'pi loss': step.pi_loss,
+                            'V grad': np.max(step.V_grad),
+                            'Q grad': np.max(step.Q_grad),
+                            'pi grad': np.max(step.pi_grad),
+                            'entropy': step.entropy
+                        })
             s1 = s2
             if t:
                 s1 = self.reset()
@@ -102,7 +123,10 @@ class Trainer:
                         simple_value=(
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
-                    for k in ['V loss', 'Q loss', 'pi loss', 'entropy', 'reward']:
+                    for k in ['entropy', 'reward'] + ['{} {}'.format(v, w)
+                                                      for v in ('V', 'Q', 'pi')
+                                                      for w in ('loss', 'grad')]:
+                        print(k, episode_count[k])
                         summary.value.add(tag=k, simple_value=episode_count[k])
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
@@ -158,25 +182,6 @@ class Trainer:
     def process_step(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
         self.buffer.append(
             Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
-        if len(self.buffer) >= self.batch_size:
-            for i in range(self.num_train_steps):
-                s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
-                    self.batch_size)
-                s1_sample = list(map(self.vectorize_state, s1_sample))
-                s2_sample = list(map(self.vectorize_state, s2_sample))
-                step = self.agent.train_step(
-                    Step(
-                        s1=s1_sample,
-                        a=a_sample,
-                        r=r_sample,
-                        s2=s2_sample,
-                        t=t_sample))
-                self.episode_count += Counter({
-                    'V loss': step.V_loss,
-                    'Q loss': step.Q_loss,
-                    'pi loss': step.pi_loss,
-                    'entropy': step.entropy
-                })
 
 
 class TrajectoryTrainer(Trainer):
@@ -221,7 +226,7 @@ class PropagationTrainer(TrajectoryTrainer):
                 s1_sample, a_sample, r_sample, s2_sample, t_sample, v2_sample = sample
                 s1_sample = list(map(self.vectorize_state, s1_sample))
                 s2_sample = list(map(self.vectorize_state, s2_sample))
-                [v_loss, q_loss, pi_loss] = self.agent.train_step(
+                return self.agent.train_step(
                     PropStep(
                         s1=s1_sample,
                         a=a_sample,
@@ -229,11 +234,6 @@ class PropagationTrainer(TrajectoryTrainer):
                         s2=s2_sample,
                         t=t_sample,
                         v2=v2_sample))
-                self.episode_count += Counter({
-                    'V loss': v_loss,
-                    'Q loss': q_loss,
-                    'pi loss': pi_loss
-                })
 
     def build_agent(self,
                     activation: Callable,
