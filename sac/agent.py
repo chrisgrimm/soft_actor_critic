@@ -3,6 +3,7 @@ from typing import Tuple, Iterable, Callable
 from abc import abstractmethod
 
 import tensorflow as tf
+from collections import namedtuple
 
 from sac.utils import PropStep, Step
 import numpy as np
@@ -13,6 +14,11 @@ def mlp(inputs, layer_size, n_layers, activation):
         inputs = tf.layers.dense(
             inputs, layer_size, activation, name='fc' + str(i))
     return inputs
+
+
+TRAIN_VALUES = 'entropy soft_update_xi_bar train_V train_Q' \
+               ' train_pi V_loss Q_loss pi_loss V_grad Q_grad pi_grad'.split()
+TrainStep = namedtuple('TrainStep', TRAIN_VALUES)
 
 
 class AbstractAgent:
@@ -82,23 +88,23 @@ class AbstractAgent:
         xi_bar = tf.get_collection(
             tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
 
-        dependency = self.pi_loss
-        train_ops = []
-        for loss, var_list in zip([V_loss, Q_loss, pi_loss], [xi, theta, phi]):
+        def train_op(var_list, loss, dependency):
             with tf.control_dependencies([dependency]):
                 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
                 grads_and_vars = optimizer.compute_gradients(loss, var_list=var_list)
-                clipped = [(tf.clip_by_norm(g, 10), v) for g, v in grads_and_vars]
-                train_ops.append(optimizer.apply_gradients(clipped))
-                dependency = train_ops[-1]
+                grads = [tf.reduce_mean(g) for g, v in grads_and_vars]
+                op = optimizer.apply_gradients(grads_and_vars)
+                return grads, op
 
-        self.train_V, self.train_Q, self.train_pi = train_ops
+        self.V_grad, self.train_V = train_op(var_list=xi, loss=V_loss, dependency=self.pi_loss)
+        self.Q_grad, self.train_Q = train_op(var_list=theta, loss=Q_loss, dependency=self.train_V)
+        self.pi_grad, self.train_pi = train_op(var_list=phi, loss=pi_loss, dependency=self.train_Q)
 
         with tf.control_dependencies([self.train_pi]):
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)
                 for (xbar, x) in zip(xi_bar, xi)
-            ]
+                ]
             self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
             self.check = tf.add_check_numerics_ops()
             self.entropy = self.compute_entropy()
@@ -112,12 +118,12 @@ class AbstractAgent:
         # ensure that xi and xi_bar are the same at initialization
         hard_update_xi_bar_ops = [
             tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)
-        ]
+            ]
 
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
 
-    def train_step(self, step: Step, extra_feeds: object = None) -> Tuple[float, float, float, float]:
+    def train_step(self, step: Step, extra_feeds: object = None) -> TrainStep:
         feed_dict = {
             self.S1: step.s1,
             self.A: step.a,
@@ -127,11 +133,8 @@ class AbstractAgent:
         }
         if extra_feeds:
             feed_dict.update(extra_feeds)
-        [entropy, _, _, _, _, V_loss, Q_loss, pi_loss] = self.sess.run([
-            self.entropy, self.soft_update_xi_bar, self.train_V, self.train_Q, self.train_pi,
-            self.V_loss, self.Q_loss, self.pi_loss
-        ], feed_dict)
-        return entropy, V_loss, Q_loss, pi_loss
+        return TrainStep(*self.sess.run(
+            [getattr(self, attr) for attr in TRAIN_VALUES], feed_dict))
 
     def get_actions(self, S1: np.ndarray, sample: bool = True) -> np.ndarray:
         if sample:
