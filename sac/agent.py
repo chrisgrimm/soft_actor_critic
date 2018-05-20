@@ -100,8 +100,9 @@ class AbstractAgent:
             with tf.control_dependencies([dependency]):
                 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
                 grads_and_vars = optimizer.compute_gradients(loss, var_list=var_list)
-                op = optimizer.apply_gradients(grads_and_vars)
-                grad = [tf.reduce_max(g) for g, v in grads_and_vars]
+                clipped = [(tf.clip_by_value(g, -1e5, 1e5), v) for g, v in grads_and_vars]
+                grad = [tf.reduce_max(g) for g, v in clipped]
+                op = optimizer.apply_gradients(clipped)
                 return op, grad
 
         self.train_V, self.V_grad = train_op(loss=V_loss, var_list=xi, dependency=self.pi_loss)
