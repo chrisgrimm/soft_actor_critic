@@ -101,7 +101,7 @@ class AbstractAgent:
                 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
                 grads_and_vars = optimizer.compute_gradients(loss, var_list=var_list)
                 clipped = [(tf.clip_by_value(g, -1e5, 1e5), v) for g, v in grads_and_vars]
-                grad = [tf.reduce_max(g) for g, v in clipped]
+                grad = [tf.reduce_mean(g) for g, v in clipped]
                 op = optimizer.apply_gradients(clipped)
                 return op, grad
 

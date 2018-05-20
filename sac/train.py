@@ -72,8 +72,6 @@ class Trainer:
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
-            if t:
-                print('reward:', r)
 
             tick = time.time()
 
@@ -99,17 +97,17 @@ class Trainer:
                             'V loss': step.V_loss,
                             'Q loss': step.Q_loss,
                             'pi loss': step.pi_loss,
-                            'V grad': np.max(step.V_grad),
-                            'Q grad': np.max(step.Q_grad),
-                            'pi grad': np.max(step.pi_grad),
+                            'V grad': np.mean(step.V_grad),
+                            'Q grad': np.mean(step.Q_grad),
+                            'pi grad': np.mean(step.pi_grad),
                             'entropy': step.entropy
                         })
             s1 = s2
             if t:
                 s1 = self.reset()
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                    'EVAL' if is_eval_period else 'TRAIN', (count['episode']),
-                    time_steps, episode_count['reward'], episode_count['V loss'], episode_count['Q loss']))
+                    'EVAL' if is_eval_period else 'TRAIN', count['episode'],
+                    time_steps, episode_count['reward']))
                 count += Counter(reward=(episode_count['reward']), episode=1)
                 fps = int(episode_count['timesteps'] / (time.time() - tick))
                 if logdir:
@@ -126,8 +124,7 @@ class Trainer:
                     for k in ['entropy', 'reward'] + ['{} {}'.format(v, w)
                                                       for v in ('V', 'Q', 'pi')
                                                       for w in ('loss', 'grad')]:
-                        print(k, episode_count[k])
-                        summary.value.add(tag=k, simple_value=episode_count[k])
+                        summary.value.add(tag=k, simple_value=episode_count[k] / float(episode_count['timesteps']))
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
 
