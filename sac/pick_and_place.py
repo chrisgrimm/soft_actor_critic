@@ -25,6 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--geofence', default=.4, type=float)
     parser.add_argument('--min-lift-height', default=.02, type=float)
     parser.add_argument('--default-reward', default=0, type=float)
+    parser.add_argument('--grad-clip', default=None, type=float)
     parser.add_argument('--mimic-file', default=None, type=str)
     parser.add_argument('--random-block', action='store_true')
     parser.add_argument('--reward-prop', action='store_true')
@@ -56,6 +57,7 @@ if __name__ == '__main__':
         layer_size=args.layer_size,
         learning_rate=args.learning_rate,
         reward_scale=args.reward_scale,
+        grad_clip=args.grad_clip,
         batch_size=args.batch_size,
         num_train_steps=args.num_train_steps,
         logdir=args.logdir,

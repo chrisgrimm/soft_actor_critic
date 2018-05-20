@@ -26,6 +26,7 @@ if __name__ == '__main__':
         n_layers=3,
         layer_size=256,
         learning_rate=3e-4,
+        grad_clip=None,
         reward_scale=1e3,
         batch_size=32,
         num_train_steps=1,

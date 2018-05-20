@@ -29,9 +29,10 @@ pi_grad\
 TrainStep = namedtuple('TrainStep', TRAIN_VALUES)
 
 
+# noinspection PyPep8Naming
 class AbstractAgent:
     def __init__(self, s_shape: Iterable, a_shape: Iterable, activation: Callable, n_layers: int,
-                 layer_size: int, learning_rate: float) -> None:
+                 layer_size: int, learning_rate: float, grad_clip: float) -> None:
         self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
@@ -99,11 +100,13 @@ class AbstractAgent:
         def train_op(loss, var_list, dependency):
             with tf.control_dependencies([dependency]):
                 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-                grads_and_vars = optimizer.compute_gradients(loss, var_list=var_list)
-                clipped = [(tf.clip_by_value(g, -1e5, 1e5), v) for g, v in grads_and_vars]
-                grad = [tf.reduce_mean(g) for g, v in clipped]
-                op = optimizer.apply_gradients(clipped)
-                return op, grad
+                gradients, variables = zip(*optimizer.compute_gradients(loss, var_list=var_list))
+                if grad_clip:
+                    gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
+                else:
+                    norm = tf.global_norm(gradients)
+                op = optimizer.apply_gradients(zip(gradients, variables))
+                return op, norm
 
         self.train_V, self.V_grad = train_op(loss=V_loss, var_list=xi, dependency=self.pi_loss)
         self.train_Q, self.Q_grad = train_op(loss=Q_loss, var_list=theta, dependency=self.train_V)

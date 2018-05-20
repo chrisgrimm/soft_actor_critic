@@ -29,8 +29,9 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 class Trainer:
     def __init__(self, env: gym.Env, seed: int, buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,
-                 learning_rate: float, reward_scale: float, batch_size: int,
-                 num_train_steps: int, logdir: str, save_path: str, load_path: str,
+                 learning_rate: float, reward_scale: float, grad_clip: float,
+                 batch_size: int, num_train_steps: int,
+                 logdir: str, save_path: str, load_path: str,
                  render: bool):
 
         if seed is not None:
@@ -50,7 +51,8 @@ class Trainer:
             activation=activation,
             n_layers=n_layers,
             layer_size=layer_size,
-            learning_rate=learning_rate)
+            learning_rate=learning_rate,
+            grad_clip=grad_clip)
 
         saver = tf.train.Saver()
         tb_writer = None
@@ -136,6 +138,7 @@ class Trainer:
                     n_layers: int,
                     layer_size: int,
                     learning_rate: float,
+                    grad_clip: float,
                     base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
@@ -153,7 +156,8 @@ class Trainer:
                     activation=activation,
                     n_layers=n_layers,
                     layer_size=layer_size,
-                    learning_rate=learning_rate)
+                    learning_rate=learning_rate,
+                    grad_clip=grad_clip)
 
         return Agent(state_shape, action_shape)
 
@@ -237,12 +241,15 @@ class PropagationTrainer(TrajectoryTrainer):
                     n_layers: int,
                     layer_size: int,
                     learning_rate: float,
-                    base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
+                    grad_clip: float,
+                    base_agent: AbstractAgent = AbstractAgent,
+                    **kwargs) -> AbstractAgent:
         return super().build_agent(
             activation=activation,
             n_layers=n_layers,
             layer_size=layer_size,
             learning_rate=learning_rate,
+            grad_clip=grad_clip,
             base_agent=PropagationAgent)
 
     def reset(self) -> State:
