@@ -135,16 +135,15 @@ class AbstractAgent:
         hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
         sess.run(hard_update_xi_bar)
 
-    def train_step(self, step: Step, extra_feeds: object = None) -> TrainStep:
-        feed_dict = {
-            self.S1: step.s1,
-            self.A: step.a,
-            self.R: step.r,
-            self.S2: step.s2,
-            self.T: step.t
-        }
-        if extra_feeds:
-            feed_dict.update(extra_feeds)
+    def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
+        if feed_dict is None:
+            feed_dict = {
+                self.S1: step.s1,
+                self.A: step.a,
+                self.R: step.r,
+                self.S2: step.s2,
+                self.T: step.t
+            }
         return TrainStep(*self.sess.run(
             [getattr(self, attr) for attr in TRAIN_VALUES], feed_dict))
 
@@ -231,7 +230,15 @@ class PropagationAgent(AbstractAgent):
     def V_bar_S2(self) -> tf.Tensor:
         return tf.maximum(self.sampled_V2, super().V_S2())
 
-    def train_step(self, step: PropStep, extra_feeds: dict = None) -> Tuple[float, float, float]:
-        extra_feeds[self.sampled_V2] = step.v2
+    def train_step(self, step: PropStep, feed_dict: dict = None) -> TrainStep:
         assert isinstance(step, PropStep)
-        return super().train_step(step, extra_feeds)
+        if feed_dict is None:
+            feed_dict = {
+                self.S1: step.s1,
+                self.A: step.a,
+                self.R: step.r,
+                self.S2: step.s2,
+                self.T: step.t,
+                self.sampled_V2: step.v2,
+            }
+        return super().train_step(step, feed_dict)
