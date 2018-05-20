@@ -16,6 +16,16 @@ from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import PropStep, Step, State
 
+LOGGER_VALUES = """\
+entropy
+V loss
+Q loss
+pi loss
+V grad
+Q grad
+pi grad\
+""".split('\n')
+
 
 def inject_mimic_experiences(mimic_file, buffer, N=1):
     with open(mimic_file, 'rb') as f:
@@ -85,25 +95,14 @@ class Trainer:
                 self.process_step(s1=s1, a=a, r=r, s2=s2, t=t)
                 if len(self.buffer) >= self.batch_size:
                     for i in range(self.num_train_steps):
-                        s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
-                            self.batch_size)
-                        s1_sample = list(map(self.vectorize_state, s1_sample))
-                        s2_sample = list(map(self.vectorize_state, s2_sample))
-                        step = self.agent.train_step(Step(
-                                s1=s1_sample,
-                                a=a_sample,
-                                r=r_sample,
-                                s2=s2_sample,
-                                t=t_sample))
-                        episode_count += Counter({
-                            'V loss': step.V_loss,
-                            'Q loss': step.Q_loss,
-                            'pi loss': step.pi_loss,
-                            'V grad': np.mean(step.V_grad),
-                            'Q grad': np.mean(step.Q_grad),
-                            'pi grad': np.mean(step.pi_grad),
-                            'entropy': step.entropy
-                        })
+                        sample_steps = Step(*self.buffer.sample(self.batch_size))
+                        # noinspection PyProtectedMember
+                        step = self.agent.train_step(sample_steps._replace(
+                            s1=list(map(self.vectorize_state, sample_steps.s1)),
+                            s2=list(map(self.vectorize_state, sample_steps.s2)),
+                        ))
+                        episode_count += Counter({k: getattr(step, k.replace(' ', '_'))
+                                                  for k in LOGGER_VALUES})
             s1 = s2
             if t:
                 s1 = self.reset()
@@ -123,9 +122,8 @@ class Trainer:
                         simple_value=(
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
-                    for k in ['entropy', 'reward'] + ['{} {}'.format(v, w)
-                                                      for v in ('V', 'Q', 'pi')
-                                                      for w in ('loss', 'grad')]:
+                    summary.value.add(tag='reward', simple_value=episode_count['reward'])
+                    for k in LOGGER_VALUES:
                         summary.value.add(tag=k, simple_value=episode_count[k] / float(episode_count['timesteps']))
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
