@@ -92,10 +92,10 @@ class Trainer:
                 print("model saved in path:",
                       saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
-                self.process_step(s1=s1, a=a, r=r, s2=s2, t=t)
+                self.add_to_buffer(s1=s1, a=a, r=r, s2=s2, t=t)
                 if len(self.buffer) >= self.batch_size:
                     for i in range(self.num_train_steps):
-                        sample_steps = Step(*self.buffer.sample(self.batch_size))
+                        sample_steps = self.sample_buffer()
                         # noinspection PyProtectedMember
                         step = self.agent.train_step(sample_steps._replace(
                             s1=list(map(self.vectorize_state, sample_steps.s1)),
@@ -178,9 +178,12 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def process_step(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
+    def add_to_buffer(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
         self.buffer.append(
             Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
+
+    def sample_buffer(self):
+        return Step(*self.buffer.sample(self.batch_size))
 
 
 class TrajectoryTrainer(Trainer):
@@ -218,21 +221,8 @@ class HindsightTrainer(TrajectoryTrainer):
 
 
 class PropagationTrainer(TrajectoryTrainer):
-    def process_step(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
-        if len(self.buffer) >= self.batch_size:
-            for i in range(self.num_train_steps):
-                sample = self.buffer.sample(self.batch_size)
-                s1_sample, a_sample, r_sample, s2_sample, t_sample, v2_sample = sample
-                s1_sample = list(map(self.vectorize_state, s1_sample))
-                s2_sample = list(map(self.vectorize_state, s2_sample))
-                return self.agent.train_step(
-                    PropStep(
-                        s1=s1_sample,
-                        a=a_sample,
-                        r=r_sample,
-                        s2=s2_sample,
-                        t=t_sample,
-                        v2=v2_sample))
+    def add_to_buffer(self, **_):
+        pass
 
     def build_agent(self,
                     activation: Callable,
@@ -259,7 +249,12 @@ class PropagationTrainer(TrajectoryTrainer):
         for step in reversed(trajectory):
             v2 = .99 * v2 + step.r
             # noinspection PyProtectedMember
-            yield step._replace(r=step.r * self.reward_scale)
+            prop_step = PropStep(v2=v2, **step._asdict())
+            # noinspection PyProtectedMember
+            yield prop_step._replace(r=step.r * self.reward_scale)
+
+    def sample_buffer(self):
+        return PropStep(*self.buffer.sample(self.batch_size))
 
 
 class HindsightPropagationTrainer(HindsightTrainer, PropagationTrainer):
