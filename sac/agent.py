@@ -62,7 +62,7 @@ class AbstractAgent:
 
         # constructing V loss
         with tf.control_dependencies([self.A_sampled1]):
-            V_S1 = self.V_network(S1, 'V')
+            V_S1 = self.V_S1()
             Q_sampled1 = self.Q_network(
                 S1, self.transform_action_sample(A_sampled1), 'Q')
             log_pi_sampled1 = self.pi_network_log_prob(
@@ -72,7 +72,7 @@ class AbstractAgent:
 
         # constructing Q loss
         with tf.control_dependencies([self.V_loss]):
-            V_bar_S2 = self.V_network(S2, 'V_bar')
+            V_bar_S2 = self.V_S2()
             Q = self.Q_network(
                 S1, self.transform_action_sample(A), 'Q', reuse=True)
             self.Q_loss = Q_loss = tf.reduce_mean(
@@ -227,7 +227,7 @@ class PropagationAgent(AbstractAgent):
         self.sampled_V2 = tf.placeholder(tf.float32, [None], name='R')
         super().__init__(**kwargs)
 
-    def V_bar_S2(self) -> tf.Tensor:
+    def V_S2(self) -> tf.Tensor:
         return tf.maximum(self.sampled_V2, super().V_S2())
 
     def train_step(self, step: PropStep, feed_dict: dict = None) -> TrainStep:
