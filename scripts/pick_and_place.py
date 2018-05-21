@@ -27,6 +27,7 @@ from scripts.gym_env import cast_to_int, str_to_activation, check_probability
 @click.option('--random-block', is_flag=True)
 @click.option('--reward-prop', is_flag=True)
 @click.option('--discrete', is_flag=True)
+@click.option('--mimic-dir', default=None, type=str)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
@@ -34,9 +35,8 @@ from scripts.gym_env import cast_to_int, str_to_activation, check_probability
 def cli(reward_prop, default_reward, max_steps, discrete, random_block,
         min_lift_height, geofence, seed, buffer_size, activation, n_layers,
         layer_size, learning_rate, reward_scale, cheat_prob, grad_clip, batch_size,
-        num_train_steps, logdir, save_path, load_path, render):
-    # if mimic_file is not None:
-    #     inject_mimic_experiences(mimic_file, buffer, N=10)
+        num_train_steps, mimic_dir, logdir, save_path, load_path, render):
+
     trainer = HindsightPropagationTrainer if reward_prop else HindsightTrainer
 
     trainer(
@@ -60,6 +60,7 @@ def cli(reward_prop, default_reward, max_steps, discrete, random_block,
         grad_clip=grad_clip,
         batch_size=batch_size,
         num_train_steps=num_train_steps,
+        mimic_dir=mimic_dir,
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,

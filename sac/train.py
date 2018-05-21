@@ -56,6 +56,12 @@ class Trainer:
         self.buffer = ReplayBuffer(buffer_size)
         self.reward_scale = reward_scale
 
+        if mimic_dir:
+            for path in Path(mimic_dir).iterdir():
+                if path.suffix == '.pkl':
+                    with Path(path).open('rb') as f:
+                        self.buffer.extend(pickle.load(f))
+
         s1 = self.reset()
 
         self.agent = agent = self.build_agent(
