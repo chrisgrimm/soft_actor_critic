@@ -6,7 +6,7 @@ import tensorflow as tf
 from gym.envs.robotics import FetchReachEnv
 from gym.envs.robotics.fetch_env import goal_distance
 
-from environment.hindsight_wrapper import HindsightWrapper
+from environments.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer, activation_type
 
 ACHIEVED_GOAL = 'achieved_goal'

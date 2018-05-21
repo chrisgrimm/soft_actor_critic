@@ -5,7 +5,7 @@ import gym
 import numpy as np
 from gym.spaces import Box
 
-from environment.pick_and_place import Goal, PickAndPlaceEnv
+from environments.pick_and_place import Goal, PickAndPlaceEnv
 from sac.utils import Step
 
 State = namedtuple('State', 'obs goal')

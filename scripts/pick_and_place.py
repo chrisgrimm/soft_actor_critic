@@ -3,8 +3,8 @@ import argparse
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environment.hindsight_wrapper import PickAndPlaceHindsightWrapper
-from environment.pick_and_place import PickAndPlaceEnv
+from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import (HindsightPropagationTrainer, HindsightTrainer,
                        activation_type)
 import gym

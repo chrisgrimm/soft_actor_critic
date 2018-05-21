@@ -9,3 +9,4 @@ runs.yml
 MUJOCO_LOG.TXT
 runs.pkl
 .pyre
+soft_actor_critic.egg-info

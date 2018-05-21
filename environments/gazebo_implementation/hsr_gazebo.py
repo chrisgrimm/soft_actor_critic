@@ -24,7 +24,7 @@ MAX_GOAL_QUERIES = int(1e5)
 
 
 class HSRGazeboEnv(GazeboEnv):
-    """ The environment """
+    """ The environments """
 
     def __init__(self,
                  image_size=64,

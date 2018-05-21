@@ -8,7 +8,7 @@ import numpy as np
 
 
 class BaseEnv(gym.Env):
-    """ The environment """
+    """ The environments """
 
     def __init__(self, history_len, image_dimensions, neg_reward,
                  steps_per_action):

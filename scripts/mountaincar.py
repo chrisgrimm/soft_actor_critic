@@ -3,7 +3,7 @@ import argparse
 import gym
 import tensorflow as tf
 
-from environment.hindsight_wrapper import MountaincarHindsightWrapper
+from environments.hindsight_wrapper import MountaincarHindsightWrapper
 from sac.train import HindsightPropagationTrainer, HindsightTrainer
 
 if __name__ == '__main__':

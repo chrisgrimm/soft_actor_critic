@@ -4,8 +4,8 @@ from os.path import join
 import numpy as np
 from gym import spaces
 
-from environment.base import at_goal, print1
-from environment.mujoco import MujocoEnv
+from environments.base import at_goal, print1
+from environments.mujoco import MujocoEnv
 from mujoco import ObjType
 
 

@@ -10,7 +10,7 @@ import tensorflow as tf
 from collections import Counter
 from gym import spaces
 
-from environment.hindsight_wrapper import HindsightWrapper
+from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent, PropagationAgent, TrainStep
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer

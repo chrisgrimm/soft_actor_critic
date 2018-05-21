@@ -5,9 +5,9 @@ import argparse
 
 import numpy as np
 
-from environment.base import print1
-from environment.hindsight_wrapper import PickAndPlaceHindsightWrapper
-from environment.pick_and_place import PickAndPlaceEnv
+from environments.base import print1
+from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
 
 saved_pos = None
