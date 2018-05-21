@@ -63,6 +63,9 @@ class UnsupervisedEnv(PickAndPlaceEnv):
     def compute_terminal(self, goal, obs):
         return False
 
+    def _block_height(self):
+        return self.block_pos()[-1] - self._initial_block_pos[-1]
+
     def goal(self):
         pass
 
@@ -87,6 +90,8 @@ class UnsupervisedEnv(PickAndPlaceEnv):
 
     def step(self, action):
         s, r, t, i = super().step(action)
+        if self._block_height() > self._min_lift_height:
+            i['print'] = 'Block lifted by {}. Reward: {}'.format(self._block_height(), r)
         return self._vectorize_obs(s), r, t, i
 
     def reset(self):

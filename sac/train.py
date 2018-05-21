@@ -88,6 +88,8 @@ class Trainer:
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
+            if 'print' in info:
+                print('time-step:', time_steps, info['print'])
 
             tick = time.time()
 
