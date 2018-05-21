@@ -1,4 +1,4 @@
-from typing import Tuple, Iterable, Callable
+from typing import Tuple, Iterable, Callable, Sequence
 
 from abc import abstractmethod
 
@@ -29,18 +29,17 @@ pi_grad\
 TrainStep = namedtuple('TrainStep', TRAIN_VALUES)
 
 
-# noinspection PyPep8Naming
 class AbstractAgent:
-    def __init__(self, s_shape: Iterable, a_shape: Iterable, activation: Callable, n_layers: int,
+    def __init__(self, s_shape: Iterable, a_shape: Sequence, activation: Callable, n_layers: int,
                  layer_size: int, learning_rate: float, grad_clip: float) -> None:
         self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
 
-        tf.set_random_seed(0)
-        self.S1 = S1 = tf.placeholder(
+        tf.set_random_seed(0)  # TODO: this needs to go
+        self.S1 = tf.placeholder(
             tf.float32, [None] + list(s_shape), name='S1')
-        self.S2 = S2 = tf.placeholder(
+        self.S2 = tf.placeholder(
             tf.float32, [None] + list(s_shape), name='S2')
         self.A = A = tf.placeholder(
             tf.float32, [None] + list(a_shape), name='A')
@@ -51,7 +50,7 @@ class AbstractAgent:
         # learning_rate = 3 * 10 ** -4
 
         with tf.variable_scope('pi'):
-            processed_s = self.input_processing(S1)
+            processed_s = self.input_processing(self.S1)
             self.parameters = self.produce_policy_parameters(
                 a_shape[0], processed_s)
 
@@ -62,33 +61,34 @@ class AbstractAgent:
 
         # constructing V loss
         with tf.control_dependencies([self.A_sampled1]):
-            V_S1 = self.V_S1()
-            Q_sampled1 = self.Q_network(
-                S1, self.transform_action_sample(A_sampled1), 'Q')
+            v1 = self.compute_v1()
+            q1 = self.q_network(
+                self.S1, self.transform_action_sample(A_sampled1), 'Q')
             log_pi_sampled1 = self.pi_network_log_prob(
                 A_sampled1, 'pi', reuse=True)
             self.V_loss = V_loss = tf.reduce_mean(
-                0.5 * tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
+                0.5 * tf.square(v1 - (q1 - log_pi_sampled1)))
 
         # constructing Q loss
         with tf.control_dependencies([self.V_loss]):
-            V_bar_S2 = self.V_S2()
-            Q = self.Q_network(
-                S1, self.transform_action_sample(A), 'Q', reuse=True)
+            v2 = self.compute_v2()
+            q = self.q_network(
+                self.S1, self.transform_action_sample(A), 'Q', reuse=True)
+            # noinspection PyTypeChecker
             self.Q_loss = Q_loss = tf.reduce_mean(
-                0.5 * tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
+                0.5 * tf.square(q - (R + (1 - T) * gamma * v2)))
 
         # constructing pi loss
         with tf.control_dependencies([self.Q_loss]):
             self.A_sampled2 = A_sampled2 = tf.stop_gradient(
                 self.sample_pi_network('pi', reuse=True))
-            Q_sampled2 = self.Q_network(
-                S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
+            q2 = self.q_network(
+                self.S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
             log_pi_sampled2 = self.pi_network_log_prob(
                 A_sampled2, 'pi', reuse=True)
             self.pi_loss = pi_loss = tf.reduce_mean(
                 log_pi_sampled2 *
-                tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
+                tf.stop_gradient(log_pi_sampled2 - q2 + v1))
 
         # grabbing all the relevant variables
         phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
@@ -147,12 +147,12 @@ class AbstractAgent:
         return TrainStep(*self.sess.run(
             [getattr(self, attr) for attr in TRAIN_VALUES], feed_dict))
 
-    def get_actions(self, S1: np.ndarray, sample: bool = True) -> np.ndarray:
+    def get_actions(self, s1: np.ndarray, sample: bool = True) -> np.ndarray:
         if sample:
-            actions = self.sess.run(self.A_sampled1, feed_dict={self.S1: S1})
+            actions = self.sess.run(self.A_sampled1, feed_dict={self.S1: s1})
         else:
             actions = self.sess.run(
-                self.A_max_likelihood, feed_dict={self.S1: S1})
+                self.A_max_likelihood, feed_dict={self.S1: s1})
         return actions[0]
 
     def mlp(self, inputs: tf.Tensor) -> tf.Tensor:
@@ -162,20 +162,20 @@ class AbstractAgent:
             n_layers=self.n_layers,
             activation=self.activation)
 
-    def Q_network(self, s: tf.Tensor, a: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
+    def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
             return tf.reshape(tf.layers.dense(self.mlp(sa), 1, name='q'), [-1])
 
-    def V_network(self, s: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
+    def v_network(self, s: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             return tf.reshape(tf.layers.dense(self.mlp(s), 1, name='v'), [-1])
 
-    def V_S1(self) -> tf.Tensor:
-        return self.V_network(self.S1, 'V')
+    def compute_v1(self) -> tf.Tensor:
+        return self.v_network(self.S1, 'V')
 
-    def V_S2(self) -> tf.Tensor:
-        return self.V_network(self.S2, 'V_bar')
+    def compute_v2(self) -> tf.Tensor:
+        return self.v_network(self.S2, 'V_bar')
 
     def input_processing(self, s: tf.Tensor) -> tf.Tensor:
         return self.mlp(s)
@@ -222,13 +222,14 @@ class AbstractAgent:
                 self.parameters)
 
 
+# noinspection PyAbstractClass
 class PropagationAgent(AbstractAgent):
     def __init__(self, **kwargs):
         self.sampled_V2 = tf.placeholder(tf.float32, [None], name='R')
         super().__init__(**kwargs)
 
-    def V_S2(self) -> tf.Tensor:
-        return tf.maximum(self.sampled_V2, super().V_S2())
+    def compute_v2(self) -> tf.Tensor:
+        return tf.maximum(self.sampled_V2, super().compute_v2())
 
     def train_step(self, step: PropStep, feed_dict: dict = None) -> TrainStep:
         assert isinstance(step, PropStep)
