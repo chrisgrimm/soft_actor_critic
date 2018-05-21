@@ -50,12 +50,14 @@ class HindsightWrapper(gym.Wrapper):
         achieved_goal = self.achieved_goal(trajectory[-1].s2.obs)
         for step in trajectory:
             new_t = self.at_goal(step.s2.obs, achieved_goal) or step.t
-            r = 1 if self.at_goal(step.s2.obs, achieved_goal) else self._default_reward
-            yield Step(s1=State(obs=step.s1.obs, goal=achieved_goal),
-                       a=step.a,
-                       r=r,
-                       s2=State(obs=step.s2.obs, goal=achieved_goal),
-                       t=new_t)
+            r = 1 if self.at_goal(step.s2.obs,
+                                  achieved_goal) else self._default_reward
+            yield Step(
+                s1=State(obs=step.s1.obs, goal=achieved_goal),
+                a=step.a,
+                r=r,
+                s2=State(obs=step.s2.obs, goal=achieved_goal),
+                t=new_t)
             if new_t:
                 break
 

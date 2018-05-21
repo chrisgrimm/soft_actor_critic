@@ -4,12 +4,13 @@ import tensorflow as tf
 
 from sac.train import PropagationTrainer, Trainer
 
+
 def cast_to_int(ctx, param, value):
     try:
         return int(value)
     except ValueError:
-        raise click.BadParameter(
-            "Cannot cast param {} to int".format(value))
+        raise click.BadParameter("Cannot cast param {} to int".format(value))
+
 
 def str_to_activation(ctx, param, value):
     activations = dict(
@@ -46,7 +47,8 @@ def str_to_activation(ctx, param, value):
 @click.option('--render', is_flag=True)
 @click.option('--reward-prop', is_flag=True)
 def cli(reward_prop, env, seed, buffer_size, activation, n_layers, layer_size,
-        learning_rate, reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render):
+        learning_rate, reward_scale, batch_size, num_train_steps, logdir,
+        save_path, load_path, render):
     # if args.mimic_file is not None:
     #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
 

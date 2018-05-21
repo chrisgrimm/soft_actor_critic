@@ -1,12 +1,11 @@
 import click
-
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from sac.train import (HindsightPropagationTrainer, HindsightTrainer)
-from scripts.gym_env import str_to_activation, cast_to_int
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
+from sac.train import HindsightPropagationTrainer, HindsightTrainer
+from scripts.gym_env import cast_to_int, str_to_activation
 
 
 @click.command()
@@ -31,16 +30,18 @@ from environments.pick_and_place import PickAndPlaceEnv
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(reward_prop, default_reward, max_steps, discrete, random_block, min_lift_height, geofence, seed,
-         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
-         num_train_steps, logdir, save_path, load_path, render):
+def cli(reward_prop, default_reward, max_steps, discrete, random_block,
+        min_lift_height, geofence, seed, buffer_size, activation, n_layers,
+        layer_size, learning_rate, reward_scale, grad_clip, batch_size,
+        num_train_steps, logdir, save_path, load_path, render):
     # if mimic_file is not None:
     #     inject_mimic_experiences(mimic_file, buffer, N=10)
     trainer = HindsightPropagationTrainer if reward_prop else HindsightTrainer
 
     trainer(
         env=PickAndPlaceHindsightWrapper(
-            default_reward=default_reward, env=TimeLimit(
+            default_reward=default_reward,
+            env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=PickAndPlaceEnv(
                     discrete=discrete,

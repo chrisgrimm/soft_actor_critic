@@ -1,6 +1,5 @@
-from typing import Any, Union, NamedTuple
-
 from collections import namedtuple
+from typing import Any, NamedTuple, Union
 
 import numpy as np
 import tensorflow as tf
@@ -51,6 +50,7 @@ def component(function):
             return out, variables
 
     return wrapper
+
 
 State = Any
 

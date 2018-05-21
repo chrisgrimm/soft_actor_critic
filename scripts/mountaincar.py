@@ -1,5 +1,4 @@
 import click
-
 import gym
 import tensorflow as tf
 
@@ -17,10 +16,11 @@ from sac.train import HindsightPropagationTrainer, HindsightTrainer
 @click.option('--load-path', default=None, type=str)
 def cli(default_reward, seed, logdir, save_path, load_path, render):
     HindsightTrainer(
-        env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0'),
-                                        default_reward=default_reward),
+        env=MountaincarHindsightWrapper(
+            gym.make('MountainCarContinuous-v0'),
+            default_reward=default_reward),
         seed=seed,
-        buffer_size=10 ** 7,
+        buffer_size=10**7,
         activation=tf.nn.relu,
         n_layers=3,
         layer_size=256,

@@ -1,12 +1,12 @@
 import itertools
 import pickle
 import time
-from typing import Callable, Tuple, Union, Iterable, Iterator
+from collections import Counter
+from typing import Callable, Iterable, Iterator, Tuple, Union
 
 import gym
 import numpy as np
 import tensorflow as tf
-from collections import Counter
 from gym import spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
@@ -14,7 +14,7 @@ from environments.unsupervised import UnsupervisedEnv
 from sac.agent import AbstractAgent, PropagationAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import PropStep, Step, State
+from sac.utils import PropStep, State, Step
 
 LOGGER_VALUES = """\
 entropy
@@ -40,9 +40,8 @@ class Trainer:
     def __init__(self, env: gym.Env, seed: int, buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,
                  learning_rate: float, reward_scale: float, grad_clip: float,
-                 batch_size: int, num_train_steps: int,
-                 logdir: str, save_path: str, load_path: str,
-                 render: bool):
+                 batch_size: int, num_train_steps: int, logdir: str,
+                 save_path: str, load_path: str, render: bool):
 
         if seed is not None:
             np.random.seed(seed)
@@ -83,7 +82,8 @@ class Trainer:
         evaluation_period = 10
 
         for time_steps in itertools.count():
-            is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
+            is_eval_period = count[
+                'episode'] % evaluation_period == evaluation_period - 1
             a = agent.get_actions(
                 [self.vectorize_state(s1)], sample=(not is_eval_period))
             if render:
@@ -106,12 +106,19 @@ class Trainer:
                     for i in range(self.num_train_steps):
                         sample_steps = self.sample_buffer()
                         # noinspection PyProtectedMember
-                        step = self.agent.train_step(sample_steps._replace(
-                            s1=list(map(self.vectorize_state, sample_steps.s1)),
-                            s2=list(map(self.vectorize_state, sample_steps.s2)),
-                        ))
-                        episode_count += Counter({k: getattr(step, k.replace(' ', '_'))
-                                                  for k in LOGGER_VALUES})
+                        step = self.agent.train_step(
+                            sample_steps._replace(
+                                s1=list(
+                                    map(self.vectorize_state,
+                                        sample_steps.s1)),
+                                s2=list(
+                                    map(self.vectorize_state,
+                                        sample_steps.s2)),
+                            ))
+                        episode_count += Counter({
+                            k: getattr(step, k.replace(' ', '_'))
+                            for k in LOGGER_VALUES
+                        })
             s1 = s2
             if t:
                 s1 = self.reset()
@@ -131,11 +138,15 @@ class Trainer:
                         simple_value=(
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
-                    summary.value.add(tag='reward', simple_value=episode_count['reward'])
+                    summary.value.add(
+                        tag='reward', simple_value=episode_count['reward'])
                     for k in info_counter:
                         summary.value.add(tag=k, simple_value=info_counter[k])
                     for k in LOGGER_VALUES:
-                        summary.value.add(tag=k, simple_value=episode_count[k] / float(episode_count['timesteps']))
+                        summary.value.add(
+                            tag=k,
+                            simple_value=episode_count[k] / float(
+                                episode_count['timesteps']))
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
 
@@ -143,13 +154,14 @@ class Trainer:
                 info_counter = Counter()
                 episode_count = Counter()
 
-    def build_agent(self,
-                    activation: Callable,
-                    n_layers: int,
-                    layer_size: int,
-                    learning_rate: float,
-                    grad_clip: float,
-                    base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
+    def build_agent(
+            self,
+            activation: Callable,
+            n_layers: int,
+            layer_size: int,
+            learning_rate: float,
+            grad_clip: float,
+            base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
@@ -189,7 +201,8 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def add_to_buffer(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
+    def add_to_buffer(self, s1: State, a: Union[float, np.ndarray], r: float,
+                      s2: State, t: bool) -> None:
         self.buffer.append(
             Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
 
@@ -274,5 +287,3 @@ class HindsightPropagationTrainer(HindsightTrainer, PropagationTrainer):
         trajectory = list(self.env.recompute_trajectory(self.trajectory))
         self.buffer.extend(self.step_generator(trajectory))
         return PropagationTrainer.reset(self)
-
-

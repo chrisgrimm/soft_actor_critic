@@ -18,7 +18,8 @@ def run(port, discrete, value_tensor=None, sess=None):
     #env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    env = PickAndPlaceHindsightWrapper(PickAndPlaceEnv(random_block=False, discrete=discrete))
+    env = PickAndPlaceHindsightWrapper(
+        PickAndPlaceEnv(random_block=False, discrete=discrete))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
