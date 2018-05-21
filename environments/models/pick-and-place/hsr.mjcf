@@ -129,7 +129,7 @@
                 <inertial pos="0.000632 0.006404 0.118529" quat="0.999966 -0.00826681 1.5355e-06 -1.33584e-06"
                           mass="1.33929" diaginertia="2.51222 2.51222 2.51222"/>
                 <!--<joint name="arm_flex_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-55 0" damping="100"/>-->
-                <joint name="arm_flex_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-63 0" damping="100"/>
+                <joint name="arm_flex_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-63 0" damping="50"/>
                 <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="arm_flex_light"/>
                 <geom type="mesh" mesh="arm_flex"/>
                 <body name="arm_roll_link" pos="0.005 0 0.345">
@@ -152,8 +152,7 @@
                             <inertial pos="-0.001416 -0.001547 0.081689"
                                       quat="0.988073 0.0424396 -0.0351605 -0.143785"
                                       mass="0.761692" diaginertia="0.000811657 0.000766039 0.000449422"/>
-                            <joint name="wrist_roll_joint" pos="0 0 0" axis="0 0 1" damping="100"/>
-                            <!--range="-90 90"/>-->
+                            <joint name="wrist_roll_joint" pos="0 0 0" axis="0 0 1" damping="50" limited="true" range="-90 90"/>
                                    <!--range="-1.92 3.67" />-->
                             <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="wrist_roll"/>
                             <geom type="mesh" mesh="wrist_roll"/>
@@ -171,7 +170,7 @@
                                 </body>
                                 <body name="hand_l_proximal_link" pos="-0.01675 -0.0245 -0.0175">
                                     <inertial pos="0 0 0" mass="0.15" diaginertia="0.015 0.015 0.015"/>
-                                    <joint name="hand_l_proximal_joint" pos="0 0 0" axis="1 0 0" limited="true" range="0 20" damping="100"/>
+                                    <joint name="hand_l_proximal_joint" pos="0 0 0" axis="1 0 0" limited="true" range="0 20" damping="50"/>
                                     <body name="hand_l_spring_proximal_link" pos="0 0 0">
                                         <inertial pos="0.021418 0.00248 0.022688"
                                                   quat="0.701927 0.0145759 0.051882 0.710208" mass="0.043589"
@@ -208,7 +207,7 @@
                                 </body>
                                 <body name="hand_r_proximal_link" pos="-0.01675 0.0245 -0.0175">
                                     <inertial pos="0 0 0" mass="0.15" diaginertia="0.015 0.015 0.015"/>
-                                    <joint name="hand_r_proximal_joint" pos="0 0 0" axis="-1 0 0" limited="true" range="0 20" damping="100"/>
+                                    <joint name="hand_r_proximal_joint" pos="0 0 0" axis="-1 0 0" limited="true" range="0 20" damping="50"/>
                                     <body name="hand_r_spring_proximal_link" pos="0 0 0">
                                         <inertial pos="0.013203 0.002096 0.023311"
                                                   quat="0.696227 -0.0447896 0.0033388 0.716415" mass="0.043956"
