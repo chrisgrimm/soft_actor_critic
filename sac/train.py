@@ -1,8 +1,10 @@
 import itertools
 import pickle
 import time
+from pathlib import Path
+
 from collections import Counter
-from typing import Callable, Iterable, Iterator, Tuple, Union
+from typing import Callable, Iterable, Iterator, Tuple, Union, Optional
 
 import gym
 import numpy as np
@@ -37,11 +39,11 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 
 
 class Trainer:
-    def __init__(self, env: gym.Env, seed: int, buffer_size: int,
+    def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,
-                 learning_rate: float, reward_scale: float, grad_clip: float,
-                 batch_size: int, num_train_steps: int, logdir: str,
-                 save_path: str, load_path: str, render: bool):
+                 learning_rate: float, reward_scale: float, grad_clip: Optional[float],
+                 batch_size: int, num_train_steps: int, mimic_dir: Optional[str],
+                 logdir: str, save_path: str, load_path: str, render: bool):
 
         if seed is not None:
             np.random.seed(seed)
