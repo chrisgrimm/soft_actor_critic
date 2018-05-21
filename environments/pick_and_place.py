@@ -55,8 +55,7 @@ class PickAndPlaceEnv(MujocoEnv):
             left_finger_name,
             left_finger_name.replace('_l_', '_r_')
         ]
-        obs_size = history_len * sum(map(np.size, self._obs())) + sum(
-            map(np.size, self.goal()))
+        obs_size = history_len * sum(map(np.size, self._obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)

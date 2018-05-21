@@ -1,4 +1,4 @@
-from typing import Tuple, Iterable, Callable, Sequence
+from typing import Tuple, Iterable, Callable, Sequence, Union
 
 from abc import abstractmethod
 
@@ -15,6 +15,7 @@ def mlp(inputs, layer_size, n_layers, activation):
             inputs, layer_size, activation, name='fc' + str(i))
     return inputs
 
+ArrayLike = Union[np.ndarray, list]
 
 TRAIN_VALUES = """\
 entropy
@@ -147,7 +148,7 @@ class AbstractAgent:
         return TrainStep(*self.sess.run(
             [getattr(self, attr) for attr in TRAIN_VALUES], feed_dict))
 
-    def get_actions(self, s1: np.ndarray, sample: bool = True) -> np.ndarray:
+    def get_actions(self, s1: ArrayLike, sample: bool = True) -> np.ndarray:
         if sample:
             actions = self.sess.run(self.A_sampled1, feed_dict={self.S1: s1})
         else:
