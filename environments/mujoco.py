@@ -5,7 +5,7 @@ from copy import deepcopy
 import numpy as np
 
 import mujoco
-from environment.base import BaseEnv
+from environments.base import BaseEnv
 
 
 class MujocoEnv(BaseEnv):

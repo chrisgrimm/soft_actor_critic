@@ -1,8 +1,7 @@
-import argparse
 import itertools
 import pickle
 import time
-from typing import Callable, Tuple, Union, Generator, Iterable, Iterator
+from typing import Callable, Tuple, Union, Iterable, Iterator
 
 import gym
 import numpy as np
@@ -10,11 +9,22 @@ import tensorflow as tf
 from collections import Counter
 from gym import spaces
 
-from environment.hindsight_wrapper import HindsightWrapper
+from environments.hindsight_wrapper import HindsightWrapper
+from environments.unsupervised import UnsupervisedEnv
 from sac.agent import AbstractAgent, PropagationAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import PropStep, Step, State
+
+LOGGER_VALUES = """\
+entropy
+V loss
+Q loss
+pi loss
+V grad
+Q grad
+pi grad\
+""".split('\n')
 
 
 def inject_mimic_experiences(mimic_file, buffer, N=1):
@@ -29,8 +39,9 @@ def inject_mimic_experiences(mimic_file, buffer, N=1):
 class Trainer:
     def __init__(self, env: gym.Env, seed: int, buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,
-                 learning_rate: float, reward_scale: float, batch_size: int,
-                 num_train_steps: int, logdir: str, save_path: str, load_path: str,
+                 learning_rate: float, reward_scale: float, grad_clip: float,
+                 batch_size: int, num_train_steps: int,
+                 logdir: str, save_path: str, load_path: str,
                  render: bool):
 
         if seed is not None:
@@ -50,7 +61,12 @@ class Trainer:
             activation=activation,
             n_layers=n_layers,
             layer_size=layer_size,
-            learning_rate=learning_rate)
+            learning_rate=learning_rate,
+            grad_clip=grad_clip)
+
+        if isinstance(env.unwrapped, UnsupervisedEnv):
+            # noinspection PyUnresolvedReferences
+            env.unwrapped.initialize(agent.sess, self.buffer)
 
         saver = tf.train.Saver()
         tb_writer = None
@@ -62,7 +78,8 @@ class Trainer:
                 logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
-        self.episode_count = episode_count = Counter()
+        episode_count = Counter()
+        info_counter = Counter()
         evaluation_period = 10
 
         for time_steps in itertools.count():
@@ -72,8 +89,10 @@ class Trainer:
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
-            if t:
-                print('reward:', r)
+            if 'print' in info:
+                print('time-step:', time_steps, info['print'])
+            if 'log' in info:
+                info_counter += Counter(info['log'])
 
             tick = time.time()
 
@@ -82,12 +101,22 @@ class Trainer:
                 print("model saved in path:",
                       saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
-                self.process_step(s1=s1, a=a, r=r, s2=s2, t=t)
+                self.add_to_buffer(s1=s1, a=a, r=r, s2=s2, t=t)
+                if len(self.buffer) >= self.batch_size:
+                    for i in range(self.num_train_steps):
+                        sample_steps = self.sample_buffer()
+                        # noinspection PyProtectedMember
+                        step = self.agent.train_step(sample_steps._replace(
+                            s1=list(map(self.vectorize_state, sample_steps.s1)),
+                            s2=list(map(self.vectorize_state, sample_steps.s2)),
+                        ))
+                        episode_count += Counter({k: getattr(step, k.replace(' ', '_'))
+                                                  for k in LOGGER_VALUES})
             s1 = s2
             if t:
                 s1 = self.reset()
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                    'EVAL' if is_eval_period else 'TRAIN', (count['episode']),
+                    'EVAL' if is_eval_period else 'TRAIN', count['episode'],
                     time_steps, episode_count['reward']))
                 count += Counter(reward=(episode_count['reward']), episode=1)
                 fps = int(episode_count['timesteps'] / (time.time() - tick))
@@ -102,19 +131,24 @@ class Trainer:
                         simple_value=(
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
-                    for k in ['V loss', 'Q loss', 'pi loss', 'reward']:
-                        summary.value.add(tag=k, simple_value=episode_count[k])
+                    summary.value.add(tag='reward', simple_value=episode_count['reward'])
+                    for k in info_counter:
+                        summary.value.add(tag=k, simple_value=info_counter[k])
+                    for k in LOGGER_VALUES:
+                        summary.value.add(tag=k, simple_value=episode_count[k] / float(episode_count['timesteps']))
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
 
-                for k in episode_count:
-                    episode_count[k] = 0
+                # zero out counters
+                info_counter = Counter()
+                episode_count = Counter()
 
     def build_agent(self,
                     activation: Callable,
                     n_layers: int,
                     layer_size: int,
                     learning_rate: float,
+                    grad_clip: float,
                     base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
@@ -132,7 +166,8 @@ class Trainer:
                     activation=activation,
                     n_layers=n_layers,
                     layer_size=layer_size,
-                    learning_rate=learning_rate)
+                    learning_rate=learning_rate,
+                    grad_clip=grad_clip)
 
         return Agent(state_shape, action_shape)
 
@@ -147,7 +182,6 @@ class Trainer:
         else:
             action = np.tanh(action)
             hi, lo = self.env.action_space.high, self.env.action_space.low
-            # noinspection PyUnresolvedReferences
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
@@ -155,27 +189,12 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def process_step(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
+    def add_to_buffer(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
         self.buffer.append(
             Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
-        if len(self.buffer) >= self.batch_size:
-            for i in range(self.num_train_steps):
-                s1_sample, a_sample, r_sample, s2_sample, t_sample = self.buffer.sample(
-                    self.batch_size)
-                s1_sample = list(map(self.vectorize_state, s1_sample))
-                s2_sample = list(map(self.vectorize_state, s2_sample))
-                [v_loss, q_loss, pi_loss] = self.agent.train_step(
-                    Step(
-                        s1=s1_sample,
-                        a=a_sample,
-                        r=r_sample,
-                        s2=s2_sample,
-                        t=t_sample))
-                self.episode_count += Counter({
-                    'V loss': v_loss,
-                    'Q loss': q_loss,
-                    'pi loss': pi_loss
-                })
+
+    def sample_buffer(self):
+        return Step(*self.buffer.sample(self.batch_size))
 
 
 class TrajectoryTrainer(Trainer):
@@ -213,38 +232,23 @@ class HindsightTrainer(TrajectoryTrainer):
 
 
 class PropagationTrainer(TrajectoryTrainer):
-    def process_step(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State, t: bool) -> None:
-        if len(self.buffer) >= self.batch_size:
-            for i in range(self.num_train_steps):
-                sample = self.buffer.sample(self.batch_size)
-                s1_sample, a_sample, r_sample, s2_sample, t_sample, v2_sample = sample
-                s1_sample = list(map(self.vectorize_state, s1_sample))
-                s2_sample = list(map(self.vectorize_state, s2_sample))
-                [v_loss, q_loss, pi_loss] = self.agent.train_step(
-                    PropStep(
-                        s1=s1_sample,
-                        a=a_sample,
-                        r=r_sample,
-                        s2=s2_sample,
-                        t=t_sample,
-                        v2=v2_sample))
-                self.episode_count += Counter({
-                    'V loss': v_loss,
-                    'Q loss': q_loss,
-                    'pi loss': pi_loss
-                })
+    def add_to_buffer(self, **_):
+        pass
 
     def build_agent(self,
                     activation: Callable,
                     n_layers: int,
                     layer_size: int,
                     learning_rate: float,
-                    base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
+                    grad_clip: float,
+                    base_agent: AbstractAgent = AbstractAgent,
+                    **kwargs) -> AbstractAgent:
         return super().build_agent(
             activation=activation,
             n_layers=n_layers,
             layer_size=layer_size,
             learning_rate=learning_rate,
+            grad_clip=grad_clip,
             base_agent=PropagationAgent)
 
     def reset(self) -> State:
@@ -256,7 +260,12 @@ class PropagationTrainer(TrajectoryTrainer):
         for step in reversed(trajectory):
             v2 = .99 * v2 + step.r
             # noinspection PyProtectedMember
-            yield step._replace(r=step.r * self.reward_scale)
+            prop_step = PropStep(v2=v2, **step._asdict())
+            # noinspection PyProtectedMember
+            yield prop_step._replace(r=step.r * self.reward_scale)
+
+    def sample_buffer(self):
+        return PropStep(*self.buffer.sample(self.batch_size))
 
 
 class HindsightPropagationTrainer(HindsightTrainer, PropagationTrainer):
@@ -267,57 +276,3 @@ class HindsightPropagationTrainer(HindsightTrainer, PropagationTrainer):
         return PropagationTrainer.reset(self)
 
 
-def activation_type(name: str) -> Callable:
-    activations = dict(
-        relu=tf.nn.relu,
-        crelu=tf.nn.crelu,
-        selu=tf.nn.selu,
-        elu=tf.nn.elu,
-        leaky=tf.nn.leaky_relu,
-        leaky_relu=tf.nn.leaky_relu,
-        tanh=tf.nn.tanh,
-    )
-    try:
-        return activations[name]
-    except KeyError:
-        raise argparse.ArgumentTypeError(
-            "Activation name must be one of the following:", '\n'.join(
-                activations.keys()))
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--env', default='HalfCheetah-v2')
-    parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument(
-        '--activation', default=tf.nn.relu, type=activation_type)
-    parser.add_argument('--n-layers', default=3, type=int)
-    parser.add_argument('--layer-size', default=256, type=int)
-    parser.add_argument('--learning-rate', default=3e-4, type=float)
-    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
-    parser.add_argument('--num-train-steps', default=1, type=int)
-    parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--reward-scale', default=1., type=float)
-    parser.add_argument('--mimic-file', default=None, type=str)
-    parser.add_argument('--logdir', default=None, type=str)
-    parser.add_argument('--render', action='store_true')
-    parser.add_argument('--reward-prop', action='store_true')
-    args = parser.parse_args()
-
-    # if args.mimic_file is not None:
-    #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
-
-    trainer = PropagationTrainer if args.reward_prop else Trainer
-    trainer(
-        env=gym.make(args.env),
-        seed=args.seed,
-        buffer_size=args.buffer_size,
-        activation=args.activation,
-        n_layers=args.n_layers,
-        layer_size=args.layer_size,
-        learning_rate=args.learning_rate,
-        reward_scale=args.reward_scale,
-        batch_size=args.batch_size,
-        num_train_steps=args.num_train_steps,
-        logdir=args.logdir,
-        render=args.render)

@@ -4,8 +4,8 @@ from os.path import join
 import numpy as np
 from gym.spaces import Box, Discrete, Tuple
 
-from environment.base import (BaseEnv, at_goal, escaped, point_inside_object,
-                              quaternion2euler)
+from environments.base import (BaseEnv, at_goal, escaped, point_inside_object,
+                               quaternion2euler)
 from mujoco import GeomType, ObjType
 
 

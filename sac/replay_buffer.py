@@ -9,8 +9,10 @@ class RollingBuffer:
         self.rolling_buffer = [None for _ in range(maxlen)]
         self.pos = 0
         self.full = False
+        self.empty = True
 
     def append(self, x):
+        self.empty = False
         self.rolling_buffer[self.pos] = x
         self.pos += 1
         if self.pos >= self.maxlen:

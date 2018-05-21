@@ -3,7 +3,7 @@ from os.path import join
 import numpy as np
 from gym import spaces
 
-from environment.base import BaseEnv
+from environments.base import BaseEnv
 
 
 class Arm2TouchEnv(BaseEnv):

@@ -20,7 +20,7 @@ MODEL_XML = """
 
 # TODO: Change to relative path
 with open(
-        '/home/bhairav/coding/zero_shot/environment/hsr_description/robots/hsrb4s.mjcf'
+        '/home/bhairav/coding/zero_shot/environments/hsr_description/robots/hsrb4s.mjcf'
 ) as f:
     MODEL_XML = f.read()
 
