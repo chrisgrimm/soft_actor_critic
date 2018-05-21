@@ -5,7 +5,7 @@ from gym.wrappers import TimeLimit
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightPropagationTrainer, HindsightTrainer
-from scripts.gym_env import cast_to_int, str_to_activation
+from scripts.gym_env import cast_to_int, str_to_activation, check_probability
 
 
 @click.command()
@@ -18,6 +18,7 @@ from scripts.gym_env import cast_to_int, str_to_activation
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=9e3, type=float)
+@click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=500, type=int)
 @click.option('--geofence', default=.4, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
@@ -32,7 +33,7 @@ from scripts.gym_env import cast_to_int, str_to_activation
 @click.option('--render', is_flag=True)
 def cli(reward_prop, default_reward, max_steps, discrete, random_block,
         min_lift_height, geofence, seed, buffer_size, activation, n_layers,
-        layer_size, learning_rate, reward_scale, grad_clip, batch_size,
+        layer_size, learning_rate, reward_scale, cheat_prob, grad_clip, batch_size,
         num_train_steps, logdir, save_path, load_path, render):
     # if mimic_file is not None:
     #     inject_mimic_experiences(mimic_file, buffer, N=10)
@@ -45,6 +46,7 @@ def cli(reward_prop, default_reward, max_steps, discrete, random_block,
                 max_episode_steps=max_steps,
                 env=PickAndPlaceEnv(
                     discrete=discrete,
+                    cheat_prob=cheat_prob,
                     random_block=random_block,
                     min_lift_height=min_lift_height,
                     geofence=geofence))),

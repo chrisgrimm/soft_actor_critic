@@ -12,6 +12,12 @@ def cast_to_int(ctx, param, value):
         raise click.BadParameter("Cannot cast param {} to int".format(value))
 
 
+def check_probability(ctx, param, value):
+    if not (0 <= value <= 1):
+        raise click.BadParameter("Param {} should be between 0 and 1".format(value))
+    return value
+
+
 def str_to_activation(ctx, param, value):
     activations = dict(
         relu=tf.nn.relu,
