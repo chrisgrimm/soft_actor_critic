@@ -23,7 +23,7 @@ from environments.pick_and_place import PickAndPlaceEnv
 @click.option('--geofence', default=.4, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
 @click.option('--default-reward', default=0, type=float)
-@click.option('--grad-clip', default=1e6, type=float)
+@click.option('--grad-clip', default=None, type=float)
 @click.option('--random-block', is_flag=True)
 @click.option('--reward-prop', is_flag=True)
 @click.option('--discrete', is_flag=True)
