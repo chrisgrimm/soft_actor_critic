@@ -63,7 +63,7 @@ class PickAndPlaceEnv(MujocoEnv):
             self.action_space = spaces.Discrete(7)
         else:
             self.action_space = spaces.Box(
-                -1, 1, shape=(self.sim.nu - 1, ), dtype=np.float32)
+                low=np.array([-15, -20, -20]), high=np.array([35, 20, 20]), dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
 
@@ -186,11 +186,7 @@ class PickAndPlaceEnv(MujocoEnv):
                 a[joint] = direction * joint_scale[joint]
                 self.grip = a[2]
             action = a
-        action = np.clip(action, -1, 1)
-        if not self._discrete:
-            for name in self._rotation_actuators:
-                i = self.sim.name2id(ObjType.ACTUATOR, name)
-                action[i] *= np.pi / 2
+        action = np.clip(action, self.action_space.low, self.action_space.high)
 
         mirrored = 'hand_l_proximal_motor'
         mirroring = 'hand_r_proximal_motor'
