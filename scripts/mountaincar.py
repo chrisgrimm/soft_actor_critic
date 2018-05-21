@@ -1,4 +1,4 @@
-import argparse
+import click
 
 import gym
 import tensorflow as tf
@@ -6,22 +6,21 @@ import tensorflow as tf
 from environments.hindsight_wrapper import MountaincarHindsightWrapper
 from sac.train import HindsightPropagationTrainer, HindsightTrainer
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--env', default='HalfCheetah-v2')
-    parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--default-reward', default=0, type=float)
-    parser.add_argument('--logdir', default=None, type=str)
-    parser.add_argument('--render', action='store_true')
-    parser.add_argument('--save-path', default=None, type=str)
-    parser.add_argument('--load-path', default=None, type=str)
-    args = parser.parse_args()
 
+@click.command()
+@click.option('--env', default='HalfCheetah-v2')
+@click.option('--seed', default=0, type=int)
+@click.option('--default-reward', default=0, type=float)
+@click.option('--render', is_flag=True)
+@click.option('--logdir', default=None, type=str)
+@click.option('--save-path', default=None, type=str)
+@click.option('--load-path', default=None, type=str)
+def cli(default_reward, seed, logdir, save_path, load_path, render):
     HindsightTrainer(
         env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0'),
-                                        default_reward=args.default_reward),
-        seed=args.seed,
-        buffer_size=10**7,
+                                        default_reward=default_reward),
+        seed=seed,
+        buffer_size=10 ** 7,
         activation=tf.nn.relu,
         n_layers=3,
         layer_size=256,
@@ -30,7 +29,7 @@ if __name__ == '__main__':
         reward_scale=1e3,
         batch_size=32,
         num_train_steps=1,
-        logdir=args.logdir,
-        save_path=args.save_path,
-        load_path=args.load_path,
-        render=args.render)
+        logdir=logdir,
+        save_path=save_path,
+        load_path=load_path,
+        render=render)

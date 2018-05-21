@@ -1,66 +1,63 @@
-import argparse
+import click
 
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
+from sac.train import (HindsightPropagationTrainer, HindsightTrainer)
+from scripts.gym_env import str_to_activation
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
-from sac.train import (HindsightPropagationTrainer, HindsightTrainer,
-                       activation_type)
-import gym
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument(
-        '--activation', default=tf.nn.relu, type=activation_type)
-    parser.add_argument('--n-layers', default=3, type=int)
-    parser.add_argument('--layer-size', default=256, type=int)
-    parser.add_argument('--learning-rate', default=3e-4, type=float)
-    parser.add_argument('--buffer-size', default=int(10**7), type=int)
-    parser.add_argument('--num-train-steps', default=4, type=int)
-    parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--reward-scale', default=9e3, type=float)
-    parser.add_argument('--max-steps', default=500, type=int)
-    parser.add_argument('--geofence', default=.4, type=float)
-    parser.add_argument('--min-lift-height', default=.02, type=float)
-    parser.add_argument('--default-reward', default=0, type=float)
-    parser.add_argument('--grad-clip', default=None, type=float)
-    parser.add_argument('--mimic-file', default=None, type=str)
-    parser.add_argument('--random-block', action='store_true')
-    parser.add_argument('--reward-prop', action='store_true')
-    parser.add_argument('--discrete', action='store_true')
-    parser.add_argument('--logdir', default=None, type=str)
-    parser.add_argument('--save-path', default=None, type=str)
-    parser.add_argument('--load-path', default=None, type=str)
-    parser.add_argument('--render', action='store_true')
-    args = parser.parse_args()
 
-    # if args.mimic_file is not None:
-    #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
-    trainer = HindsightPropagationTrainer if args.reward_prop else HindsightTrainer
+@click.command()
+@click.option('--seed', default=0, type=int)
+@click.option('--activation', default='relu', callback=str_to_activation)
+@click.option('--n-layers', default=3, type=int)
+@click.option('--layer-size', default=256, type=int)
+@click.option('--learning-rate', default=3e-4, type=float)
+@click.option('--buffer-size', default=int(10 ** 7), type=int)
+@click.option('--num-train-steps', default=4, type=int)
+@click.option('--batch-size', default=32, type=int)
+@click.option('--reward-scale', default=9e3, type=float)
+@click.option('--max-steps', default=500, type=int)
+@click.option('--geofence', default=.4, type=float)
+@click.option('--min-lift-height', default=.02, type=float)
+@click.option('--default-reward', default=0, type=float)
+@click.option('--grad-clip', default=None, type=float)
+@click.option('--random-block', is_flag=True)
+@click.option('--reward-prop', is_flag=True)
+@click.option('--discrete', is_flag=True)
+@click.option('--logdir', default=None, type=str)
+@click.option('--save-path', default=None, type=str)
+@click.option('--load-path', default=None, type=str)
+@click.option('--render', is_flag=True)
+def cli(reward_prop, default_reward, max_steps, discrete, random_block, min_lift_height, geofence, seed,
+         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
+         num_train_steps, logdir, save_path, load_path, render):
+    # if mimic_file is not None:
+    #     inject_mimic_experiences(mimic_file, buffer, N=10)
+    trainer = HindsightPropagationTrainer if reward_prop else HindsightTrainer
 
     trainer(
         env=PickAndPlaceHindsightWrapper(
-            default_reward=args.default_reward,
-            env=TimeLimit(
-                max_episode_steps=args.max_steps,
+            default_reward=default_reward, env=TimeLimit(
+                max_episode_steps=max_steps,
                 env=PickAndPlaceEnv(
-                    discrete=args.discrete,
-                    random_block=args.random_block,
-                    min_lift_height=args.min_lift_height,
-                    geofence=args.geofence))),
-        seed=args.seed,
-        buffer_size=int(args.buffer_size),
-        activation=args.activation,
-        n_layers=args.n_layers,
-        layer_size=args.layer_size,
-        learning_rate=args.learning_rate,
-        reward_scale=args.reward_scale,
-        grad_clip=args.grad_clip,
-        batch_size=args.batch_size,
-        num_train_steps=args.num_train_steps,
-        logdir=args.logdir,
-        save_path=args.save_path,
-        load_path=args.load_path,
-        render=args.render)
+                    discrete=discrete,
+                    random_block=random_block,
+                    min_lift_height=min_lift_height,
+                    geofence=geofence))),
+        seed=seed,
+        buffer_size=int(buffer_size),
+        activation=activation,
+        n_layers=n_layers,
+        layer_size=layer_size,
+        learning_rate=learning_rate,
+        reward_scale=reward_scale,
+        grad_clip=grad_clip,
+        batch_size=batch_size,
+        num_train_steps=num_train_steps,
+        logdir=logdir,
+        save_path=save_path,
+        load_path=load_path,
+        render=render)
