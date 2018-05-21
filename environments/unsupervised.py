@@ -97,6 +97,9 @@ class UnsupervisedEnv(PickAndPlaceEnv):
         s, r, t, i = super().step(action)
         if self._block_height() > self._min_lift_height:
             i['print'] = 'Block lifted by {}. Reward: {}'.format(self._block_height(), r)
+            i['log'] = {'block-lifted': 1}
+        else:
+            i['log'] = {'block-lifted': 0}
         return self._vectorize_obs(s), r, t, i
 
     def reset(self):

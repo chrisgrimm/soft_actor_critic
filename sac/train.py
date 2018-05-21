@@ -91,6 +91,8 @@ class Trainer:
             s2, r, t, info = self.step(a)
             if 'print' in info:
                 print('time-step:', time_steps, info['print'])
+            if 'log' in info:
+                info_counter += Counter(info['log'])
 
             tick = time.time()
 
@@ -130,13 +132,16 @@ class Trainer:
                             count['reward'] / float(count['episode'])))
                     summary.value.add(tag='fps', simple_value=fps)
                     summary.value.add(tag='reward', simple_value=episode_count['reward'])
+                    for k in info_counter:
+                        summary.value.add(tag=k, simple_value=info_counter[k])
                     for k in LOGGER_VALUES:
                         summary.value.add(tag=k, simple_value=episode_count[k] / float(episode_count['timesteps']))
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
 
-                for k in episode_count:
-                    episode_count[k] = 0
+                # zero out counters
+                info_counter = Counter()
+                episode_count = Counter()
 
     def build_agent(self,
                     activation: Callable,
