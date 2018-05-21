@@ -120,7 +120,7 @@ def quaternion2euler(w, x, y, z):
 
 
 def distance_between(pos1, pos2):
-    return np.sqrt(np.sum(np.square(pos1 - pos2)))
+    return np.sqrt(np.sum(np.square(pos1 - pos2), axis=-1))
 
 
 def at_goal(pos, goal, geofence):

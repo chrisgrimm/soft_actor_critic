@@ -1,8 +1,7 @@
-import argparse
 import itertools
 import pickle
 import time
-from typing import Callable, Tuple, Union, Generator, Iterable, Iterator
+from typing import Callable, Tuple, Union, Iterable, Iterator
 
 import gym
 import numpy as np
@@ -170,7 +169,6 @@ class Trainer:
         else:
             action = np.tanh(action)
             hi, lo = self.env.action_space.high, self.env.action_space.low
-            # noinspection PyUnresolvedReferences
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
