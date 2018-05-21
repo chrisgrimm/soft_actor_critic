@@ -37,6 +37,7 @@ class UnsupervisedEnv(PickAndPlaceEnv):
             = self.S1 = self.S2 = self.A = self.T = None
         self.state_size = [self.observation_space.shape[0] * 2] + \
                           list(self.observation_space.shape[1:])
+        self._grad_clip = 1e6
 
     def initialize(self, session: tf.Session(), buffer: ReplayBuffer):
         with tf.variable_scope('env'):
@@ -57,7 +58,11 @@ class UnsupervisedEnv(PickAndPlaceEnv):
             v2 = network_output(self.S2, name='Q', reuse=True)
             q1 = v1 + network_output(tf.concat([self.S1, self.A], axis=1), name='A', reuse=False)
             self.loss = tf.reduce_mean(0.5 * tf.square(q1 - gamma * (self.T + (1 - self.T) * v2)))
-            self.train = tf.train.AdamOptimizer(learning_rate=3e-4).minimize(self.loss)
+            optimizer = tf.train.AdamOptimizer(learning_rate=3e-4)
+            gradients, variables = zip(*optimizer.compute_gradients(self.loss))
+            if self._grad_clip:
+                gradients, _ = tf.clip_by_global_norm(gradients, self._grad_clip)
+            self.train = optimizer.apply_gradients(zip(gradients, variables))
             session.run(tf.global_variables_initializer())
 
     def compute_terminal(self, goal, obs):
