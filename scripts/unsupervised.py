@@ -6,7 +6,7 @@ from gym.wrappers import TimeLimit
 from environments.unsupervised import UnsupervisedEnv
 from sac.train import (HindsightPropagationTrainer, HindsightTrainer,
                        Trainer)
-from scripts.gym_env import str_to_activation
+from scripts.gym_env import str_to_activation, cast_to_int
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 
@@ -16,15 +16,15 @@ from environments.pick_and_place import PickAndPlaceEnv
 @click.option('--activation', default='relu', callback=str_to_activation)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
-@click.option('--learning-rate', default=3e-4, type=float)
-@click.option('--buffer-size', default=int(10 ** 7), type=int)
+@click.option('--learning-rate', default=2e-4, type=float)
+@click.option('--buffer-size', default=1e7, callback=cast_to_int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=9e3, type=float)
 @click.option('--max-steps', default=500, type=int)
 @click.option('--geofence', default=.4, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
-@click.option('--grad-clip', default=None, type=float)
+@click.option('--grad-clip', default=1e6, type=float)
 @click.option('--random-block', is_flag=True)
 @click.option('--discrete', is_flag=True)
 @click.option('--logdir', default=None, type=str)

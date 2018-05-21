@@ -79,6 +79,7 @@ class Trainer:
 
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
+        info_counter = Counter()
         evaluation_period = 10
 
         for time_steps in itertools.count():

@@ -4,6 +4,12 @@ import tensorflow as tf
 
 from sac.train import PropagationTrainer, Trainer
 
+def cast_to_int(ctx, param, value):
+    try:
+        return int(value)
+    except ValueError:
+        raise click.BadParameter(
+            "Cannot cast param {} to int".format(value))
 
 def str_to_activation(ctx, param, value):
     activations = dict(
@@ -30,7 +36,7 @@ def str_to_activation(ctx, param, value):
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)
-@click.option('--buffer-size', default=int(10 ** 7), type=int)
+@click.option('--buffer-size', default=1e7, callback=cast_to_int)
 @click.option('--num-train-steps', default=1, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=1., type=float)

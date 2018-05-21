@@ -9,7 +9,7 @@ from gym.envs.robotics.fetch_env import goal_distance
 
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer
-from scripts.gym_env import str_to_activation
+from scripts.gym_env import str_to_activation, cast_to_int
 
 ACHIEVED_GOAL = 'achieved_goal'
 
@@ -45,7 +45,7 @@ class FetchReachHindsightWrapper(HindsightWrapper):
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)
-@click.option('--buffer-size', default=int(10 ** 7), type=int)
+@click.option('--buffer-size', default=1e7, callback=cast_to_int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=9e3, type=float)
