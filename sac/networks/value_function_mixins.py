@@ -1,6 +1,7 @@
-from sac.networks import network_interface
+from networks import network_interface
 import tensorflow as tf
 import numpy as np
+from networks.utils import power2_encoding
 
 
 def leaky_relu(x, alpha=0.2):
@@ -42,6 +43,23 @@ class CNN_Goal_ValueFunc(object):
             c2 = tf.layers.conv2d(c1, 32, 5, activation=tf.nn.relu, strides=2, padding='SAME', name='c2')  # 7 x 7 x 32
             flat = tf.reshape(c2, [-1, 7*7*32])
             enc = tf.layers.dense(flat, 128, activation=tf.nn.relu, name='fc1')
+            v = tf.reshape(tf.layers.dense(enc, 1, name='v'), [-1])
+        return v
+
+class CNN_Power2_ValueFunc(object):
+
+    def Q_network(self, s, a, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            a_shape = a.get_shape()[1].value
+            enc = power2_encoding(s)
+            a_fc1 = tf.layers.dense(a, 128, activation=tf.nn.relu, name='a_fc1')
+            combined = tf.concat([enc, a_fc1], axis=1)
+            q = tf.reshape(tf.layers.dense(combined, 1, name='q'), [-1])
+        return q
+
+    def V_network(self, s, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            enc = power2_encoding(s)
             v = tf.reshape(tf.layers.dense(enc, 1, name='v'), [-1])
         return v
 

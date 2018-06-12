@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from abc import abstractmethod
+from networks.utils import power2_encoding
 
 EPS = 1E-6
 
@@ -22,6 +23,14 @@ class CNN_Goal_Policy(object):
         flat = tf.reshape(c2, [-1, 7*7*32])
         enc = tf.layers.dense(flat, 128, activation=tf.nn.relu, name='fc1')
         return enc
+
+
+class CNN_Power2_Policy(object):
+
+    def input_processing(self, s):
+        return power2_encoding(s)
+
+
 
 
 class GaussianPolicy(object):

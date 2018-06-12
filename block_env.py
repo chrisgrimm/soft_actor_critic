@@ -71,7 +71,6 @@ class BlockGoalWrapper(GoalWrapper):
         self.closeness_cutoff = 0.1
         super(BlockGoalWrapper, self).__init__(env, buffer, reward_scaling)
 
-
     def get_factor(self, obs_part):
         return self.nn.encode_single([obs_part])[0][self.factor * self.factor_size : (self.factor + 1) * self.factor_size]
 
