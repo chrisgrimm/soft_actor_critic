@@ -62,5 +62,12 @@ class DataWriter:
         with open(self.file_mapping[name], 'a') as f:
             f.write(str(value)+'\n')
 
+    def purge(self):
+        if self.file_mapping is None:
+            raise Exception('DataWriter unitialized, please call `setup` before using.')
+        for name in self.file_mapping:
+            with open(self.file_mapping[name], 'w') as f:
+                pass
+
 
 LOG = DataWriter()

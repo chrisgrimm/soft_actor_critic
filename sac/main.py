@@ -106,7 +106,7 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
         episode_time_steps += 1
 
         episode_reward += r
-        env.render()
+        #env.render()
         r /= reward_scale
         if not is_eval_period(episodes):
             buffer.append(s1, a, r, s2, t)
@@ -152,6 +152,14 @@ if __name__ == '__main__':
         'v_loss': os.path.join(base_path, 'v_loss'),
         'pi_loss': os.path.join(base_path, 'pi_loss')
     })
+
+    if os.path.isdir(os.path.join('.', args.run_name)):
+        cmd = input(f'Run: {args.run_name} already exists. Purge? (Y/N)')
+        if cmd in ['y', 'Y']:
+            LOG.purge()
+        else:
+            raise Exception(f'Run: {args.run_name} already exists.')
+
 
 
 
