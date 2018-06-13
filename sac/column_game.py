@@ -33,6 +33,7 @@ class ColumnGame(object):
         self.nn = nn
         # column image-generation settings
         self.image_size = 128
+        self.resized_size = 32
         self.spacing = 2
         self.num_columns = num_columns
         self.goal_size = self.nn.hidden_size
@@ -48,7 +49,7 @@ class ColumnGame(object):
         self.reward_no_goal = -0.01
         self.max_episode_steps = 1000
         self.action_space = Box(low=-1, high=1, shape=[self.num_columns])
-        self.observation_space = Box(low=0, high=1, shape=[128, 128, 3+self.goal_size])
+        self.observation_space = Box(low=0, high=1, shape=[self.resized_size, self.resized_size, 3+self.goal_size])
         # if factor_number is -1, enforce all the goals. if factor number is 0-20
 
         self.episode_step = 0
@@ -68,7 +69,7 @@ class ColumnGame(object):
             return np.concatenate([self.column_positions, self.goal], axis=0)
 
     def resize_observation(self, obs):
-        return cv2.resize(obs, (32, 32), interpolation=cv2.INTER_NEAREST)
+        return cv2.resize(obs, (self.resized_size, self.resized_size), interpolation=cv2.INTER_NEAREST)
 
     def at_goal(self, vector, goal, indices=None):
         indices = range(self.goal_size) if indices is None else indices
