@@ -67,6 +67,9 @@ class ColumnGame(object):
         else:
             return np.concatenate([self.column_positions, self.goal], axis=0)
 
+    def resize_observation(self, obs):
+        return cv2.resize(obs, (32, 32), interpolation=cv2.INTER_NEAREST)
+
     def at_goal(self, vector, goal, indices=None):
         indices = range(self.goal_size) if indices is None else indices
         dist_to_goal = np.max(np.abs(vector[indices] - goal[indices]))
@@ -94,18 +97,16 @@ class ColumnGame(object):
         penalty = self.compute_unnecessary_movement_penalty(encoding, old_encoding, self.indices)
         reward = reward - penalty
         terminal = at_goal or (self.episode_step >= self.max_episode_steps)
-        #resized_obs = cv2.resize(np.copy(obs), (32, 32), interpolation=cv2.INTER_NEAREST)
-        return obs, reward, terminal, {'vector': np.copy(self.column_positions)}
+        return self.resize_observation(obs), reward, terminal, {'vector': np.copy(self.column_positions)}
 
     def reset(self):
         self.column_positions = np.random.uniform(0, 1, size=self.num_columns)
         self.goal = self.generate_goal()
         self.episode_step = 0
-        #resized_obs = cv2.resize(self.get_observation(), (32, 32), interpolation=cv2.INTER_NEAREST)
-        return self.get_observation()
+        return self.resize_observation(self.get_observation())
 
     def render(self):
-        cv2.imshow('game', 255*self.get_observation()[:, :, :3])
+        cv2.imshow('game', 255*self.resize_observation(self.get_observation())[:, :, :3])
         cv2.waitKey(1)
 
 
@@ -219,9 +220,9 @@ def run_game(nn):
 
 
 if __name__ == '__main__':
-    from sac.indep_control2.vae_network import VAE_Network
+    from indep_control2.vae_network import VAE_Network
     nn = VAE_Network(20, 128, 'image')
-    nn.restore('../indep_control2/vae_network.ckpt')
+    nn.restore('./indep_control2/vae_network.ckpt')
     #test_obs_to_vector(nn)
     run_game(nn)
 
