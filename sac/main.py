@@ -128,8 +128,9 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
             episode_reward = 0
             episode_time_steps = 0
             episodes += 1
-        if episodes % save_period == 0:
-            agent.save(os.path.join('.', 'runs', run_name, 'weights', 'sac.ckpt'))
+
+            if episodes % save_period == 0:
+                agent.save(os.path.join('.', 'runs', run_name, 'weights', 'sac.ckpt'))
 
 
 if __name__ == '__main__':
