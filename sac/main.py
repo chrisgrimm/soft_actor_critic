@@ -84,7 +84,7 @@ def string_to_env(env_name, buffer, reward_scaling):
 
 
 
-def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, hindsight_agent=False):
+def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, hindsight_agent=False, run_name=''):
     s1 = env.reset()
 
     action_converter = build_action_converter(env)
@@ -93,6 +93,7 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
     time_steps = 0
     episode_time_steps = 0
     evaluation_period = 10
+    save_period = 100
     is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
     while True:
         a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))
@@ -127,6 +128,8 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
             episode_reward = 0
             episode_time_steps = 0
             episodes += 1
+        if episodes % save_period == 0:
+            agent.save(os.path.join('.', run_name, 'weights', 'sac.ckpt'))
 
 
 if __name__ == '__main__':
@@ -141,10 +144,12 @@ if __name__ == '__main__':
     parser.add_argument('--force-max', default=0.1, type=float)
     parser.add_argument('--reward-per-goal', default=1.0, type=float)
     parser.add_argument('--reward-no-goal', default=-0.01, type=float)
+    parser.add_argument('--restore', action='store_true')
     args = parser.parse_args()
 
     data_storage_dir = {args.run_name: {
-        'data': {}
+        'data': {},
+        'weights': {},
     }}
 
     base_path = os.path.join(args.run_name, 'data')
@@ -177,6 +182,9 @@ if __name__ == '__main__':
                      reward_no_goal=args.reward_no_goal)
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     agent = build_column_agent(env)
+    if args.restore is not None:
+        restore_path = os.path.join('.', args.run_name, 'weights', 'sac.ckpt')
+        agent.restore(restore_path)
 
     #if args.mimic_file is not None:
     #    inject_mimic_experiences(args.mimic_file, buffer)
@@ -186,4 +194,5 @@ if __name__ == '__main__':
                  reward_scale=args.reward_scale,
                  batch_size=args.batch_size,
                  num_train_steps=args.num_train_steps,
-                 hindsight_agent=False)
+                 hindsight_agent=False,
+                 run_name=args.run_name)

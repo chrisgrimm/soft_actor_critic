@@ -62,6 +62,7 @@ class AbstractSoftActorCritic(object):
         sess.run(tf.variables_initializer(global_variables_restricted))
         # ensure that xi and xi_bar are the same at initialization
         sess.run(hard_update_xi_bar)
+        self.saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=global_name))
 
     def train_step(self, S1, A, R, S2, T):
         [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
@@ -76,6 +77,12 @@ class AbstractSoftActorCritic(object):
         else:
             actions = self.sess.run(self.A_max_likelihood, feed_dict={self.S1: S1})
         return actions
+
+    def save(self, file_path):
+        self.saver.save(self.sess, file_path)
+
+    def restore(self, file_path):
+        self.saver.restore(self.sess, file_path)
 
     @abstractmethod
     def Q_network(self, s, a, name, reuse=None):
