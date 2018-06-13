@@ -163,7 +163,7 @@ if __name__ == '__main__':
         'pi_loss': os.path.join(base_path, 'pi_loss')
     })
 
-    if os.path.isdir(os.path.join('.', args.run_name)):
+    if os.path.isdir(os.path.join('./runs', args.run_name)):
         cmd = input(f'Run: {args.run_name} already exists. Purge? (Y/N)')
         if cmd in ['y', 'Y']:
             LOG.purge()
@@ -184,7 +184,7 @@ if __name__ == '__main__':
                      reward_no_goal=args.reward_no_goal)
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     agent = build_column_agent(env)
-    if args.restore is not None:
+    if args.restore:
         restore_path = os.path.join('.', args.run_name, 'weights', 'sac.ckpt')
         agent.restore(restore_path)
 
