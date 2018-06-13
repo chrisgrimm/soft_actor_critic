@@ -138,6 +138,7 @@ if __name__ == '__main__':
     parser.add_argument('--reward-scale', default=1., type=float)
     parser.add_argument('--run-name', type=str)
     parser.add_argument('--mimic-file', default=None, type=str)
+    parser.add_argument('--force-max', default=0.1, type=float)
     args = parser.parse_args()
 
     data_storage_dir = {args.run_name: {
@@ -170,7 +171,7 @@ if __name__ == '__main__':
     nn = VAE_Network(hidden_size=20, input_size=100, mode='image')
     nn.restore('./indep_control2/vae_network.ckpt')
     factor_num = 8
-    env = ColumnGame(nn, indices=[factor_num])
+    env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max)
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     agent = build_column_agent(env)
 
