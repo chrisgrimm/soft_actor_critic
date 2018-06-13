@@ -136,7 +136,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     #parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--buffer-size', default=int(10 ** 6), type=int)
-    parser.add_argument('--num-train-steps', default=1, type=int)
+    parser.add_argument('--num-train-steps', default=4, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)
     parser.add_argument('--run-name', type=str)
