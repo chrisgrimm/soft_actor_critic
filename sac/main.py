@@ -143,7 +143,7 @@ if __name__ == '__main__':
     data_storage_dir = {args.run_name: {
         'data': {}
     }}
-    build_directory_structure('.', data_storage_dir)
+
     base_path = os.path.join(args.run_name, 'data')
     LOG.setup({
         'episode_length': os.path.join(base_path, 'episode_length'),
@@ -160,7 +160,7 @@ if __name__ == '__main__':
         else:
             raise Exception(f'Run: {args.run_name} already exists.')
 
-
+    build_directory_structure('.', data_storage_dir)
 
 
     buffer = ReplayBuffer2(args.buffer_size)
