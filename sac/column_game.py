@@ -28,7 +28,8 @@ def get_batch_n_columns(batch_size, size=32, num_columns=3, spacing=2):
 
 class ColumnGame(object):
 
-    def __init__(self, nn, num_columns=8, force_max=0.1, visual=True, indices=None):
+    def __init__(self, nn, num_columns=8, force_max=0.1, reward_per_goal=1.0, reward_no_goal=-0.01,
+                 visual=True, indices=None):
 
         self.nn = nn
         # column image-generation settings
@@ -45,8 +46,8 @@ class ColumnGame(object):
 
         self.goal = self.generate_goal()
         self.goal_threshold = 0.05
-        self.reward_per_goal = 1.0
-        self.reward_no_goal = -0.01
+        self.reward_per_goal = reward_per_goal
+        self.reward_no_goal = reward_no_goal
         self.max_episode_steps = 1000
         self.action_space = Box(low=-1, high=1, shape=[self.num_columns])
         self.observation_space = Box(low=0, high=1, shape=[self.resized_size, self.resized_size, 3+self.goal_size])
