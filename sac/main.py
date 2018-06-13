@@ -135,7 +135,7 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     #parser.add_argument('--env', default='HalfCheetah-v2')
-    parser.add_argument('--buffer-size', default=int(10 ** 7), type=int)
+    parser.add_argument('--buffer-size', default=int(10 ** 6), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=1., type=float)
@@ -147,9 +147,11 @@ if __name__ == '__main__':
     parser.add_argument('--restore', action='store_true')
     args = parser.parse_args()
 
-    data_storage_dir = {args.run_name: {
-        'data': {},
-        'weights': {},
+    data_storage_dir = {'runs': {
+        args.run_name: {
+            'data': {},
+            'weights': {},
+        },
     }}
 
     base_path = os.path.join(args.run_name, 'data')
