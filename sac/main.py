@@ -154,7 +154,7 @@ if __name__ == '__main__':
         },
     }}
 
-    base_path = os.path.join(args.run_name, 'data')
+    base_path = os.path.join('./runs', args.run_name, 'data')
     LOG.setup({
         'episode_length': os.path.join(base_path, 'episode_length'),
         'episode_reward': os.path.join(base_path, 'episode_rewards'),
