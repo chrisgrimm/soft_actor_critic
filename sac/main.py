@@ -144,16 +144,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     #parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--buffer-size', default=int(10 ** 6), type=int)
-    parser.add_argument('--num-train-steps', default=4, type=int)
+    parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--reward-scale', default=1., type=float)
+    parser.add_argument('--reward-scale', default=0.1, type=float)
     parser.add_argument('--run-name', type=str)
     parser.add_argument('--mimic-file', default=None, type=str)
-    parser.add_argument('--force-max', default=0.1, type=float)
-    parser.add_argument('--reward-per-goal', default=1.0, type=float)
+    parser.add_argument('--force-max', default=0.3, type=float)
+    parser.add_argument('--reward-per-goal', default=10.0, type=float)
     parser.add_argument('--reward-no-goal', default=-0.01, type=float)
     parser.add_argument('--restore', action='store_true')
     parser.add_argument('--render', action='store_true')
+    parser.add_argument('--factor-num', type=int)
+
     args = parser.parse_args()
 
     data_storage_dir = {'runs': {
@@ -188,7 +190,7 @@ if __name__ == '__main__':
     #env = string_to_env(args.env, buffer, args.reward_scale)
     nn = VAE_Network(hidden_size=20, input_size=100, mode='image')
     nn.restore('./indep_control2/vae_network.ckpt')
-    factor_num = 8
+    factor_num = args.factor_num
     env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
                      reward_no_goal=args.reward_no_goal, visual=False)
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
