@@ -45,12 +45,16 @@ class ColumnGame(object):
         self.visual = visual
 
         self.goal = self.generate_goal()
-        self.goal_threshold = 0.05
+        self.goal_threshold = 0.1
         self.reward_per_goal = reward_per_goal
         self.reward_no_goal = reward_no_goal
-        self.max_episode_steps = 1000
+        self.max_episode_steps = 100
         self.action_space = Box(low=-1, high=1, shape=[self.num_columns])
-        self.observation_space = Box(low=0, high=1, shape=[self.resized_size, self.resized_size, 3+self.goal_size])
+        if visual:
+            self.observation_space = Box(low=0, high=1, shape=[self.resized_size, self.resized_size, 3+self.goal_size])
+        else:
+            self.observation_space = Box(low=-3, high=3, shape=[20+20])
+
         # if factor_number is -1, enforce all the goals. if factor number is 0-20
 
         self.episode_step = 0
@@ -67,7 +71,9 @@ class ColumnGame(object):
             combined_image = np.concatenate([image, goal_image], axis=2)
             return combined_image
         else:
-            return np.concatenate([self.column_positions, self.goal], axis=0)
+            image = make_n_columns(self.column_positions, spacing=self.spacing, size=self.image_size)
+            encoded = self.nn.encode_deterministic([image])[0]
+            return np.concatenate([encoded, self.goal], axis=0)
 
     def resize_observation(self, obs):
         return cv2.resize(obs, (self.resized_size, self.resized_size), interpolation=cv2.INTER_NEAREST)
@@ -77,40 +83,56 @@ class ColumnGame(object):
         dist_to_goal = np.max(np.abs(vector[indices] - goal[indices]))
         return dist_to_goal < self.goal_threshold
 
-    def compute_unnecessary_movement_penalty(self, vector, old_vector, indices=None):
+    def compute_unnecessary_movement_penalty(self, vector, starting_vector, indices=None):
         # penalize changes to the features on the unselected indices.
         vector = np.copy(vector)
         vector[indices] = 0
-        old_vector = np.copy(old_vector)
-        old_vector[indices] = 0
-        return np.max(np.abs(vector - old_vector))
+        starting_vector = np.copy(starting_vector)
+        starting_vector[indices] = 0
+        return np.sum(np.abs(vector - starting_vector))
 
     # action is [-1, 1] x num_columns vector
     def step(self, action):
+        #print('columns', self.column_positions)
         action = self.force_max * np.clip(action, -1, 1)
         self.episode_step += 1
-        old_obs = self.get_observation()
-        old_encoding = self.nn.encode_deterministic([old_obs[:, :, :3]])[0]
         self.column_positions = np.clip(self.column_positions + action, 0, 1)
+        #print('new_columns', self.column_positions)
         obs = self.get_observation()
-        encoding = self.nn.encode_deterministic([obs[:, :, :3]])[0]
+        if self.visual:
+            encoding = self.nn.encode_deterministic([obs[:, :, :3]])[0]
+        else:
+            encoding = obs[:20]
         at_goal = self.at_goal(encoding, self.goal, self.indices)
         reward = self.reward_per_goal if at_goal else self.reward_no_goal
-        penalty = self.compute_unnecessary_movement_penalty(encoding, old_encoding, self.indices)
-        reward = reward - penalty
+        penalty = self.compute_unnecessary_movement_penalty(encoding, self.starting_vector, self.indices)
+        reward = (reward - penalty)
         terminal = at_goal or (self.episode_step >= self.max_episode_steps)
-        return self.resize_observation(obs), reward, terminal, {'vector': np.copy(self.column_positions)}
+        if self.visual:
+            obs = self.resize_observation(obs)
+        return obs, reward, terminal, {'vector': np.copy(self.column_positions)}
 
     def reset(self):
-        self.column_positions = np.random.uniform(0, 1, size=self.num_columns)
+        #self.column_positions = np.random.uniform(0, 1, size=self.num_columns)
+        self.column_positions = np.array([0.5]*self.num_columns)
         self.goal = self.generate_goal()
         self.episode_step = 0
-        return self.resize_observation(self.get_observation())
+        if self.visual:
+            obs = self.get_observation()
+            self.starting_vector = self.nn.encode_deterministic(obs[:, :, :3])
+            obs = self.resize_observation(obs)
+        else:
+            obs = self.get_observation()
+            self.starting_vector = obs[:20]
+        return obs
 
     def render(self):
-        cv2.imshow('game', 255*self.resize_observation(self.get_observation())[:, :, :3])
-        cv2.waitKey(1)
-
+        if self.visual:
+            cv2.imshow('game', 255*self.resize_observation(self.get_observation())[:, :, :3])
+            cv2.waitKey(1)
+        else:
+            cv2.imshow('game', 255*make_n_columns(self.column_positions, spacing=self.spacing, size=self.image_size))
+            cv2.waitKey(1)
 
 class ColumnGameGoalWrapper(GoalWrapper):
 
@@ -189,7 +211,7 @@ def test_obs_to_vector(nn):
 def run_game(nn):
     vae_index = 8
     action_index = 3
-    env = ColumnGame(nn, indices=[vae_index])
+    env = ColumnGame(nn, indices=[vae_index], visual=False)
     s = env.reset()
     while True:
         command = input('command')
@@ -211,9 +233,10 @@ def run_game(nn):
                 print(f'Unrecognized Action: {command}')
                 continue
             action = np.zeros(shape=[env.num_columns])
-            action[action_index] = 0.1 if command == 'w' else -0.1
+            action[action_index] = 0.3 if command == 'w' else -0.3
 
         s, r, t, _ = env.step(action)
+        print(s)
         print(r, 'terminal' if t else '')
         env.render()
         if t:

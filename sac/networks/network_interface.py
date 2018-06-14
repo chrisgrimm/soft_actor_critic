@@ -35,6 +35,8 @@ class AbstractSoftActorCritic(object):
             V_bar_S2 = self.V_network(S2, 'V_bar')
             Q = self.Q_network(S1, self.transform_action_sample(A), 'Q', reuse=True)
             self.Q_loss = Q_loss = tf.reduce_mean(0.5*tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
+            #self.Q_loss = Q_loss = tf.reduce_mean(0.5*tf.square(Q - (R + gamma * V_bar_S2)))
+
 
             # constructing pi loss
             self.pi_loss = pi_loss = tf.reduce_mean(log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - Q_sampled2 + V_S1))
@@ -50,9 +52,22 @@ class AbstractSoftActorCritic(object):
             hard_update_xi_bar_ops = [tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)]
             hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
 
-            self.train_V = train_V = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(V_loss, var_list=xi)
-            self.train_Q = train_Q = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(Q_loss, var_list=theta)
-            self.train_pi = train_pi = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(pi_loss, var_list=phi)
+            grad_clip_magnitude = 1000
+
+            train_V_opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
+            train_V_grads = train_V_opt.compute_gradients(V_loss, var_list=xi)
+            train_V_capped_gvs = [(tf.clip_by_value(grad, -grad_clip_magnitude, grad_clip_magnitude), var) for grad, var in train_V_grads]
+            self.train_V = train_V_opt.apply_gradients(train_V_capped_gvs)
+
+            train_Q_opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
+            train_Q_grads = train_Q_opt.compute_gradients(Q_loss, var_list=theta)
+            train_Q_capped_gvs = [(tf.clip_by_value(grad, -grad_clip_magnitude, grad_clip_magnitude), var) for grad, var in train_Q_grads]
+            self.train_Q = train_Q_opt.apply_gradients(train_Q_capped_gvs)
+
+            train_pi_opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
+            train_pi_grads = train_pi_opt.compute_gradients(pi_loss, var_list=phi)
+            train_pi_capped_gvs = [(tf.clip_by_value(grad, -grad_clip_magnitude, grad_clip_magnitude), var) for grad, var in train_pi_grads]
+            self.train_pi = train_pi_opt.apply_gradients(train_pi_capped_gvs)
             self.check = tf.add_check_numerics_ops()
 
         config = tf.ConfigProto(allow_soft_placement=True)

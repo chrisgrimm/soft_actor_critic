@@ -42,9 +42,14 @@ def build_image_goal_agent(env):
     return Agent([28, 28, 3+10], action_shape)
 
 def build_column_agent(env):
-    class Agent(GaussianPolicy, CNN_Power2_Policy, CNN_Power2_ValueFunc, AbstractSoftActorCritic):
-        def __init__(self, s_shape, a_shape):
-            super(Agent, self).__init__(s_shape, a_shape)
+    if env.visual:
+        class Agent(GaussianPolicy, CNN_Power2_Policy, CNN_Power2_ValueFunc, AbstractSoftActorCritic):
+            def __init__(self, s_shape, a_shape):
+                super(Agent, self).__init__(s_shape, a_shape)
+    else:
+        class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
+            def __init__(self, s_shape, a_shape):
+                super(Agent, self).__init__(s_shape, a_shape)
 
     return Agent(env.observation_space.shape, env.action_space.shape)
 
@@ -84,7 +89,7 @@ def string_to_env(env_name, buffer, reward_scaling):
 
 
 
-def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, hindsight_agent=False, run_name=''):
+def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, hindsight_agent=False, run_name='', render=False):
     s1 = env.reset()
 
     action_converter = build_action_converter(env)
@@ -92,12 +97,13 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
     episodes = 0
     time_steps = 0
     episode_time_steps = 0
-    evaluation_period = 10
-    save_period = 100
+    evaluation_period = 100
+    save_period = 1000
     is_eval_period = lambda episode_number: episode_number % evaluation_period == 0
+    #is_eval_period = lambda episode_number: True
     while True:
-        a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))
-        a = a[0]
+        a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))[0]
+
         if hindsight_agent:
             s2, r, t, info = env.step(a, action_converter)
         else:
@@ -107,7 +113,8 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
         episode_time_steps += 1
 
         episode_reward += r
-        #env.render()
+        if render:
+            env.render()
         r /= reward_scale
         if not is_eval_period(episodes):
             buffer.append(s1, a, r, s2, t)
@@ -121,14 +128,14 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
         s1 = s2
         if t:
             s1 = env.reset()
-            print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(episodes) else 'TRAIN',
-                                                                     episodes, time_steps, episode_reward))
+            #print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(episodes) else 'TRAIN',
+            #                                                         episodes, time_steps, episode_reward))
+            print(f'{"EVAL" if is_eval_period(episodes) else "TRAIN"}\t Episode: {episodes}\t Time Steps: {episode_time_steps} Reward: {episode_reward}')
             LOG.add_line('episode_reward', episode_reward)
             LOG.add_line('episode_length', episode_time_steps)
             episode_reward = 0
             episode_time_steps = 0
             episodes += 1
-
             if episodes % save_period == 0:
                 agent.save(os.path.join('.', 'runs', run_name, 'weights', 'sac.ckpt'))
 
@@ -146,6 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('--reward-per-goal', default=1.0, type=float)
     parser.add_argument('--reward-no-goal', default=-0.01, type=float)
     parser.add_argument('--restore', action='store_true')
+    parser.add_argument('--render', action='store_true')
     args = parser.parse_args()
 
     data_storage_dir = {'runs': {
@@ -182,11 +190,11 @@ if __name__ == '__main__':
     nn.restore('./indep_control2/vae_network.ckpt')
     factor_num = 8
     env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
-                     reward_no_goal=args.reward_no_goal)
+                     reward_no_goal=args.reward_no_goal, visual=False)
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     agent = build_column_agent(env)
     if args.restore:
-        restore_path = os.path.join('.', args.run_name, 'weights', 'sac.ckpt')
+        restore_path = os.path.join('.', 'runs',  args.run_name, 'weights', 'sac.ckpt')
         agent.restore(restore_path)
 
     #if args.mimic_file is not None:
@@ -198,4 +206,5 @@ if __name__ == '__main__':
                  batch_size=args.batch_size,
                  num_train_steps=args.num_train_steps,
                  hindsight_agent=False,
-                 run_name=args.run_name)
+                 run_name=args.run_name,
+                 render=args.render)
