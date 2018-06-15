@@ -113,8 +113,8 @@ class ColumnGame(object):
         return obs, reward, terminal, {'vector': np.copy(self.column_positions)}
 
     def reset(self):
-        #self.column_positions = np.random.uniform(0, 1, size=self.num_columns)
-        self.column_positions = np.array([0.5]*self.num_columns)
+        self.column_positions = np.random.uniform(0, 1, size=self.num_columns)
+        #self.column_positions = np.array([0.5]*self.num_columns)
         self.goal = self.generate_goal()
         self.episode_step = 0
         if self.visual:
