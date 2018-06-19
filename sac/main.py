@@ -11,9 +11,12 @@ from chaser import ChaserEnv
 from column_game import ColumnGame
 from indep_control2.vae_network import VAE_Network
 from networks.network_interface import AbstractSoftActorCritic
-from networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy, CNN_Goal_Policy, CNN_Power2_Policy
-from networks.value_function_mixins import MLPValueFunc, CNN_Goal_ValueFunc, CNN_Power2_ValueFunc
+from networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy, CNN_Goal_Policy, CNN_Power2_Policy, \
+    Categorical_X_GaussianPolicy
+from networks.value_function_mixins import MLPValueFunc, CNN_Goal_ValueFunc, CNN_Power2_ValueFunc, \
+    MLP_Categorical_X_Gaussian_ValueFunc
 from replay_buffer.replay_buffer import ReplayBuffer2
+from high_level_environment import HighLevelColumnEnvironment
 
 
 def build_agent(env):
@@ -41,21 +44,34 @@ def build_image_goal_agent(env):
 
     return Agent([28, 28, 3+10], action_shape)
 
-def build_column_agent(env):
+def build_column_agent(env, name='SAC'):
     if env.visual:
         class Agent(GaussianPolicy, CNN_Power2_Policy, CNN_Power2_ValueFunc, AbstractSoftActorCritic):
             def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(s_shape, a_shape)
+                super(Agent, self).__init__(s_shape, a_shape, global_name=name)
     else:
         class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
             def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(s_shape, a_shape)
+                super(Agent, self).__init__(s_shape, a_shape, global_name=name)
 
     return Agent(env.observation_space.shape, env.action_space.shape)
 
 
+def build_high_level_agent(env, name='SAC_high_level'):
+    class Agent(Categorical_X_GaussianPolicy, MLPPolicy, MLP_Categorical_X_Gaussian_ValueFunc, AbstractSoftActorCritic):
+        def __init__(self, s_shape, a_shape):
+            super(Agent, self).__init__(s_shape, a_shape, global_name=name)
+    return Agent(env.env.observation_space.shape, [9])
 
-
+def build_high_level_action_converter(env):
+    def converter(a):
+        a_cat, a_gauss = a[:8], a[8:]
+        a_cat = np.argmax(a_cat)
+        a_gauss = np.tanh(a_gauss)
+        h, l = 2.5, -2.5
+        a_gauss = ((a_gauss + 1) / 2) * (h - l) + l
+        return (a_cat, a_gauss)
+    return converter
 
 def inject_mimic_experiences(mimic_file, buffer, N=1):
     with open(mimic_file, 'r') as f:
@@ -92,7 +108,8 @@ def string_to_env(env_name, buffer, reward_scaling):
 def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, hindsight_agent=False, run_name='', render=False):
     s1 = env.reset()
 
-    action_converter = build_action_converter(env)
+    #action_converter = build_action_converter(env)
+    action_converter = build_high_level_action_converter(env)
     episode_reward = 0
     episodes = 0
     time_steps = 0
@@ -103,6 +120,7 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
     #is_eval_period = lambda episode_number: True
     while True:
         a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))[0]
+        print(time_steps, a)
 
         if hindsight_agent:
             s2, r, t, info = env.step(a, action_converter)
@@ -127,6 +145,7 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
                     LOG.add_line('pi_loss', pi_loss)
         s1 = s2
         if t:
+            print('TERMINAL')
             s1 = env.reset()
             #print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(episodes) else 'TRAIN',
             #                                                         episodes, time_steps, episode_reward))
@@ -188,13 +207,16 @@ if __name__ == '__main__':
 
 
     #env = string_to_env(args.env, buffer, args.reward_scale)
-    nn = VAE_Network(hidden_size=20, input_size=100, mode='image')
-    nn.restore('./indep_control2/vae_network.ckpt')
-    factor_num = args.factor_num
-    env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
-                     reward_no_goal=args.reward_no_goal, visual=False)
+    #nn = VAE_Network(hidden_size=20, input_size=100, mode='image')
+    #nn.restore('./indep_control2/vae_network.ckpt')
+    #factor_num = args.factor_num
+    #env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
+    #                 reward_no_goal=args.reward_no_goal, visual=False)
+    env = HighLevelColumnEnvironment()
+
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
-    agent = build_column_agent(env)
+    #agent = build_column_agent(env)
+    agent = build_high_level_agent(env)
     if args.restore:
         restore_path = os.path.join('.', 'runs',  args.run_name, 'weights', 'sac.ckpt')
         agent.restore(restore_path)

@@ -64,4 +64,25 @@ class CNN_Power2_ValueFunc(object):
         return v
 
 
+class MLP_Categorical_X_Gaussian_ValueFunc(object):
+
+    def Q_network(self, s, a, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            print(a.get_shape()[1].value)
+            assert a.get_shape()[1].value == 9
+            #a_cat, a_gauss = a[:, :8], a[:, 8:]
+            #a = tf.concat([a_cat, a_gauss], axis=1)
+            sa = tf.concat([s, a], axis=1)
+            fc1 = tf.layers.dense(sa, 128, tf.nn.relu, name='fc1')
+            fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
+            q = tf.reshape(tf.layers.dense(fc2, 1, name='q'), [-1])
+        return q
+
+    def V_network(self, s, name, reuse=None):
+        with tf.variable_scope(name, reuse=reuse):
+            fc1 = tf.layers.dense(s, 128, tf.nn.relu, name='fc1')
+            fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
+            v = tf.reshape(tf.layers.dense(fc2, 1, name='v'), [-1])
+        return v
+
 

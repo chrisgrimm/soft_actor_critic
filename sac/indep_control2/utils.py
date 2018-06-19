@@ -71,3 +71,30 @@ class DataWriter:
 
 
 LOG = DataWriter()
+
+# credit: https://stackoverflow.com/questions/37086268/rename-variable-scope-of-saved-model-in-tensorflow
+def ckpt_surgery(checkpoint_dir, modification_function, dry_run=False):
+    if checkpoint_dir.endswith('.ckpt'):
+        checkpoint_dir = os.path.split(checkpoint_dir)[0]
+    checkpoint = tf.train.get_checkpoint_state(checkpoint_dir)
+    print(f'checkpoint {checkpoint}')
+    with tf.Session() as sess:
+        for var_name, _ in tf.contrib.framework.list_variables(checkpoint_dir):
+            # Load the variable
+            var = tf.contrib.framework.load_variable(checkpoint_dir, var_name)
+            # Set the new name
+            new_name = modification_function(var_name)
+
+            if dry_run:
+                print('%s would be renamed to %s.' % (var_name, new_name))
+            else:
+                print('Renaming %s to %s.' % (var_name, new_name))
+                # Rename the variable
+                var = tf.Variable(var, name=new_name)
+
+        if not dry_run:
+            # Save the variables
+            saver = tf.train.Saver()
+            sess.run(tf.global_variables_initializer())
+            saver.save(sess, checkpoint.model_checkpoint_path)
+

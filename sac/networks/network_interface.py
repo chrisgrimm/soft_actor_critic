@@ -35,7 +35,6 @@ class AbstractSoftActorCritic(object):
             V_bar_S2 = self.V_network(S2, 'V_bar')
             Q = self.Q_network(S1, self.transform_action_sample(A), 'Q', reuse=True)
             self.Q_loss = Q_loss = tf.reduce_mean(0.5*tf.square(Q - (R + (1 - T) * gamma * V_bar_S2)))
-            #self.Q_loss = Q_loss = tf.reduce_mean(0.5*tf.square(Q - (R + gamma * V_bar_S2)))
 
 
             # constructing pi loss
@@ -52,6 +51,8 @@ class AbstractSoftActorCritic(object):
             hard_update_xi_bar_ops = [tf.assign(xbar, x) for (xbar, x) in zip(xi_bar, xi)]
             hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
 
+
+            # seems to improve training stability.
             grad_clip_magnitude = 1000
 
             train_V_opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
@@ -95,6 +96,7 @@ class AbstractSoftActorCritic(object):
 
     def save(self, file_path):
         self.saver.save(self.sess, file_path)
+
 
     def restore(self, file_path):
         self.saver.restore(self.sess, file_path)

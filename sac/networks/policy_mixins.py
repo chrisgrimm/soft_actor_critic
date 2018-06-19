@@ -40,7 +40,7 @@ class GaussianPolicy(object):
     def produce_policy_parameters(self, a_shape, processed_s):
         mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params')
         sigma_params = 3*tf.layers.dense(processed_s, a_shape, tf.nn.sigmoid, name='sigma_params')
-        return (mu_params, sigma_params + 0.000001)
+        return (mu_params, sigma_params + EPS)
 
     def policy_parameters_to_log_prob(self, u, parameters):
         (mu, sigma) = parameters
@@ -98,3 +98,54 @@ class CategoricalPolicy(object):
 
     def transform_action_sample(self, action_sample):
         return action_sample
+
+
+class Categorical_X_GaussianPolicy(object):
+
+    def produce_policy_parameters(self, a_shape, processed_s):
+        logits_shape = 8
+        gaussian_shape = 1
+        assert a_shape == 9
+        logits = tf.layers.dense(processed_s, logits_shape, name='logits')
+        mu_params = tf.layers.dense(processed_s, gaussian_shape, name='mu_params')
+        sigma_params = 3 * tf.layers.dense(processed_s, gaussian_shape, tf.nn.sigmoid, name='sigma_params') + EPS
+        return (logits, mu_params, sigma_params)
+
+    def policy_parameters_to_log_prob(self, a, parameters):
+        # TODO rework this abstraction, so I dont have to hardcode this.
+        a_cat = a[:, :8]
+        a_gauss = a[:, 8:]
+        (logits, mu_params, sigma_params) = parameters
+        out_cat = tf.distributions.Categorical(logits=logits).log_prob(tf.argmax(a_cat, axis=1))
+        out_gauss = tf.distributions.Normal(mu_params, sigma_params).log_prob(a_gauss)
+        out_gauss = tf.reduce_sum(out_gauss, axis=1) - tf.reduce_sum(tf.log(1 - tf.square(tf.tanh(a_gauss)) + EPS), axis=1)
+        return out_cat + out_gauss
+
+    def policy_parameters_to_sample(self, parameters):
+        (logits, mu_params, sigma_params) = parameters
+        logits_shape = logits.get_shape()[1].value
+        gaussian_shape = mu_params.get_shape()[1].value
+        print('---')
+        print(logits)
+        print(mu_params)
+        print(sigma_params)
+        #logits = tf.Print(logits, [tf.nn.softmax(logits)], message='logits are:', summarize=10)
+        logits_out = tf.one_hot(tf.distributions.Categorical(logits=logits).sample(), logits_shape)
+        gauss_out = tf.distributions.Normal(mu_params, sigma_params).sample()
+        a = tf.concat([logits_out, gauss_out], axis=1)
+        return a
+
+
+    def policy_parameters_to_max_likelihood_action(self, parameters):
+        (logits, mu, sigma) = parameters
+        logit_shape = 8
+        gaussian_shape = 1
+        out_cat = tf.one_hot(tf.argmax(logits, axis=1), logit_shape)
+        out_gauss = mu
+        return tf.concat([out_cat, out_gauss], axis=1)
+
+    def transform_action_sample(self, action_sample):
+        out_cat, out_gauss = action_sample[:, :8], action_sample[:, 8:]
+        print(out_cat, out_gauss)
+        return tf.concat([out_cat, tf.tanh(out_gauss)], axis=1)
+
