@@ -29,7 +29,8 @@ def get_batch_n_columns(batch_size, size=32, num_columns=3, spacing=2):
 class ColumnGame(object):
 
     def __init__(self, nn, num_columns=8, force_max=0.1, reward_per_goal=1.0, reward_no_goal=-0.01,
-                 visual=True, indices=None, max_episode_steps=100, single_network=False):
+                 visual=True, indices=None, max_episode_steps=100, single_network=False, hindsight=False,
+                 buffer=None):
 
         self.nn = nn
         # column image-generation settings
@@ -63,6 +64,36 @@ class ColumnGame(object):
         # if factor_number is -1, enforce all the goals. if factor number is 0-20
 
         self.episode_step = 0
+
+        self.hindsight = hindsight
+        self.replay_buffer = buffer
+        self.current_episode_trajectory = []
+        if self.hindsight:
+            assert self.replay_buffer is not None
+            assert self.visual == False
+
+    def process_trajectory(self, trajectory):
+        if len(trajectory) == 0:
+            return
+        last_obs1, last_action, last_reward, last_obs2, last_terminal = trajectory[-1]
+        last_encoding, last_goal, last_onehot = np.copy(last_obs2[:20]), np.copy(last_obs2[20:40]), np.copy(last_obs2[40:])
+        last_factor = self.index_to_factor[np.argmax(last_onehot)]
+        starting_vector = np.copy(trajectory[0][0][:20])
+        new_trajectory = []
+        for (obs1, a, r, obs2, t) in trajectory:
+            encoding1 = np.copy(obs1[:20])
+            encoding2 = np.copy(obs2[:20])
+            new_reward, new_at_goal = self.compute_reward_and_at_goal(encoding2, starting_vector, [last_factor], last_encoding)
+            new_obs1 = np.concatenate([encoding1, last_goal, last_onehot], axis=0)
+            new_obs2 = np.concatenate([encoding2, last_goal, last_onehot], axis=0)
+            new_trajectory.append((new_obs1, a, new_reward, new_obs2, new_at_goal))
+
+        for obs1, a, r, obs2, t in new_trajectory:
+            self.replay_buffer.append(obs1, a, r, obs2, t)
+
+
+
+
 
     def generate_goal(self):
         image = make_n_columns(np.random.uniform(0, 1, size=self.num_columns), spacing=self.spacing, size=self.image_size)
@@ -101,9 +132,19 @@ class ColumnGame(object):
         starting_vector[indices] = 0
         return np.sum(np.abs(vector - starting_vector))
 
+    def compute_reward_and_at_goal(self, encoding, starting_vector, indices, goal):
+        at_goal = self.at_goal(encoding, goal, indices)
+        penalty = self.compute_unnecessary_movement_penalty(encoding, starting_vector, indices)
+        reward = self.reward_per_goal if at_goal else self.reward_no_goal
+        reward = (reward - penalty)
+        return reward, at_goal
+
     # action is [-1, 1] x num_columns vector
     def step(self, action):
+
         #print('columns', self.column_positions)
+        prev_obs = self.get_observation()
+        actual_action = action
         action = self.force_max * np.clip(action, -1, 1)
         self.episode_step += 1
         self.column_positions = np.clip(self.column_positions + action, 0, 1)
@@ -116,21 +157,25 @@ class ColumnGame(object):
         # if single-network mode is on, dont use indices.
         if self.single_network:
             factor = self.index_to_factor[self.episode_index]
-            at_goal = self.at_goal(encoding, self.goal, [factor])
-            penalty = self.compute_unnecessary_movement_penalty(encoding, self.starting_vector, [factor])
-
+            reward, at_goal = self.compute_reward_and_at_goal(encoding, self.starting_vector, [factor], self.goal)
         else:
-            at_goal = self.at_goal(encoding, self.goal, self.indices)
-            penalty = self.compute_unnecessary_movement_penalty(encoding, self.starting_vector, self.indices)
+            reward, at_goal = self.compute_reward_and_at_goal(encoding, self.starting_vector, self.indices, self.goal)
 
-        reward = self.reward_per_goal if at_goal else self.reward_no_goal
-        reward = (reward - penalty)
         terminal = at_goal or (self.episode_step >= self.max_episode_steps)
         if self.visual:
             obs = self.resize_observation(obs)
+
+        if self.hindsight:
+            self.current_episode_trajectory.append((prev_obs, actual_action, reward, obs, terminal))
+
         return obs, reward, terminal, {'vector': np.copy(self.column_positions)}
 
     def reset(self):
+        if self.hindsight:
+            # process and purge current episode directory
+            self.process_trajectory(self.current_episode_trajectory)
+            self.current_episode_trajectory = []
+
         self.column_positions = np.random.uniform(0, 1, size=self.num_columns)
         self.episode_index = np.random.randint(0, 8)
         #self.column_positions = np.array([0.5]*self.num_columns)

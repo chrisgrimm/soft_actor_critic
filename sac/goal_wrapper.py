@@ -26,6 +26,10 @@ class GoalWrapper(object):
     '''
 
     @abstractmethod
+    def obs_has_goal_appended(self):
+        pass
+
+    @abstractmethod
     def obs_part_to_goal(self, obs_part):
         pass
 
