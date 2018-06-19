@@ -20,15 +20,15 @@ def build_action_converter(env):
             return ((a + 1) / 2) * (h - l) + l
     return converter
 
-def build_column_agent(env, name):
+def build_column_agent(env, name, sess=None):
     if env.visual:
         class Agent(GaussianPolicy, CNN_Power2_Policy, CNN_Power2_ValueFunc, AbstractSoftActorCritic):
             def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(s_shape, a_shape, global_name=name)
+                super(Agent, self).__init__(s_shape, a_shape, global_name=name, sess=sess)
     else:
         class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
             def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(s_shape, a_shape, global_name=name)
+                super(Agent, self).__init__(s_shape, a_shape, global_name=name, sess=sess)
 
     return Agent(env.observation_space.shape, env.action_space.shape)
 
@@ -40,6 +40,7 @@ class HighLevelColumnEnvironment():
         nn = VAE_Network(self.num_factors, 10*10, mode='image')
         nn.restore('./indep_control2/vae_network.ckpt')
         self.env = ColumnGame(nn, force_max=0.3, reward_per_goal=10.0, indices=None, visual=False, max_episode_steps=1000)
+        self.sess = None
         option_dir = './factor_agents'
         self.index_to_factor = [4,5,7,8,9,10,11,16]
         option_names = [f'f{x}_random' for x in self.index_to_factor]
@@ -56,7 +57,9 @@ class HighLevelColumnEnvironment():
 
     def load_agents(self, option_path, global_scope):
         print(f'loading {global_scope}...')
-        agent = build_column_agent(self.env, global_scope)
+        agent = build_column_agent(self.env, global_scope, self.sess)
+        if self.sess is None:
+            self.sess = agent.sess
         agent.restore(option_path)
         return agent
 

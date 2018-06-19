@@ -6,7 +6,7 @@ from utils import component
 
 class AbstractSoftActorCritic(object):
 
-    def __init__(self, s_shape, a_shape, global_name='SAC'):
+    def __init__(self, s_shape, a_shape, global_name='SAC', sess=None):
         with tf.variable_scope(global_name):
             self.S1 = S1 = tf.placeholder(tf.float32, [None] + list(s_shape))
             self.S2 = S2 = tf.placeholder(tf.float32, [None] + list(s_shape))
@@ -71,9 +71,13 @@ class AbstractSoftActorCritic(object):
             self.train_pi = train_pi_opt.apply_gradients(train_pi_capped_gvs)
             self.check = tf.add_check_numerics_ops()
 
-        config = tf.ConfigProto(allow_soft_placement=True)
-        config.gpu_options.allow_growth = True
-        self.sess = sess = tf.Session(config=config)
+        if sess is None:
+            config = tf.ConfigProto(allow_soft_placement=True)
+            config.gpu_options.allow_growth = True
+            self.sess = sess = tf.Session(config=config)
+        else:
+            self.sess = sess
+
         global_variables_restricted = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=global_name)
         sess.run(tf.variables_initializer(global_variables_restricted))
         # ensure that xi and xi_bar are the same at initialization

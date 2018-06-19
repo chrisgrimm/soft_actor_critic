@@ -120,7 +120,6 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
     #is_eval_period = lambda episode_number: True
     while True:
         a = agent.get_actions([s1], sample=(not is_eval_period(episodes)))[0]
-        print(time_steps, a)
 
         if hindsight_agent:
             s2, r, t, info = env.step(a, action_converter)
