@@ -29,7 +29,7 @@ def get_batch_n_columns(batch_size, size=32, num_columns=3, spacing=2):
 class ColumnGame(object):
 
     def __init__(self, nn, num_columns=8, force_max=0.1, reward_per_goal=1.0, reward_no_goal=-0.01,
-                 visual=True, indices=None, max_episode_steps=100):
+                 visual=True, indices=None, max_episode_steps=100, single_network=False):
 
         self.nn = nn
         # column image-generation settings
@@ -49,11 +49,16 @@ class ColumnGame(object):
         self.reward_per_goal = reward_per_goal
         self.reward_no_goal = reward_no_goal
         self.max_episode_steps = max_episode_steps
+        self.single_network = single_network
+        self.index_to_factor = [4,5,7,8,9,10,11,16]
+        self.episode_index = 0
+
         self.action_space = Box(low=-1, high=1, shape=[self.num_columns])
         if visual:
             self.observation_space = Box(low=0, high=1, shape=[self.resized_size, self.resized_size, 3+self.goal_size])
         else:
-            self.observation_space = Box(low=-3, high=3, shape=[20+20])
+
+            self.observation_space = Box(low=-3, high=3, shape=[20+20 + (8 if single_network else 0)])
 
         # if factor_number is -1, enforce all the goals. if factor number is 0-20
 
@@ -73,7 +78,12 @@ class ColumnGame(object):
         else:
             image = make_n_columns(self.column_positions, spacing=self.spacing, size=self.image_size)
             encoded = self.nn.encode_deterministic([image])[0]
-            return np.concatenate([encoded, self.goal], axis=0)
+            if self.single_network:
+                onehot = np.zeros([8], dtype=np.float32)
+                onehot[self.episode_index] = 1
+                return np.concatenate([encoded, self.goal, onehot], axis=0)
+            else:
+                return np.concatenate([encoded, self.goal], axis=0)
 
     def resize_observation(self, obs):
         return cv2.resize(obs, (self.resized_size, self.resized_size), interpolation=cv2.INTER_NEAREST)
@@ -103,9 +113,17 @@ class ColumnGame(object):
             encoding = self.nn.encode_deterministic([obs[:, :, :3]])[0]
         else:
             encoding = obs[:20]
-        at_goal = self.at_goal(encoding, self.goal, self.indices)
+        # if single-network mode is on, dont use indices.
+        if self.single_network:
+            factor = self.index_to_factor[self.episode_index]
+            at_goal = self.at_goal(encoding, self.goal, [factor])
+            penalty = self.compute_unnecessary_movement_penalty(encoding, self.starting_vector, [factor])
+
+        else:
+            at_goal = self.at_goal(encoding, self.goal, self.indices)
+            penalty = self.compute_unnecessary_movement_penalty(encoding, self.starting_vector, self.indices)
+
         reward = self.reward_per_goal if at_goal else self.reward_no_goal
-        penalty = self.compute_unnecessary_movement_penalty(encoding, self.starting_vector, self.indices)
         reward = (reward - penalty)
         terminal = at_goal or (self.episode_step >= self.max_episode_steps)
         if self.visual:
@@ -114,6 +132,7 @@ class ColumnGame(object):
 
     def reset(self):
         self.column_positions = np.random.uniform(0, 1, size=self.num_columns)
+        self.episode_index = np.random.randint(0, 8)
         #self.column_positions = np.array([0.5]*self.num_columns)
         self.goal = self.generate_goal()
         self.episode_step = 0

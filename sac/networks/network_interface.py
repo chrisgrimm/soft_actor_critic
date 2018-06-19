@@ -75,6 +75,7 @@ class AbstractSoftActorCritic(object):
             config = tf.ConfigProto(allow_soft_placement=True)
             config.gpu_options.allow_growth = True
             self.sess = sess = tf.Session(config=config)
+            #self.sess = sess = tf.Session()
         else:
             self.sess = sess
 

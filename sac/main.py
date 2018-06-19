@@ -108,8 +108,8 @@ def string_to_env(env_name, buffer, reward_scaling):
 def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, hindsight_agent=False, run_name='', render=False):
     s1 = env.reset()
 
-    #action_converter = build_action_converter(env)
-    action_converter = build_high_level_action_converter(env)
+    action_converter = build_action_converter(env)
+    #action_converter = build_high_level_action_converter(env)
     episode_reward = 0
     episodes = 0
     time_steps = 0
@@ -144,7 +144,6 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
                     LOG.add_line('pi_loss', pi_loss)
         s1 = s2
         if t:
-            print('TERMINAL')
             s1 = env.reset()
             #print('(%s) Episode %s\t Time Steps: %s\t Reward: %s' % ('EVAL' if is_eval_period(episodes) else 'TRAIN',
             #                                                         episodes, time_steps, episode_reward))
@@ -206,16 +205,16 @@ if __name__ == '__main__':
 
 
     #env = string_to_env(args.env, buffer, args.reward_scale)
-    #nn = VAE_Network(hidden_size=20, input_size=100, mode='image')
-    #nn.restore('./indep_control2/vae_network.ckpt')
+    nn = VAE_Network(hidden_size=20, input_size=100, mode='image')
+    nn.restore('./indep_control2/vae_network.ckpt')
     #factor_num = args.factor_num
-    #env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
-    #                 reward_no_goal=args.reward_no_goal, visual=False)
-    env = HighLevelColumnEnvironment()
+    env = ColumnGame(nn, force_max=args.force_max, reward_per_goal=args.reward_per_goal,
+                     reward_no_goal=args.reward_no_goal, visual=False, single_network=True)
+    #env = HighLevelColumnEnvironment()
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
-    #agent = build_column_agent(env)
-    agent = build_high_level_agent(env)
+    agent = build_column_agent(env)
+    #agent = build_high_level_agent(env)
     if args.restore:
         restore_path = os.path.join('.', 'runs',  args.run_name, 'weights', 'sac.ckpt')
         agent.restore(restore_path)
