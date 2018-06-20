@@ -209,7 +209,7 @@ if __name__ == '__main__':
     nn.restore('./indep_control2/vae_network.ckpt')
     #factor_num = args.factor_num
     env = ColumnGame(nn, force_max=args.force_max, reward_per_goal=args.reward_per_goal,
-                     reward_no_goal=args.reward_no_goal, visual=False, single_network=True, hindsight=True,
+                     reward_no_goal=args.reward_no_goal, visual=False, single_network=True, hindsight=False,
                      buffer=buffer)
     #env = HighLevelColumnEnvironment()
 
