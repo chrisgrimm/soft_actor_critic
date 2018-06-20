@@ -57,18 +57,37 @@ def build_column_agent(env, name='SAC'):
     return Agent(env.observation_space.shape, env.action_space.shape)
 
 
+# def build_high_level_agent(env, name='SAC_high_level'):
+#     class Agent(Categorical_X_GaussianPolicy, MLPPolicy, MLP_Categorical_X_Gaussian_ValueFunc, AbstractSoftActorCritic):
+#         def __init__(self, s_shape, a_shape):
+#             super(Agent, self).__init__(s_shape, a_shape, global_name=name)
+#     return Agent(env.env.observation_space.shape, [9])
+
 def build_high_level_agent(env, name='SAC_high_level'):
-    class Agent(Categorical_X_GaussianPolicy, MLPPolicy, MLP_Categorical_X_Gaussian_ValueFunc, AbstractSoftActorCritic):
+    class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
             super(Agent, self).__init__(s_shape, a_shape, global_name=name)
-    return Agent(env.env.observation_space.shape, [9])
+    return Agent(env.env.observation_space.shape, [2])
+
+# def build_high_level_action_converter(env):
+#     def converter(a):
+#         a_cat, a_gauss = a[:8], a[8:]
+#         a_cat = np.argmax(a_cat)
+#         a_gauss = np.tanh(a_gauss)
+#         #h, l = 2.5, -2.5
+#         h, l = 1.0, 0.0
+#         a_gauss = ((a_gauss + 1) / 2) * (h - l) + l
+#         return (a_cat, a_gauss)
+#     return converter
 
 def build_high_level_action_converter(env):
     def converter(a):
-        a_cat, a_gauss = a[:8], a[8:]
-        a_cat = np.argmax(a_cat)
+        a_cat, a_gauss = a[0], a[1]
+        a_cat = np.tanh(a_cat)
+        a_cat = int((a_cat + 1) / 2.0 * 8)
         a_gauss = np.tanh(a_gauss)
-        h, l = 2.5, -2.5
+        #h, l = 2.5, -2.5
+        h, l = 1.0, 0.0
         a_gauss = ((a_gauss + 1) / 2) * (h - l) + l
         return (a_cat, a_gauss)
     return converter
@@ -211,7 +230,7 @@ if __name__ == '__main__':
     #factor_num = args.factor_num
     #env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
     #                 reward_no_goal=args.reward_no_goal, visual=False)
-    env = HighLevelColumnEnvironment()
+    env = HighLevelColumnEnvironment(perfect_agents=True)
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     #agent = build_column_agent(env)
