@@ -177,8 +177,8 @@ class ColumnGame(object):
             self.current_episode_trajectory = []
 
         self.column_positions = np.random.uniform(0, 1, size=self.num_columns)
-        #self.episode_index = np.random.randint(0, 8)
-        self.episode_index = 0
+        self.episode_index = np.random.randint(0, 8)
+        #self.episode_index = 0
         #self.column_positions = np.array([0.5]*self.num_columns)
         self.goal = self.generate_goal()
         self.episode_step = 0
