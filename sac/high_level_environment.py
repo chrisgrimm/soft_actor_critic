@@ -109,7 +109,7 @@ class HighLevelColumnEnvironment():
             desired_column = self.factor_to_column[factor_num]
             self.env.column_positions[desired_column] = parameter
             new_dist = self.dist_to_goal(self.env.column_positions, self.goal)
-            l1_reward = 10*(old_dist - new_dist)
+            l1_reward = 20*(old_dist - new_dist)
             #print(parameter)
             obs = self.env.get_observation()
             self.env.episode_step += 1
