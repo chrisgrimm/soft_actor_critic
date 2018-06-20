@@ -78,6 +78,9 @@ class HighLevelColumnEnvironment():
         #l1_reward = self.env.reward_no_goal
         l1_terminal = False
         terminal = False
+        # compute old dist.
+        old_column_positions = np.copy(self.env.column_positions)
+        old_dist = self.dist_to_goal(old_column_positions, self.goal)
         if not self.perfect_agents:
             selected_agent = self.agents[agent_index]
 
@@ -94,7 +97,6 @@ class HighLevelColumnEnvironment():
                 at_goal, dist_to_goal = self.at_goal()
                 if at_goal:
                     l1_terminal = True
-                    l1_reward = self.env.reward_per_goal
                     break
 
                 if terminal:
@@ -103,13 +105,8 @@ class HighLevelColumnEnvironment():
                 if self.env.at_goal(obs[:20], goal, indices=[factor_num]):
                     break
         else:
-            old_column_positions = np.copy(self.env.column_positions)
-            old_dist = self.dist_to_goal(old_column_positions, self.goal)
-
             desired_column = self.factor_to_column[factor_num]
             self.env.column_positions[desired_column] = parameter
-            new_dist = self.dist_to_goal(self.env.column_positions, self.goal)
-            l1_reward = 20*(old_dist - new_dist)
             #print(parameter)
             obs = self.env.get_observation()
             self.env.episode_step += 1
@@ -123,6 +120,9 @@ class HighLevelColumnEnvironment():
             if self.env.episode_step >= self.env.max_episode_steps:
                 terminal = True
                 #l1_reward = -10*dist_to_goal
+        # compute new distance
+        new_dist = self.dist_to_goal(self.env.column_positions, self.goal)
+        l1_reward = 20 * (old_dist - new_dist)
 
         return obs, l1_reward, terminal or l1_terminal, {}
 
