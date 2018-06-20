@@ -74,8 +74,8 @@ def build_high_level_agent(env, name='SAC_high_level'):
 #         a_cat, a_gauss = a[:8], a[8:]
 #         a_cat = np.argmax(a_cat)
 #         a_gauss = np.tanh(a_gauss)
-#         #h, l = 2.5, -2.5
-#         h, l = 1.0, 0.0
+#         h, l = 2.5, -2.5
+#         #h, l = 1.0, 0.0
 #         a_gauss = ((a_gauss + 1) / 2) * (h - l) + l
 #         return (a_cat, a_gauss)
 #     return converter
@@ -86,8 +86,8 @@ def build_high_level_action_converter(env):
         a_cat = np.tanh(a_cat)
         a_cat = int((a_cat + 1) / 2.0 * 8)
         a_gauss = np.tanh(a_gauss)
-        #h, l = 2.5, -2.5
-        h, l = 1.0, 0.0
+        h, l = 2.5, -2.5
+        #h, l = 1.0, 0.0
         a_gauss = ((a_gauss + 1) / 2) * (h - l) + l
         return (a_cat, a_gauss)
     return converter
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     #factor_num = args.factor_num
     #env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
     #                 reward_no_goal=args.reward_no_goal, visual=False)
-    env = HighLevelColumnEnvironment(perfect_agents=True)
+    env = HighLevelColumnEnvironment(perfect_agents=False)
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     #agent = build_column_agent(env)
