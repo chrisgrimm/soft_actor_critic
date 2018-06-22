@@ -42,6 +42,7 @@ class HighLevelColumnEnvironment():
         self.env = ColumnGame(nn, force_max=0.3, reward_per_goal=10.0, indices=None, visual=False, max_episode_steps=100)
 
         self.perfect_agents = perfect_agents
+        # factors that are used.
         self.index_to_factor = [4, 5, 7, 8, 9, 10, 11, 16]
         self.factor_to_column = {4:1, 5:7, 7:6, 8:3, 9:4, 10:2, 11:0, 16:5}
 
@@ -56,12 +57,12 @@ class HighLevelColumnEnvironment():
             self.l0_action_converter = build_action_converter(self.env)
 
         # high-level objective parameters.
-        self.goal = self.env.generate_goal()
         self.goal_threshold = self.env.goal_threshold
 
         self.hindsight = hindsight
         self.current_episode = []
         self.buffer = buffer
+        self.min_dist = np.inf
         if self.hindsight:
             assert buffer is not None
 
@@ -76,22 +77,29 @@ class HighLevelColumnEnvironment():
         agent.restore(option_path)
         return agent
 
-    def insert_hindsight_trajectory(self):
+    def insert_hindsight_trajectory(self, idx):
+        if idx != -1:
+            idx_pos = idx
+            idx_range = slice(0, idx)
+        else:
+            idx_pos = idx_range = idx
+
+
         if len(self.current_episode) == 0:
             return
         new_trajectory = []
-        last_s1, last_a, last_r, last_s2, last_t = self.current_episode[-1]
+        last_s1, last_a, last_r, last_s2, last_t = self.current_episode[idx_pos]
         goal = last_s2[:20]
-        for (s1, a, r, s2, t) in self.current_episode:
+        for (s1, a, r, s2, t) in self.current_episode[idx_range]:
             new_s1 = np.copy(np.concatenate([s1[:20], goal], axis=0))
             new_a = np.copy(a)
             new_s2 = np.copy(np.concatenate([s2[:20], goal], axis=0))
             new_at_goal = self.env.at_goal(new_s2[:20], goal)
-            new_r = self.env.reward_per_goal if new_at_goal else self.env.reward_no_goal
+            new_r = self.get_reward(new_s2, new_s1, goal)
             new_t = new_at_goal
-            new_trajectory.append((new_s1, new_a, new_r, new_s2, new_t))
-        for (s1, a, r, s2, t) in new_trajectory:
-            self.buffer.append(s1, a, r, s2, t)
+            #new_trajectory.append((new_s1, new_a, new_r, new_s2, new_t))
+            self.buffer.append(new_s1, new_a, new_r, new_s2, new_t)
+            #print('boop')
 
 
 
@@ -102,8 +110,8 @@ class HighLevelColumnEnvironment():
         converted_action = action_converter(action)
         (agent_index, parameter) = converted_action
         factor_num = self.index_to_factor[agent_index]
-        goal = np.zeros(shape=[self.num_factors], dtype=np.float32)
-        goal[factor_num] = parameter
+        l0_goal = np.zeros(shape=[self.num_factors], dtype=np.float32)
+        l0_goal[factor_num] = parameter
 
         # perform action using the agent.
         #l1_reward = self.env.reward_no_goal
@@ -115,17 +123,17 @@ class HighLevelColumnEnvironment():
         if not self.perfect_agents:
             selected_agent = self.agents[agent_index]
             obs = self.env.get_observation()
-            old_obs = np.concatenate([np.copy(obs)[:20], self.goal], axis=0)
+            old_obs = np.copy(obs)
 
             for i in range(self.max_l0_steps):
                 obs = self.env.get_observation()
-                obs_goal = np.concatenate([obs[:20], goal], axis=0)
+                obs_goal = np.concatenate([obs[:20], l0_goal], axis=0)
                 l0_action = selected_agent.get_actions([obs_goal])[0]
                 l0_action = self.l0_action_converter(l0_action)
                 obs, reward, terminal, info = self.env.step(l0_action)
 
                 # kill the option if the l1_goal is reached.
-                at_goal = self.env.at_goal(obs[:20], self.goal)
+                at_goal = self.env.at_goal(obs[:20], self.env.goal)
                 if at_goal:
                     l1_terminal = True
                     break
@@ -134,69 +142,101 @@ class HighLevelColumnEnvironment():
                     break
 
                 # kill the option if the option-goal is reached.
-                if self.env.at_goal(obs[:20], goal, indices=[factor_num]):
+                if self.env.at_goal(obs[:20], l0_goal, indices=[factor_num]):
                     break
 
         else:
-            old_obs = np.concatenate([self.env.get_observation()[:20], self.goal], axis=0)
+            old_obs = self.env.get_observation()
+            old_column_pos = np.copy(self.env.column_positions)
             desired_column = self.factor_to_column[factor_num]
             self.env.column_positions[desired_column] = parameter
             #print(parameter)
 
             obs = self.env.get_observation()
             self.env.episode_step += 1
-            at_goal = self.env.at_goal(obs[:20], self.goal)
-
+            #at_goal = self.env.at_goal(obs[:20], self.env.goal)
+            at_goal = self.env.at_goal(self.env.column_positions, self.env.goal_column_heights, indices=range(8))
             if at_goal:
                 l1_terminal = True
 
             if self.env.episode_step >= self.env.max_episode_steps:
                 terminal = True
 
-        obs = np.concatenate([self.env.get_observation()[:20], self.goal], axis=0)
-
+        obs = self.env.get_observation()
+        column_pos = np.copy(self.env.column_positions)
         # compute new distance
         #new_dist = self.dist_to_goal(self.env.column_positions, self.goal)
         #l1_reward = 20 * (old_dist - new_dist)
-        l1_reward = 5*self.env.reward_per_goal if self.env.at_goal(obs[:20], self.goal) else self.env.reward_no_goal
+        #dist_to_goal_total = np.max(np.abs(obs[:20] - self.env.goal))
+        dist_to_goal_total = np.mean(np.abs(self.env.column_positions - self.env.goal_column_heights))
+        self.min_dist = np.minimum(dist_to_goal_total, self.min_dist)
+        #print(np.all(obs[20:] == self.env.goal), dist_to_goal_total)
+        l1_reward = self.get_reward(column_pos, old_column_pos, np.copy(self.env.goal_column_heights))
         terminal = terminal or l1_terminal
 
 
-        self.current_episode.append((old_obs, action, l1_reward, obs, terminal))
+        self.current_episode.append((np.copy(old_obs), np.copy(action), l1_reward, np.copy(obs), terminal))
 
         return obs, l1_reward, terminal, {}
 
     def dist_to_goal(self, column_positions, goal):
         return np.mean(np.abs(column_positions - goal))
 
+    def get_reward(self, obs, old_obs, goal):
+        #l1_reward = self.env.reward_per_goal if self.env.at_goal(obs[:20], goal) else self.env.reward_no_goal
+
+        new_dist = self.dist_to_goal(obs[:20], goal)
+        old_dist = self.dist_to_goal(old_obs[:20], goal)
+        l1_reward = 20*(old_dist - new_dist)
+        #l1_reward = -20*new_dist
+
+        return l1_reward
+
 
     def reset(self):
-        self.insert_hindsight_trajectory()
+        #self.insert_hindsight_trajectory(-1)
+        #for i in range(4):
+        #    if len(self.current_episode) == 0:
+        #        break
+        #     self.insert_hindsight_trajectory(np.random.randint(0, len(self.current_episode)))
+        print('min_dist', self.min_dist)
+        self.min_dist = np.inf
         self.current_episode = []
-        self.goal = self.env.generate_goal()
-        return np.concatenate([self.env.reset()[:20], self.goal], axis=0)
+        return self.env.reset()
 
     def render(self):
         return self.env.render()
 
 
+def build_action_converter2(env):
+    column_to_factor = {v: k for k, v in env.factor_to_column.items()}
+    factor_to_index = {f: i for i, f in enumerate(env.index_to_factor)}
+    def converter(action):
+        (column_number, value) = action
+        factor = column_to_factor[column_number]
+        index = factor_to_index[factor]
+        return (index, value)
+    return converter
 
 if __name__ == '__main__':
     env = HighLevelColumnEnvironment(perfect_agents=True)
     s = env.reset()
     t = False
+    print(f'obs: {s[:20]}\ncolumns: {env.env.column_positions}\ngoal: {env.env.goal_column_heights}')
+    converter = build_action_converter2(env)
     while True:
         text_input = input('action:')
-        print(f'obs: {s[:20]}, goal: {s[20:]}')
         if text_input == "-1":
             s = env.reset()
-            env.render()
+            #env.render()
             continue
         (action_num, goal) = re.match(r'^(\d+) ([\-\d\.]+)$', text_input).groups()
         action_num = int(action_num)
         goal = float(goal)
-        s, r, t, info = env.step((action_num, goal))
+        s, r, t, info = env.step((action_num, goal), converter)
+        print(f'obs: {s[:20]}\ncolumns: {env.env.column_positions}\ngoal: {env.env.goal_column_heights}')
         if t:
+            print(f'terminal! reward {r}')
             s = env.reset()
         env.render()
 

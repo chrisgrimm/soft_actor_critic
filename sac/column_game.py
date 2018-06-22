@@ -58,11 +58,17 @@ class ColumnGame(object):
         # if factor_number is -1, enforce all the goals. if factor number is 0-20
 
         self.episode_step = 0
+        self.goal_column_heights = None
 
-    def generate_goal(self):
-        image = make_n_columns(np.random.uniform(0, 1, size=self.num_columns), spacing=self.spacing, size=self.image_size)
+
+    def generate_goal(self, return_column_heights=False):
+        column_heights = np.random.uniform(0, 1, size=self.num_columns)
+        image = make_n_columns(column_heights, spacing=self.spacing, size=self.image_size)
         encoding = self.nn.encode_deterministic([image])[0]
-        return encoding
+        if return_column_heights:
+            return encoding, column_heights
+        else:
+            return encoding
 
     def get_observation(self):
         if self.visual:
@@ -115,7 +121,7 @@ class ColumnGame(object):
     def reset(self):
         self.column_positions = np.random.uniform(0, 1, size=self.num_columns)
         #self.column_positions = np.array([0.5]*self.num_columns)
-        self.goal = self.generate_goal()
+        self.goal, self.goal_column_heights = self.generate_goal(return_column_heights=True)
         self.episode_step = 0
         if self.visual:
             obs = self.get_observation()

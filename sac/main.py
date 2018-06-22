@@ -231,7 +231,6 @@ if __name__ == '__main__':
     #env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
     #                 reward_no_goal=args.reward_no_goal, visual=False)
     env = HighLevelColumnEnvironment(perfect_agents=True, hindsight=True, buffer=buffer)
-
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     #agent = build_column_agent(env)
     agent = build_high_level_agent(env)
