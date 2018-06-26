@@ -16,7 +16,7 @@ from networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy,
 from networks.value_function_mixins import MLPValueFunc, CNN_Goal_ValueFunc, CNN_Power2_ValueFunc, \
     MLP_Categorical_X_Gaussian_ValueFunc
 from replay_buffer.replay_buffer import ReplayBuffer2
-from high_level_environment import HighLevelColumnEnvironment
+from high_level_environment import HighLevelColumnEnvironment, DummyHighLevelEnv
 
 
 def build_agent(env):
@@ -67,7 +67,7 @@ def build_high_level_agent(env, name='SAC_high_level'):
     class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
             super(Agent, self).__init__(s_shape, a_shape, global_name=name)
-    return Agent(env.env.observation_space.shape, [2])
+    return Agent([8*2], [2])
 
 # def build_high_level_action_converter(env):
 #     def converter(a):
@@ -85,6 +85,9 @@ def build_high_level_action_converter(env):
         a_cat, a_gauss = a[0], a[1]
         a_cat = np.tanh(a_cat)
         a_cat = int((a_cat + 1) / 2.0 * 8)
+        # handles stupid case when
+        if a_cat == 8:
+            a_cat = 7
         a_gauss = np.tanh(a_gauss)
         #h, l = 2.5, -2.5
         h, l = 1.0, 0.0
@@ -143,7 +146,7 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
         if hindsight_agent:
             s2, r, t, info = env.step(a, action_converter)
         else:
-            s2, r, t, info = env.step(action_converter(a))
+            s2, r, t, info = env.step(a, action_converter)
 
         time_steps += 1
         episode_time_steps += 1
@@ -183,7 +186,7 @@ if __name__ == '__main__':
     parser.add_argument('--buffer-size', default=int(10 ** 6), type=int)
     parser.add_argument('--num-train-steps', default=1, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--reward-scale', default=0.1, type=float)
+    parser.add_argument('--reward-scale', default=1, type=float)
     parser.add_argument('--run-name', type=str)
     parser.add_argument('--mimic-file', default=None, type=str)
     parser.add_argument('--force-max', default=0.3, type=float)
@@ -230,11 +233,14 @@ if __name__ == '__main__':
     #factor_num = args.factor_num
     #env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
     #                 reward_no_goal=args.reward_no_goal, visual=False)
-    env = HighLevelColumnEnvironment(perfect_agents=True)
+    #env = HighLevelColumnEnvironment(perfect_agents=True, buffer=buffer)
+    env = DummyHighLevelEnv()
+    #env = gym.make('CartPole-v0')
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     #agent = build_column_agent(env)
     agent = build_high_level_agent(env)
+    #agent = build_agent(env)
     if args.restore:
         restore_path = os.path.join('.', 'runs',  args.run_name, 'weights', 'sac.ckpt')
         agent.restore(restore_path)

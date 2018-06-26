@@ -6,9 +6,10 @@ from abc import abstractmethod
 from networks.policy_mixins import CNN_Power2_Policy, MLPPolicy, GaussianPolicy
 from networks.value_function_mixins import CNN_Power2_ValueFunc, MLPValueFunc
 from networks.network_interface import AbstractSoftActorCritic
-from column_game import ColumnGame
+from column_game import ColumnGame, make_n_columns
 from indep_control2.vae_network import VAE_Network
 import re
+import cv2
 
 def build_action_converter(env):
     def converter(a):
@@ -35,7 +36,7 @@ def build_column_agent(env, name, sess=None):
 
 class HighLevelColumnEnvironment():
 
-    def __init__(self, max_l0_steps=100, perfect_agents=False):
+    def __init__(self, max_l0_steps=100, perfect_agents=False, buffer=None):
         self.num_factors = 20
         nn = VAE_Network(self.num_factors, 10*10, mode='image')
         nn.restore('./indep_control2/vae_network.ckpt')
@@ -43,6 +44,7 @@ class HighLevelColumnEnvironment():
         self.perfect_agents = perfect_agents
         self.index_to_factor = [4, 5, 7, 8, 9, 10, 11, 16]
         self.factor_to_column = {4:1, 5:7, 7:6, 8:3, 9:4, 10:2, 11:0, 16:5}
+
 
         if not perfect_agents:
             self.sess = None
@@ -55,9 +57,18 @@ class HighLevelColumnEnvironment():
             self.l0_action_converter = build_action_converter(self.env)
 
         # high-level objective parameters.
-        self.goal = np.ones(shape=[8]) * 0.5
+        #self.goal, self.goal_encoded = self.new_goal()
+        self.goal = np.ones(shape=[8])*0.5
+        self.goal_encoded = self.env.nn.encode_deterministic([self.goal])[0]
         self.goal_threshold = self.env.goal_threshold
+        self.buffer = buffer
+        self.current_episode = []
 
+
+    def new_goal(self):
+        heights = np.random.uniform(0, 1, size=[8])
+        encoded_goal = self.env.nn.encode_deterministic([make_n_columns(heights, spacing=self.env.spacing, size=self.env.image_size)])[0]
+        return heights, encoded_goal
 
     def load_agents(self, option_path, global_scope):
         print(f'loading {global_scope}...')
@@ -67,8 +78,23 @@ class HighLevelColumnEnvironment():
         agent.restore(option_path)
         return agent
 
+    def store_hindsight_experience(self):
+        if len(self.current_episode) == 0:
+            return
+        new_goal = np.copy(self.current_episode[-1][3][:8])
+        for (s, a, r, sp, t) in self.current_episode:
+            new_s = np.copy(np.concatenate([s[:8], new_goal], axis=0))
+            new_sp = np.copy(np.concatenate([sp[:8], new_goal], axis=0))
+            new_a = np.copy(a)
+            new_r = self.compute_reward(new_sp, new_s, new_goal)
+            new_t = self.compute_terminal(new_sp, new_goal)
+            self.buffer.append(new_s, new_a, new_r, new_sp, new_t)
 
-    def step(self, action):
+
+
+
+    def step(self, raw_action, action_converter):
+        action = action_converter(raw_action)
         (agent_index, parameter) = action
         factor_num = self.index_to_factor[agent_index]
         goal = np.zeros(shape=[self.num_factors], dtype=np.float32)
@@ -103,28 +129,48 @@ class HighLevelColumnEnvironment():
                 if self.env.at_goal(obs[:20], goal, indices=[factor_num]):
                     break
         else:
+            # get the old observation
+            old_obs = self.get_observation()
             old_column_positions = np.copy(self.env.column_positions)
-            old_dist = self.dist_to_goal(old_column_positions, self.goal)
 
+            # modify the column positions
             desired_column = self.factor_to_column[factor_num]
             self.env.column_positions[desired_column] = parameter
-            new_dist = self.dist_to_goal(self.env.column_positions, self.goal)
-            l1_reward = 20*(old_dist - new_dist)
-            #print(parameter)
-            obs = self.env.get_observation()
-            self.env.episode_step += 1
-            at_goal, dist_to_goal = self.at_goal()
 
-            #l1_reward = -dist_to_goal
+
+            # get the new observation
+            obs = self.get_observation()
+            column_positions = np.copy(self.env.column_positions)
+
+            # compute the reward and terminality
+            l1_reward = self.compute_reward(column_positions, old_column_positions, self.goal)
+            at_goal, goal_dist = self.compute_terminal(column_positions, self.goal, return_dist=True)
+
+            self.env.episode_step += 1
+
             if at_goal:
                 l1_terminal = True
-                #l1_reward = -10*dist_to_goal
-                #l1_reward = self.env.reward_per_goal
             if self.env.episode_step >= self.env.max_episode_steps:
                 terminal = True
                 #l1_reward = -10*dist_to_goal
 
-        return obs, l1_reward, terminal or l1_terminal, {}
+        if terminal or l1_terminal:
+            print(f'goal_dist: {goal_dist}')
+
+        self.current_episode.append((np.concatenate([old_column_positions, self.goal], axis=0), raw_action, l1_reward, np.concatenate([column_positions, self.goal], axis=0), terminal or l1_terminal))
+        return np.concatenate([column_positions, self.goal], axis=0), l1_reward, terminal or l1_terminal, {}
+
+    def get_observation(self):
+        return np.concatenate([self.env.get_observation()[:20], self.goal_encoded], axis=0)
+
+    def compute_reward(self, obs, old_obs, goal):
+        old_dist = self.dist_to_goal(old_obs[:8], goal)
+        new_dist = self.dist_to_goal(obs[:8], goal)
+        return 20*(old_dist - new_dist)
+
+    def compute_terminal(self, obs, goal, return_dist=False):
+        return self.env.at_goal(obs[:8], goal, return_dist=return_dist)
+
 
     def dist_to_goal(self, column_positions, goal):
         return np.mean(np.abs(column_positions - goal))
@@ -135,10 +181,86 @@ class HighLevelColumnEnvironment():
 
 
     def reset(self):
-        return self.env.reset()
+        #self.store_hindsight_experience()
+        #self.goal, self.goal_encoded = self.new_goal()
+        self.current_episode = []
+        self.env.reset()
+        return np.concatenate([np.copy(self.env.column_positions), self.goal], axis=0)
 
     def render(self):
         return self.env.render()
+
+
+class DummyHighLevelEnv(object):
+
+    def __init__(self):
+        self.column_position = self.new_column_position()
+        self.goal = self.new_column_position()
+        #print('generated', self.goal)
+        #self.goal = np.ones(shape=[8])*0.5
+        #print('deterministic', self.goal)
+        #input('...')
+        self.num_steps = 0
+        self.max_steps = 100
+
+    def step(self, raw_action, action_converter):
+        action = action_converter(raw_action)
+        (column_index, parameter) = action
+
+        old_obs = self.get_observation()
+
+        self.column_position[column_index] = parameter
+        self.num_steps += 1
+
+        obs = self.get_observation()
+
+        reward = self.get_reward(obs, old_obs)
+
+        terminal = self.get_terminal(obs) or self.num_steps >= self.max_steps
+        if terminal:
+            print('dist_to_goal', self.dist_to_goal(obs[:8], obs[8:]))
+
+        return obs, reward, terminal, {}
+
+
+
+    def new_column_position(self):
+        return np.random.uniform(0, 1, size=[8])
+
+    def get_observation(self, goal=None):
+        if goal is None:
+            goal = np.copy(self.goal)
+        return np.concatenate([np.copy(self.column_position), goal], axis=0)
+
+    def get_reward(self, obs, old_obs, goal=None):
+        if goal is None:
+            goal = obs[8:]
+        obs_part = obs[:8]
+        old_obs_part = old_obs[:8]
+        old_dist = self.dist_to_goal(old_obs_part, goal)
+        new_dist = self.dist_to_goal(obs_part, goal)
+        return -20*new_dist
+
+    def get_terminal(self, obs, goal=None):
+        if goal is None:
+            goal = obs[8:]
+        obs_part = obs[:8]
+        return self.dist_to_goal(obs_part, goal) < 0.1
+
+
+    def dist_to_goal(self, obs_part, goal):
+        return np.mean(np.abs(obs_part - goal))
+
+    def reset(self):
+        self.column_position = self.new_column_position()
+        self.goal = self.new_column_position()
+        self.num_steps = 0
+        return self.get_observation()
+
+    def render(self):
+        cv2.imshow('game', 255 * make_n_columns(self.column_position, spacing=2, size=128))
+        cv2.waitKey(1)
+
 
 
 

@@ -78,10 +78,14 @@ class ColumnGame(object):
     def resize_observation(self, obs):
         return cv2.resize(obs, (self.resized_size, self.resized_size), interpolation=cv2.INTER_NEAREST)
 
-    def at_goal(self, vector, goal, indices=None):
-        indices = range(self.goal_size) if indices is None else indices
-        dist_to_goal = np.max(np.abs(vector[indices] - goal[indices]))
-        return dist_to_goal < self.goal_threshold
+    def at_goal(self, vector, goal, indices=None, return_dist=False):
+        indices = slice(0, len(goal)) if indices is None else indices
+
+        dist_to_goal = np.mean(np.abs(vector[indices] - goal[indices]))
+        if return_dist:
+            return dist_to_goal < self.goal_threshold, dist_to_goal
+        else:
+            return dist_to_goal < self.goal_threshold
 
     def compute_unnecessary_movement_penalty(self, vector, starting_vector, indices=None):
         # penalize changes to the features on the unselected indices.

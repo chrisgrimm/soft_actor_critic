@@ -13,7 +13,9 @@ class MLPPolicy(object):
     def input_processing(self, s):
         fc1 = tf.layers.dense(s, 128, tf.nn.relu, name='fc1')
         fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
+
         return fc2
+
 
 class CNN_Goal_Policy(object):
 
