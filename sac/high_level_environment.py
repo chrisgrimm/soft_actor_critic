@@ -269,7 +269,8 @@ class DummyHighLevelEnv(object):
 
 
     def dist_to_goal(self, obs_part, goal):
-        return np.mean(np.abs(obs_part - goal))
+        #return np.mean(np.abs(obs_part - goal))
+        return np.sum(np.abs(obs_part - goal))
 
     def reset(self):
         if self.buffer is not None:
