@@ -195,6 +195,8 @@ if __name__ == '__main__':
     parser.add_argument('--restore', action='store_true')
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--factor-num', type=int)
+    parser.add_argument('--use-encoding', action='store_true')
+    parser.add_argument('--distance-mode', type=str)
 
     args = parser.parse_args()
 
@@ -234,7 +236,7 @@ if __name__ == '__main__':
     #env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
     #                 reward_no_goal=args.reward_no_goal, visual=False)
     #env = HighLevelColumnEnvironment(perfect_agents=True, buffer=buffer)
-    env = DummyHighLevelEnv(sparse_reward=True, buffer=buffer, goal_reward=args.reward_per_goal, use_encoding=False)
+    env = DummyHighLevelEnv(sparse_reward=True, buffer=buffer, goal_reward=args.reward_per_goal, use_encoding=args.use_encoding, distance_mode=args.distance_mode)
     #env = gym.make('CartPole-v0')
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
