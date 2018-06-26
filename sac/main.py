@@ -67,7 +67,7 @@ def build_high_level_agent(env, name='SAC_high_level'):
     class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
             super(Agent, self).__init__(s_shape, a_shape, global_name=name)
-    return Agent([8*2], [2])
+    return Agent(env.observation_space.shape, env.action_space.shape)
 
 # def build_high_level_action_converter(env):
 #     def converter(a):
@@ -234,7 +234,7 @@ if __name__ == '__main__':
     #env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
     #                 reward_no_goal=args.reward_no_goal, visual=False)
     #env = HighLevelColumnEnvironment(perfect_agents=True, buffer=buffer)
-    env = DummyHighLevelEnv(sparse_reward=True, buffer=buffer, goal_reward=args.reward_per_goal)
+    env = DummyHighLevelEnv(sparse_reward=True, buffer=buffer, goal_reward=args.reward_per_goal, use_encoding=False)
     #env = gym.make('CartPole-v0')
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)

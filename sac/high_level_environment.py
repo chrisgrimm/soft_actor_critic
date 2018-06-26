@@ -193,16 +193,18 @@ class HighLevelColumnEnvironment():
 
 class DummyHighLevelEnv(object):
 
-    def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None):
+    def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None, use_encoding=False):
         # environment hyperparameters
         self.sparse_reward = sparse_reward
         self.goal_reward = goal_reward
         self.no_goal_penalty = no_goal_penalty
         self.goal_threshold = goal_threshold
+        self.obs_size = 8
+        self.spacing = 2
+        self.image_size = 128
 
 
-        self.column_position = self.new_column_position()
-        self.goal = self.new_column_position()
+
         self.num_steps = 0
         self.max_steps = 100
 
@@ -210,15 +212,31 @@ class DummyHighLevelEnv(object):
         self.current_trajectory = []
         self.buffer = buffer
 
+        # encoding stuff
+        self.use_encoding = use_encoding
+        self.num_factors = 20
+        if use_encoding:
+            self.obs_size = 20
+            self.nn = VAE_Network(self.num_factors, 10 * 10, mode='image')
+            self.nn.restore('./indep_control2/vae_network.ckpt')
+
+
+        self.observation_space = Box(-3, 3, shape=[2*self.obs_size], dtype=np.float32)
+        self.action_space = Box(0, 1, shape=[2], dtype=np.float32)
+        # initialize the environment
+        self.column_position = self.new_column_position()
+        self.goal = self.new_goal()
+
+
     def add_hindsight_experience(self):
         if len(self.current_trajectory) == 0:
             return
         _, _, _, last_sp, _ = self.current_trajectory[-1]
-        goal = np.copy(last_sp[:8])
+        goal = np.copy(last_sp[:self.obs_size])
         for s, a, r, sp, t in self.current_trajectory:
-            new_s = np.copy(np.concatenate([s[:8], goal], axis=0))
+            new_s = np.copy(np.concatenate([s[:self.obs_size], goal], axis=0))
             new_a = np.copy(a)
-            new_sp = np.copy(np.concatenate([sp[:8], goal], axis=0))
+            new_sp = np.copy(np.concatenate([sp[:self.obs_size], goal], axis=0))
             new_r = self.get_reward(new_sp)
             new_t = self.get_terminal(new_sp)
             self.buffer.append(new_s, new_a, new_r, new_sp, new_t)
@@ -238,7 +256,7 @@ class DummyHighLevelEnv(object):
 
         terminal = self.get_terminal(obs) or self.num_steps >= self.max_steps
         if terminal:
-            print('dist_to_goal', self.dist_to_goal(obs[:8], obs[8:]))
+            print('dist_to_goal', self.dist_to_goal(obs[:self.obs_size], obs[self.obs_size:]))
 
         if self.buffer is not None:
             self.current_trajectory.append((old_obs, raw_action, reward, obs, terminal))
@@ -248,14 +266,26 @@ class DummyHighLevelEnv(object):
     def new_column_position(self):
         return np.random.uniform(0, 1, size=[8])
 
+    def new_goal(self):
+        if self.use_encoding:
+            column_image = make_n_columns(self.new_column_position(), spacing=self.spacing, size=self.image_size)
+            encoding = self.nn.encode_deterministic([column_image])[0]
+            return encoding
+        else:
+            return self.new_column_position()
+
     def get_observation(self, goal=None):
         goal = np.copy(self.goal) if goal is None else goal
-        return np.concatenate([np.copy(self.column_position), goal], axis=0)
+        if self.use_encoding:
+            column_image = make_n_columns(self.column_position, spacing=self.spacing, size=self.image_size)
+            encoding = self.nn.encode_deterministic([column_image])[0]
+            return np.concatenate([encoding, goal], axis=0)
+        else:
+            return np.concatenate([np.copy(self.column_position), goal], axis=0)
 
     def get_reward(self, obs, goal=None):
-        goal = obs[8:] if goal is None else goal
-        obs_part = obs[:8]
-
+        goal = obs[self.obs_size:] if goal is None else goal
+        obs_part = obs[:self.obs_size]
         if self.sparse_reward:
             return self.goal_reward if self.get_terminal(obs, goal) else self.no_goal_penalty
         else:
@@ -263,9 +293,9 @@ class DummyHighLevelEnv(object):
             return -20*new_dist
 
     def get_terminal(self, obs, goal=None):
-        goal = obs[8:] if goal is None else goal
-        obs_part = obs[:8]
-        return self.dist_to_goal(obs_part, goal) < 0.1
+        goal = obs[self.obs_size:] if goal is None else goal
+        obs_part = obs[:self.obs_size]
+        return self.dist_to_goal(obs_part, goal) < self.goal_threshold
 
 
     def dist_to_goal(self, obs_part, goal):
@@ -277,7 +307,7 @@ class DummyHighLevelEnv(object):
             self.add_hindsight_experience()
             self.current_trajectory = []
         self.column_position = self.new_column_position()
-        self.goal = self.new_column_position()
+        self.goal = self.new_goal()
         self.num_steps = 0
         return self.get_observation()
 
