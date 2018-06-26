@@ -81,7 +81,7 @@ class HighLevelColumnEnvironment():
     def store_hindsight_experience(self):
         if len(self.current_episode) == 0:
             return
-        new_goal = np.copy(self.current_episode[-1][3][:8])
+        new_goal = np.copy(self.current_episode[-1][3][:])
         for (s, a, r, sp, t) in self.current_episode:
             new_s = np.copy(np.concatenate([s[:8], new_goal], axis=0))
             new_sp = np.copy(np.concatenate([sp[:8], new_goal], axis=0))
@@ -193,7 +193,7 @@ class HighLevelColumnEnvironment():
 
 class DummyHighLevelEnv(object):
 
-    def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None, use_encoding=False):
+    def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None, use_encoding=False, distance_mode='mean'):
         # environment hyperparameters
         self.sparse_reward = sparse_reward
         self.goal_reward = goal_reward
@@ -202,6 +202,13 @@ class DummyHighLevelEnv(object):
         self.obs_size = 8
         self.spacing = 2
         self.image_size = 128
+        self.possible_distance_modes = ['mean', 'sum']
+        try:
+            assert distance_mode in self.possible_distance_modes
+        except AssertionError:
+            raise Exception(f'Distance mode must be in list: {self.possible_distance_modes}')
+        self.distance_mode = distance_mode
+
 
 
 
@@ -299,8 +306,13 @@ class DummyHighLevelEnv(object):
 
 
     def dist_to_goal(self, obs_part, goal):
-        #return np.mean(np.abs(obs_part - goal))
-        return np.sum(np.abs(obs_part - goal))
+        if self.distance_mode == 'sum':
+            return np.sum(np.abs(obs_part - goal))
+        elif self.distance_mode == 'mean':
+            return np.mean(np.abs(obs_part - goal))
+        else:
+            raise Exception('If youre getting this exception, something is wrong with the code')
+
 
     def reset(self):
         if self.buffer is not None:
