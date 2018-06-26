@@ -234,7 +234,7 @@ if __name__ == '__main__':
     #env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
     #                 reward_no_goal=args.reward_no_goal, visual=False)
     #env = HighLevelColumnEnvironment(perfect_agents=True, buffer=buffer)
-    env = DummyHighLevelEnv()
+    env = DummyHighLevelEnv(sparse_reward=True, buffer=buffer)
     #env = gym.make('CartPole-v0')
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
