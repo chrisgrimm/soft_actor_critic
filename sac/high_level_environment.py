@@ -193,7 +193,7 @@ class HighLevelColumnEnvironment():
 
 class DummyHighLevelEnv(object):
 
-    def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None, use_encoding=False, distance_mode='mean'):
+    def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None, use_encoding=False, distance_mode='mean', hindsight_strategy='final'):
         # environment hyperparameters
         self.sparse_reward = sparse_reward
         self.goal_reward = goal_reward
@@ -203,13 +203,25 @@ class DummyHighLevelEnv(object):
         self.spacing = 2
         self.image_size = 128
         self.possible_distance_modes = ['mean', 'sum']
+        self.possible_hindsight_strategies = ['final']
+
         try:
             assert distance_mode in self.possible_distance_modes
         except AssertionError:
             raise Exception(f'Distance mode must be in list: {self.possible_distance_modes}')
+        try:
+            future_match = re.match(r'^future\((\d+)\)$', hindsight_strategy)
+            if future_match:
+                self.future_strategy_k = int(future_match.groups()[0])
+                self.hindsight_strategy = 'future'
+            else:
+                assert hindsight_strategy in self.possible_hindsight_strategies
+                self.hindsight_strategy = hindsight_strategy
+
+        except AssertionError:
+            raise Exception(f'Hindsight strategy must be in list: {self.possible_hindsight_strategies}')
+
         self.distance_mode = distance_mode
-
-
 
 
         self.num_steps = 0
@@ -235,12 +247,24 @@ class DummyHighLevelEnv(object):
         self.goal = self.new_goal()
 
 
-    def add_hindsight_experience(self):
+    def do_final_strategy(self):
+        self.add_hindsight_experience(-1)
+
+    def do_future_strategy(self, k):
         if len(self.current_trajectory) == 0:
             return
-        _, _, _, last_sp, _ = self.current_trajectory[-1]
+        for i in range(k):
+            index = np.random.randint(0, len(self.current_trajectory))
+            self.add_hindsight_experience(index)
+
+
+
+    def add_hindsight_experience(self, index):
+        if len(self.current_trajectory) == 0:
+            return
+        _, _, _, last_sp, _ = self.current_trajectory[index]
         goal = np.copy(last_sp[:self.obs_size])
-        for s, a, r, sp, t in self.current_trajectory:
+        for s, a, r, sp, t in self.current_trajectory[:index] + [self.current_trajectory[index]]:
             new_s = np.copy(np.concatenate([s[:self.obs_size], goal], axis=0))
             new_a = np.copy(a)
             new_sp = np.copy(np.concatenate([sp[:self.obs_size], goal], axis=0))
@@ -316,7 +340,14 @@ class DummyHighLevelEnv(object):
 
     def reset(self):
         if self.buffer is not None:
-            self.add_hindsight_experience()
+
+            if self.hindsight_strategy == 'final':
+                self.do_final_strategy()
+            elif self.hindsight_strategy == 'future':
+                self.do_future_strategy(k=self.future_strategy_k)
+            else:
+                raise Exception('If youre getting this exception, something is wrong with the code')
+
             self.current_trajectory = []
         self.column_position = self.new_column_position()
         self.goal = self.new_goal()
