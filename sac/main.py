@@ -66,8 +66,8 @@ def build_column_agent(env, name='SAC'):
 def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4, width=128):
     class Agent(
         GaussianPolicy,
-        MLPPolicy(128),
-        MLPValueFunc(128),
+        MLPPolicy(width),
+        MLPValueFunc(width),
         AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
             super(Agent, self).__init__(s_shape, a_shape, global_name=name, learning_rate=learning_rate)
@@ -203,6 +203,7 @@ if __name__ == '__main__':
     parser.add_argument('--use-encoding', action='store_true')
     parser.add_argument('--distance-mode', type=str)
     parser.add_argument('--gpu-num', type=int)
+    parser.add_argument('--network-width', type=int, default=128)
 
     args = parser.parse_args()
 
@@ -249,7 +250,7 @@ if __name__ == '__main__':
     #agent = build_column_agent(env)
 
     with tf.device(f'/gpu:{args.gpu_num}'):
-        agent = build_high_level_agent(env, learning_rate=args.learning_rate)
+        agent = build_high_level_agent(env, learning_rate=args.learning_rate, width=args.network_width)
     #agent = build_agent(env)
     if args.restore:
         restore_path = os.path.join('.', 'runs',  args.run_name, 'weights', 'sac.ckpt')
