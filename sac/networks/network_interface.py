@@ -6,7 +6,7 @@ from utils import component
 
 class AbstractSoftActorCritic(object):
 
-    def __init__(self, s_shape, a_shape, global_name='SAC', sess=None):
+    def __init__(self, s_shape, a_shape, global_name='SAC', sess=None, learning_rate=1*10**-4):
         with tf.variable_scope(global_name):
             self.S1 = S1 = tf.placeholder(tf.float32, [None] + list(s_shape))
             self.S2 = S2 = tf.placeholder(tf.float32, [None] + list(s_shape))

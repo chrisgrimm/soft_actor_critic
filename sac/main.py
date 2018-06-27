@@ -6,7 +6,7 @@ import numpy as np
 from gym import spaces
 from indep_control2.utils import build_directory_structure, LOG
 import os
-
+import tensorflow as tf
 from chaser import ChaserEnv
 from column_game import ColumnGame
 from indep_control2.vae_network import VAE_Network
@@ -63,10 +63,10 @@ def build_column_agent(env, name='SAC'):
 #             super(Agent, self).__init__(s_shape, a_shape, global_name=name)
 #     return Agent(env.env.observation_space.shape, [9])
 
-def build_high_level_agent(env, name='SAC_high_level'):
+def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4):
     class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
-            super(Agent, self).__init__(s_shape, a_shape, global_name=name)
+            super(Agent, self).__init__(s_shape, a_shape, global_name=name, learning_rate=learning_rate)
     return Agent(env.observation_space.shape, env.action_space.shape)
 
 # def build_high_level_action_converter(env):
@@ -184,9 +184,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     #parser.add_argument('--env', default='HalfCheetah-v2')
     parser.add_argument('--buffer-size', default=int(10 ** 6), type=int)
-    parser.add_argument('--num-train-steps', default=1, type=int)
+    parser.add_argument('--num-train-steps', default=4, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--reward-scale', default=1, type=float)
+    parser.add_argument('--reward-scale', default=0.01, type=float)
+    parser.add_argument('--learning-rate', default=1*10**-4)
     parser.add_argument('--run-name', type=str)
     parser.add_argument('--mimic-file', default=None, type=str)
     parser.add_argument('--force-max', default=0.3, type=float)
@@ -197,6 +198,7 @@ if __name__ == '__main__':
     parser.add_argument('--factor-num', type=int)
     parser.add_argument('--use-encoding', action='store_true')
     parser.add_argument('--distance-mode', type=str)
+    parser.add_argument('--gpu-num', type=int)
 
     args = parser.parse_args()
 
@@ -241,7 +243,9 @@ if __name__ == '__main__':
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     #agent = build_column_agent(env)
-    agent = build_high_level_agent(env)
+
+    with tf.device(f'/gpu:{args.gpu_num}'):
+        agent = build_high_level_agent(env, learning_rate=args.learning_rate)
     #agent = build_agent(env)
     if args.restore:
         restore_path = os.path.join('.', 'runs',  args.run_name, 'weights', 'sac.ckpt')
