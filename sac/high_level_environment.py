@@ -210,7 +210,7 @@ class DummyHighLevelEnv(object):
         except AssertionError:
             raise Exception(f'Distance mode must be in list: {self.possible_distance_modes}')
         try:
-            future_match = re.match(r'^future\((\d+)\)$', hindsight_strategy)
+            future_match = re.match(r'^future(\d+)$', hindsight_strategy)
             if future_match:
                 self.future_strategy_k = int(future_match.groups()[0])
                 self.hindsight_strategy = 'future'
