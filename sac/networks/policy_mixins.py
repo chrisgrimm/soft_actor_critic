@@ -8,13 +8,22 @@ EPS = 1E-6
 def leaky_relu(x, alpha=0.2):
     return tf.maximum(x, alpha*x)
 
-class MLPPolicy(object):
+# class MLPPolicy(object):
+#
+#     def input_processing(self, s):
+#         fc1 = tf.layers.dense(s, 128, tf.nn.relu, name='fc1')
+#         fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
+#
+#         return fc2
 
-    def input_processing(self, s):
-        fc1 = tf.layers.dense(s, 128, tf.nn.relu, name='fc1')
-        fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
+def MLPPolicy(width):
+    class MLPPolicy(object):
+        def input_processing(self, s):
+            fc1 = tf.layers.dense(s, width, tf.nn.relu, name='fc1')
+            fc2 = tf.layers.dense(fc1, width, tf.nn.relu, name='fc2')
 
-        return fc2
+            return fc2
+    return MLPPolicy
 
 
 class CNN_Goal_Policy(object):

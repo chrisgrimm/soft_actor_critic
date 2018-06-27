@@ -63,8 +63,12 @@ def build_column_agent(env, name='SAC'):
 #             super(Agent, self).__init__(s_shape, a_shape, global_name=name)
 #     return Agent(env.env.observation_space.shape, [9])
 
-def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4):
-    class Agent(GaussianPolicy, MLPPolicy, MLPValueFunc, AbstractSoftActorCritic):
+def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4, width=128):
+    class Agent(
+        GaussianPolicy,
+        MLPPolicy(128),
+        MLPValueFunc(128),
+        AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
             super(Agent, self).__init__(s_shape, a_shape, global_name=name, learning_rate=learning_rate)
     return Agent(env.observation_space.shape, env.action_space.shape)
