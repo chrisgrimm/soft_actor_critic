@@ -64,14 +64,14 @@ def build_column_agent(env, name='SAC'):
 #             super(Agent, self).__init__(s_shape, a_shape, global_name=name)
 #     return Agent(env.env.observation_space.shape, [9])
 
-def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4, width=128):
+def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4, width=128, random_goal=False):
     class Agent(
         GaussianPolicy,
         MLPPolicy(width),
         MLPValueFunc(width),
         AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
-            super(Agent, self).__init__(s_shape, a_shape, global_name=name, learning_rate=learning_rate)
+            super(Agent, self).__init__(s_shape, a_shape, global_name=name, learning_rate=learning_rate, inject_goal_randomness=random_goal)
     return Agent(env.observation_space.shape, env.action_space.shape)
 
 # def build_high_level_action_converter(env):
@@ -205,6 +205,7 @@ if __name__ == '__main__':
     parser.add_argument('--distance-mode', type=str)
     parser.add_argument('--gpu-num', type=int, default=-1)
     parser.add_argument('--network-width', type=int, default=128)
+    parser.add_argument('--random-goal', action='store_true')
 
     args = parser.parse_args()
 
@@ -252,7 +253,7 @@ if __name__ == '__main__':
 
     gpu_num = get_best_gpu() if args.gpu_num == -1 else args.gpu_num
     with tf.device(f'/gpu:{gpu_num}'):
-        agent = build_high_level_agent(env, learning_rate=args.learning_rate, width=args.network_width)
+        agent = build_high_level_agent(env, learning_rate=args.learning_rate, width=args.network_width, random_goal=args.random_goal)
     #agent = build_agent(env)
     if args.restore:
         restore_path = os.path.join('.', 'runs',  args.run_name, 'weights', 'sac.ckpt')
