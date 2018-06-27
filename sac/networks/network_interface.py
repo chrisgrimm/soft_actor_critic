@@ -6,10 +6,14 @@ from utils import component
 
 class AbstractSoftActorCritic(object):
 
-    def __init__(self, s_shape, a_shape, global_name='SAC', sess=None, learning_rate=1*10**-4):
+    def __init__(self, s_shape, a_shape, global_name='SAC', sess=None, learning_rate=1*10**-4, inject_goal_randomness=False):
         with tf.variable_scope(global_name):
             self.S1 = S1 = tf.placeholder(tf.float32, [None] + list(s_shape))
+            self.S1_random = S1_random = self.augment_state_with_randomness(S1, do_nothing=(not inject_goal_randomness))
+
             self.S2 = S2 = tf.placeholder(tf.float32, [None] + list(s_shape))
+            self.S2_random = S2_random = self.augment_state_with_randomness(S2, do_nothing=(not inject_goal_randomness))
+
             self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape))
             self.R = R = tf.placeholder(tf.float32, [None])
             self.T = T = tf.placeholder(tf.float32, [None])
@@ -18,17 +22,17 @@ class AbstractSoftActorCritic(object):
             #learning_rate = 1*10**-4
 
             # constructing V loss
+            goal_randomness = tf.random_normal([tf.shape(S1)[0], 8], stddev=0.05, dtype=tf.float32)
+            self.A_sampled1 = A_sampled1 = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1_random, 'pi'))
+            self.A_sampled2 = A_sampled2 = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1_random, 'pi', reuse=True))
 
-            self.A_sampled1 = A_sampled1 = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1, 'pi'))
-            self.A_sampled2 = A_sampled2 = tf.stop_gradient(self.sample_pi_network(a_shape[0], S1, 'pi', reuse=True))
-
-            self.A_max_likelihood = A_max_likelihood = tf.stop_gradient(self.get_best_action(a_shape[0], S1, 'pi', reuse=True))
+            self.A_max_likelihood = A_max_likelihood = tf.stop_gradient(self.get_best_action(a_shape[0], S1_random, 'pi', reuse=True))
 
             V_S1 = self.V_network(S1, 'V')
             Q_sampled1 = self.Q_network(S1, self.transform_action_sample(A_sampled1), 'Q')
-            log_pi_sampled1 = self.pi_network_log_prob(A_sampled1, S1, 'pi', reuse=True)
+            log_pi_sampled1 = self.pi_network_log_prob(A_sampled1, S1_random, 'pi', reuse=True)
             Q_sampled2 = self.Q_network(S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
-            log_pi_sampled2 = self.pi_network_log_prob(A_sampled2, S1, 'pi', reuse=True)
+            log_pi_sampled2 = self.pi_network_log_prob(A_sampled2, S1_random, 'pi', reuse=True)
             self.V_loss = V_loss = tf.reduce_mean(0.5*tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
 
             # constructing Q loss
@@ -84,6 +88,15 @@ class AbstractSoftActorCritic(object):
         # ensure that xi and xi_bar are the same at initialization
         sess.run(hard_update_xi_bar)
         self.saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=global_name))
+
+    def augment_state_with_randomness(self, S, do_nothing=False):
+        if do_nothing:
+            return S
+        goal_randomness = tf.random_normal([tf.shape(S)[0], 8], stddev=0.05, dtype=tf.float32)
+        zeros = tf.zeros([tf.shape(S)[0], 8], dtype=tf.float32)
+        additive = tf.concat([zeros, goal_randomness], axis=1)
+        S_random = S + additive
+        return S_random
 
     def train_step(self, S1, A, R, S2, T):
         [_, _, _, V_loss, Q_loss, pi_loss] = self.sess.run(
