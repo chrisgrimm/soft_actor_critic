@@ -94,7 +94,7 @@ def build_high_level_action_converter(env):
         if a_cat == 8:
             a_cat = 7
         a_gauss = np.tanh(a_gauss)
-        #h, l = 2.5, -2.5
+        #h, l = 2.5, -2ƒ.5
         h, l = 1.0, 0.0
         a_gauss = ((a_gauss + 1) / 2) * (h - l) + l
         return (a_cat, a_gauss)
@@ -192,7 +192,7 @@ if __name__ == '__main__':
     parser.add_argument('--num-train-steps', default=4, type=int)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--reward-scale', default=0.01, type=float)
-    parser.add_argument('--learning-rate', default=1*10**-4)
+    parser.add_argument('--learning-rate', type=float, default=1*10**-4)
     parser.add_argument('--run-name', type=str)
     parser.add_argument('--mimic-file', default=None, type=str)
     parser.add_argument('--force-max', default=0.3, type=float)
