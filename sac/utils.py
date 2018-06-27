@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import GPUtil
 
 def onehot(idx, num_entries):
     x = np.zeros(num_entries)
@@ -38,3 +39,24 @@ def component(function):
             variables = tf.get_variable_scope().get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
             return out, variables
     return wrapper
+
+def get_best_gpu():
+    return GPUtil.getAvailable(order='load', limit=10)[0]
+
+class HyperParams(object):
+
+    def __init__(self):
+        self.params = dict()
+        self.used_params = set()
+
+
+    def param(self, item, reuse=False):
+        if item in self.params:
+            if item in self.used_params and not reuse:
+                raise Exception(f'Parameter {item} previously used, but reuse is set to False.')
+            self.used_params.add(item)
+            return self.params[item]
+        else:
+            raise Exception(f'Unspecified hyperparameter key: {item}')
+
+

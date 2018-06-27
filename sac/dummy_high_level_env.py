@@ -33,7 +33,7 @@ class DummyHighLevelEnv(object):
             raise Exception(f'Distance mode must be in list: {self.possible_distance_modes}')
         self.distance_mode = distance_mode
 
-
+        self.converter = build_high_level_action_converter(self)
 
 
         self.num_steps = 0
@@ -72,8 +72,8 @@ class DummyHighLevelEnv(object):
             new_t = self.get_terminal(new_sp)
             self.buffer.append(new_s, new_a, new_r, new_sp, new_t)
 
-    def step(self, raw_action, action_converter):
-        action = action_converter(raw_action)
+    def step(self,raw_action):
+        action = self.converter(raw_action)
         (column_index, parameter) = action
 
         old_obs = self.get_observation()
@@ -151,6 +151,26 @@ class DummyHighLevelEnv(object):
         cv2.imshow('game', 255 * make_n_columns(self.column_position, spacing=2, size=128))
         cv2.waitKey(1)
 
+def build_high_level_action_converter(env):
+    def converter(a):
+        a_cat, a_gauss = a[0], a[1]
+        a_cat = np.tanh(a_cat)
+        a_cat = int((a_cat + 1) / 2.0 * 8)
+        # handles stupid case when
+        if a_cat == 8:
+            a_cat = 7
+        a_gauss = np.tanh(a_gauss)
+        #h, l = 2.5, -2.5
+        h, l = 1.0, 0.0
+        a_gauss = ((a_gauss + 1) / 2) * (h - l) + l
+        return (a_cat, a_gauss)
+    return converter
+
 
 if __name__ == '__main__':
-    env = DummyHighLevelEnv(sparse_reward=True, distance_mode='sum')
+    env = DummyHighLevelEnv(sparse_reward=True, distance_mode='mean')
+
+    # neural network outputs actions that are unbounded [-infty, infty]
+    action = [0, 0]
+
+    env.step(action)

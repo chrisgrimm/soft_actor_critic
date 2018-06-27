@@ -17,6 +17,7 @@ from networks.value_function_mixins import MLPValueFunc, CNN_Goal_ValueFunc, CNN
     MLP_Categorical_X_Gaussian_ValueFunc
 from replay_buffer.replay_buffer import ReplayBuffer2
 from high_level_environment import HighLevelColumnEnvironment, DummyHighLevelEnv
+from utils import get_best_gpu
 
 
 def build_agent(env):
@@ -202,7 +203,7 @@ if __name__ == '__main__':
     parser.add_argument('--factor-num', type=int)
     parser.add_argument('--use-encoding', action='store_true')
     parser.add_argument('--distance-mode', type=str)
-    parser.add_argument('--gpu-num', type=int)
+    parser.add_argument('--gpu-num', type=int, default=-1)
     parser.add_argument('--network-width', type=int, default=128)
 
     args = parser.parse_args()
@@ -249,7 +250,8 @@ if __name__ == '__main__':
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     #agent = build_column_agent(env)
 
-    with tf.device(f'/gpu:{args.gpu_num}'):
+    gpu_num = get_best_gpu() if args.gpu_num == -1 else args.gpu_num
+    with tf.device(f'/gpu:{gpu_num}'):
         agent = build_high_level_agent(env, learning_rate=args.learning_rate, width=args.network_width)
     #agent = build_agent(env)
     if args.restore:
