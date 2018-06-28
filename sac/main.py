@@ -204,10 +204,13 @@ if __name__ == '__main__':
     parser.add_argument('--use-encoding', action='store_true')
     parser.add_argument('--distance-mode', type=str)
     parser.add_argument('--gpu-num', type=int, default=-1)
+
     parser.add_argument('--network-width', type=int, default=128)
     parser.add_argument('--random-goal', action='store_true')
     parser.add_argument('--hindsight-strategy', type=str, default='final')
     parser.add_argument('--num-columns', type=int, default=8)
+    parser.add_argument('--reward-mode', type=str, choices=['sparse', 'dense'], default='sparse')
+    parser.add_argument('--log-mode', type=str, choices=['tensorboard', 'text'], default='tensorboard')
 
     args = parser.parse_args()
 
@@ -219,13 +222,16 @@ if __name__ == '__main__':
     }}
 
     base_path = os.path.join('./runs', args.run_name, 'data')
-    LOG.setup({
-        'episode_length': os.path.join(base_path, 'episode_length'),
-        'episode_reward': os.path.join(base_path, 'episode_rewards'),
-        'q_loss': os.path.join(base_path, 'q_loss'),
-        'v_loss': os.path.join(base_path, 'v_loss'),
-        'pi_loss': os.path.join(base_path, 'pi_loss')
-    })
+    if args.log_mode == 'text':
+        LOG.setup('text', {
+            'episode_length': os.path.join(base_path, 'episode_length'),
+            'episode_reward': os.path.join(base_path, 'episode_rewards'),
+            'q_loss': os.path.join(base_path, 'q_loss'),
+            'v_loss': os.path.join(base_path, 'v_loss'),
+            'pi_loss': os.path.join(base_path, 'pi_loss')
+        })
+    else:
+        LOG.setup('tensorboard', base_path)
 
     if os.path.isdir(os.path.join('./runs', args.run_name)):
         cmd = input(f'Run: {args.run_name} already exists. Purge? (Y/N)')
@@ -247,16 +253,18 @@ if __name__ == '__main__':
     #env = ColumnGame(nn, indices=[factor_num], force_max=args.force_max, reward_per_goal=args.reward_per_goal,
     #                 reward_no_goal=args.reward_no_goal, visual=False)
     #env = HighLevelColumnEnvironment(perfect_agents=True, buffer=buffer)
-    env = DummyHighLevelEnv(sparse_reward=True, buffer=buffer, goal_reward=args.reward_per_goal,
+    env = DummyHighLevelEnv(sparse_reward=args.reward_mode, buffer=buffer, goal_reward=args.reward_per_goal,
                             use_encoding=args.use_encoding, distance_mode=args.distance_mode, hindsight_strategy=args.hindsight_strategy,
                             num_columns=args.num_columns)
     #env = gym.make('CartPole-v0')
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
     #agent = build_column_agent(env)
-
-    gpu_num = get_best_gpu() if args.gpu_num == -1 else args.gpu_num
-    with tf.device(f'/gpu:{gpu_num}'):
+    device_type = 'cpu' if args.gpu_num == -2 else 'gpu'
+    gpu_num = {-1: lambda: get_best_gpu(),
+               -2: lambda: 0}.get(args.gpu_num, lambda: args.gpu_num)()
+    #gpu_num = get_best_gpu() if args.gpu_num == -1 else args.gpu_num
+    with tf.device(f'/{device_type}:{gpu_num}'):
         agent = build_high_level_agent(env, learning_rate=args.learning_rate, width=args.network_width, random_goal=args.random_goal)
     #agent = build_agent(env)
     if args.restore:

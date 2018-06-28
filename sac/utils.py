@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import GPUtil
+import warnings
 
 def onehot(idx, num_entries):
     x = np.zeros(num_entries)
@@ -42,6 +43,7 @@ def component(function):
 
 def get_best_gpu():
     return GPUtil.getAvailable(order='load', limit=10, maxLoad=1.0, maxMemory=1.0)[0]
+
 
 class HyperParams(object):
 

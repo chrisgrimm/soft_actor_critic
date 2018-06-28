@@ -262,7 +262,7 @@ class DummyHighLevelEnv(object):
 
 
 
-    def add_hindsight_experience(self, index):
+    def add_hindsight_experience(self, index, use_value_estimates=False):
         if len(self.current_trajectory) == 0:
             return
         _, _, _, last_sp, _ = self.current_trajectory[index]

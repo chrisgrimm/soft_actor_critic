@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os
+import shutil
 
 def component(function):
     def wrapper(*args, **kwargs):
@@ -70,7 +71,53 @@ class DataWriter:
                 pass
 
 
-LOG = DataWriter()
+class TBDataWriter:
+
+    def __init__(self):
+        self.global_steps = dict()
+
+    def setup(self, logdir):
+        self.logdir = logdir
+        self.summary_writer = tf.summary.FileWriter(self.logdir)
+
+    def add_line(self, name, value):
+        global_step = self.global_steps.get(name, 0)
+        summary = tf.Summary()
+        summary.value.add(tag=name, simple_value=value)
+        self.summary_writer.add_summary(summary, global_step=global_step)
+        self.global_steps[name] = global_step + 1
+        self.summary_writer.flush()
+
+    def purge(self):
+        for name in os.listdir(self.logdir):
+            path = os.path.join(self.logdir, name)
+            if os.path.isfile(path):
+                os.remove(path)
+
+
+
+class ChoiceDataWriter:
+
+    def __init__(self):
+        pass
+
+    def setup(self, mode, arg):
+        if mode == 'tensorboard':
+            self.logger = TBDataWriter()
+            self.logger.setup(arg)
+        elif mode == 'text':
+            self.logger = DataWriter()
+            self.logger.setup(arg)
+        else:
+            raise Exception(f'mode: {mode} unrecognized. mode must be in [\'tensorboard\', \'text\'].')
+
+    def add_line(self, name, value):
+        return self.logger.add_line(name, value)
+
+    def purge(self):
+        return self.logger.purge()
+
+LOG = ChoiceDataWriter()
 
 # credit: https://stackoverflow.com/questions/37086268/rename-variable-scope-of-saved-model-in-tensorflow
 def ckpt_surgery(checkpoint_dir, modification_function, dry_run=False):
