@@ -41,7 +41,7 @@ def component(function):
     return wrapper
 
 def get_best_gpu():
-    return GPUtil.getAvailable(order='load', limit=10)[0]
+    return GPUtil.getAvailable(order='load', limit=10, maxLoad=1.0, maxMemory=1.0)[0]
 
 class HyperParams(object):
 
