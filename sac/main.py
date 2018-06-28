@@ -89,10 +89,10 @@ def build_high_level_action_converter(env):
     def converter(a):
         a_cat, a_gauss = a[0], a[1]
         a_cat = np.tanh(a_cat)
-        a_cat = int((a_cat + 1) / 2.0 * 8)
+        a_cat = int((a_cat + 1) / 2.0 * env.num_columns)
         # handles stupid case when
-        if a_cat == 8:
-            a_cat = 7
+        if a_cat == env.num_columns:
+            a_cat = env.num_columns - 1
         a_gauss = np.tanh(a_gauss)
         #h, l = 2.5, -2ƒ.5
         h, l = 1.0, 0.0
