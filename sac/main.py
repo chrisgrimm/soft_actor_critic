@@ -207,6 +207,7 @@ if __name__ == '__main__':
     parser.add_argument('--network-width', type=int, default=128)
     parser.add_argument('--random-goal', action='store_true')
     parser.add_argument('--hindsight-strategy', type=str, default='final')
+    parser.add_argument('--num-columns', type=int, default=8)
 
     args = parser.parse_args()
 
@@ -247,7 +248,8 @@ if __name__ == '__main__':
     #                 reward_no_goal=args.reward_no_goal, visual=False)
     #env = HighLevelColumnEnvironment(perfect_agents=True, buffer=buffer)
     env = DummyHighLevelEnv(sparse_reward=True, buffer=buffer, goal_reward=args.reward_per_goal,
-                            use_encoding=args.use_encoding, distance_mode=args.distance_mode, hindsight_strategy=args.hindsight_strategy)
+                            use_encoding=args.use_encoding, distance_mode=args.distance_mode, hindsight_strategy=args.hindsight_strategy,
+                            num_columns=args.num_columns)
     #env = gym.make('CartPole-v0')
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)

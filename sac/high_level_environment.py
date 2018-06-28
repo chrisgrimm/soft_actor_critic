@@ -193,15 +193,17 @@ class HighLevelColumnEnvironment():
 
 class DummyHighLevelEnv(object):
 
-    def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None, use_encoding=False, distance_mode='mean', hindsight_strategy='final'):
+    def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None,
+                 use_encoding=False, distance_mode='mean', hindsight_strategy='final', num_columns=8):
         # environment hyperparameters
         self.sparse_reward = sparse_reward
         self.goal_reward = goal_reward
         self.no_goal_penalty = no_goal_penalty
         self.goal_threshold = goal_threshold
-        self.obs_size = 8
+        self.obs_size = num_columns
         self.spacing = 2
         self.image_size = 128
+        self.num_columns = num_columns
         self.possible_distance_modes = ['mean', 'sum']
         self.possible_hindsight_strategies = ['final']
 
@@ -235,6 +237,7 @@ class DummyHighLevelEnv(object):
         self.use_encoding = use_encoding
         self.num_factors = 20
         if use_encoding:
+            assert self.num_columns == 8
             self.obs_size = 20
             self.nn = VAE_Network(self.num_factors, 10 * 10, mode='image')
             self.nn.restore('./indep_control2/vae_network.ckpt')
@@ -295,7 +298,7 @@ class DummyHighLevelEnv(object):
         return obs, reward, terminal, {}
 
     def new_column_position(self):
-        return np.random.uniform(0, 1, size=[8])
+        return np.random.uniform(0, 1, size=[self.num_columns])
 
     def new_goal(self):
         if self.use_encoding:
@@ -361,23 +364,31 @@ class DummyHighLevelEnv(object):
 
 
 
+# if __name__ == '__main__':
+#     env = HighLevelColumnEnvironment(perfect_agents=True)
+#     s = env.reset()
+#     t = False
+#     while True:
+#         text_input = input('action:')
+#         if text_input == "-1":
+#             s = env.reset()
+#             env.render()
+#             continue
+#         (action_num, goal) = re.match(r'^(\d+) ([\-\d\.]+)$', text_input).groups()
+#         action_num = int(action_num)
+#         goal = float(goal)
+#         s, r, t, info = env.step((action_num, goal))
+#         if t:
+#             s = env.reset()
+#         env.render()
+
 if __name__ == '__main__':
-    env = HighLevelColumnEnvironment(perfect_agents=True)
+    env = DummyHighLevelEnv(sparse_reward=True, num_columns=1)
+    print(env.observation_space)
     s = env.reset()
-    t = False
-    while True:
-        text_input = input('action:')
-        if text_input == "-1":
-            s = env.reset()
-            env.render()
-            continue
-        (action_num, goal) = re.match(r'^(\d+) ([\-\d\.]+)$', text_input).groups()
-        action_num = int(action_num)
-        goal = float(goal)
-        s, r, t, info = env.step((action_num, goal))
-        if t:
-            s = env.reset()
-        env.render()
+    goal = s[1]
+    sp, r, t, _ = env.step([0, goal], lambda x: x)
+    print(sp, r, t)
 
 
 
