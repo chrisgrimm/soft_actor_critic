@@ -4,15 +4,6 @@ import subprocess
 import re
 import argparse
 
-
-name = 'test'
-command = 'echo "hello world"'
-command_list = [
-    'source ~/projects/venv/bin/activate',
-    'python main.py --run-name=test1 --num-columns=1 --distance-mode=mean',
-    '`while true; do sleep 10000; done`', # hax to prevent the screen from dying if something goes wrong.
-]
-
 def run_in_screen(screen_name, commands, venv_path=None, wait_for_interrupt=False):
     pre_commands = [] if venv_path is None else [f'source {venv_path}']
     post_commands = [] if not wait_for_interrupt else ['`while true; do sleep 10000; done`']

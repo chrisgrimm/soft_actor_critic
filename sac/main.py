@@ -151,7 +151,7 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
         if hindsight_agent:
             s2, r, t, info = env.step(a, action_converter)
         else:
-            s2, r, t, info = env.step(a, action_converter)
+            s2, r, t, info = env.step(a)
 
         time_steps += 1
         episode_time_steps += 1
@@ -204,6 +204,7 @@ if __name__ == '__main__':
     parser.add_argument('--use-encoding', action='store_true')
     parser.add_argument('--distance-mode', type=str)
     parser.add_argument('--gpu-num', type=int, default=-1)
+    parser.add_argument('--centered-actions', action='store_true')
 
     parser.add_argument('--network-width', type=int, default=128)
     parser.add_argument('--random-goal', action='store_true')
@@ -255,7 +256,7 @@ if __name__ == '__main__':
     #env = HighLevelColumnEnvironment(perfect_agents=True, buffer=buffer)
     env = DummyHighLevelEnv(sparse_reward=args.reward_mode, buffer=buffer, goal_reward=args.reward_per_goal,
                             use_encoding=args.use_encoding, distance_mode=args.distance_mode, hindsight_strategy=args.hindsight_strategy,
-                            num_columns=args.num_columns)
+                            num_columns=args.num_columns, centered_actions=args.centered_actions)
     #env = gym.make('CartPole-v0')
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)

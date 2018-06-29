@@ -194,7 +194,8 @@ class HighLevelColumnEnvironment():
 class DummyHighLevelEnv(object):
 
     def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None,
-                 use_encoding=False, distance_mode='mean', hindsight_strategy='final', num_columns=8):
+                 use_encoding=False, distance_mode='mean', hindsight_strategy='final', num_columns=8,
+                 centered_actions=False):
         # environment hyperparameters
         self.sparse_reward = sparse_reward
         self.goal_reward = goal_reward
@@ -206,6 +207,7 @@ class DummyHighLevelEnv(object):
         self.num_columns = num_columns
         self.possible_distance_modes = ['mean', 'sum']
         self.possible_hindsight_strategies = ['final']
+        self.centered_actions = centered_actions
 
         try:
             assert distance_mode in self.possible_distance_modes
@@ -244,7 +246,11 @@ class DummyHighLevelEnv(object):
 
 
         self.observation_space = Box(-3, 3, shape=[2*self.obs_size], dtype=np.float32)
-        self.action_space = Box(0, 1, shape=[2], dtype=np.float32)
+        if self.centered_actions:
+            self.action_space = Box(-1, 1, shape=[2], dtype=np.float32)
+        else:
+            self.action_space = Box(0, 1, shape=[2], dtype=np.float32)
+
         # initialize the environment
         self.column_position = self.new_column_position()
         self.goal = self.new_goal()
@@ -275,13 +281,13 @@ class DummyHighLevelEnv(object):
             new_t = self.get_terminal(new_sp)
             self.buffer.append(new_s, new_a, new_r, new_sp, new_t)
 
-    def step(self, raw_action, action_converter):
-        action = action_converter(raw_action)
+    def step(self, raw_action):
+        action = self.action_converter(raw_action)
         (column_index, parameter) = action
 
         old_obs = self.get_observation()
 
-        self.column_position[column_index] = parameter
+        self.perform_action(column_index, parameter)
         self.num_steps += 1
 
         obs = self.get_observation()
@@ -296,6 +302,28 @@ class DummyHighLevelEnv(object):
             self.current_trajectory.append((old_obs, raw_action, reward, obs, terminal))
 
         return obs, reward, terminal, {}
+
+    def perform_action(self, column_index, parameter):
+        if not self.centered_actions:
+            self.column_position[column_index] = parameter
+        else:
+            self.column_position[column_index] = np.clip(self.column_position[column_index] + parameter, 0, 1)
+
+
+    def action_converter(self, raw_action):
+        a_cat, a_gauss = raw_action[0], raw_action[1]
+        a_cat = np.tanh(a_cat)
+        a_cat = int((a_cat + 1) / 2.0 * self.num_columns)
+        # handles stupid case when
+        if a_cat == self.num_columns:
+            a_cat = self.num_columns - 1
+        a_gauss = np.tanh(a_gauss)
+        # h, l = 2.5, -2.5
+        h, l = 1.0, 0.0
+        if not self.centered_actions:
+            a_gauss = ((a_gauss + 1) / 2) * (h - l) + l
+        return (a_cat, a_gauss)
+
 
     def new_column_position(self):
         return np.random.uniform(0, 1, size=[self.num_columns])
