@@ -94,7 +94,7 @@ def build_high_level_action_converter(env):
         if a_cat == env.num_columns:
             a_cat = env.num_columns - 1
         a_gauss = np.tanh(a_gauss)
-        #h, l = 2.5, -2ƒ.5
+        #h, l = 2.5, -2.5
         h, l = 1.0, 0.0
         a_gauss = ((a_gauss + 1) / 2) * (h - l) + l
         return (a_cat, a_gauss)
