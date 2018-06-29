@@ -166,9 +166,6 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
                 for i in range(num_train_steps):
                     s1_sample, a_sample, r_sample, s2_sample, t_sample = buffer.sample(batch_size)
                     [v_loss, q_loss, pi_loss] = agent.train_step(s1_sample, a_sample, r_sample, s2_sample, t_sample)
-                    LOG.add_line('v_loss', v_loss)
-                    LOG.add_line('q_loss', q_loss)
-                    LOG.add_line('pi_loss', pi_loss)
         s1 = s2
         if t:
             print('TERMINAL')
@@ -178,6 +175,12 @@ def run_training(env, agent, buffer, reward_scale, batch_size, num_train_steps, 
             print(f'{"EVAL" if is_eval_period(episodes) else "TRAIN"}\t Episode: {episodes}\t Time Steps: {episode_time_steps} Reward: {episode_reward}')
             LOG.add_line('episode_reward', episode_reward)
             LOG.add_line('episode_length', episode_time_steps)
+            try:
+                LOG.add_line('v_loss', v_loss)
+                LOG.add_line('q_loss', q_loss)
+                LOG.add_line('pi_loss', pi_loss)
+            except NameError:
+                pass
             episode_reward = 0
             episode_time_steps = 0
             episodes += 1
