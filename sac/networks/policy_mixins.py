@@ -16,13 +16,16 @@ def leaky_relu(x, alpha=0.2):
 #
 #         return fc2
 
-def MLPPolicy(width):
+def MLPPolicy(width, depth):
     class MLPPolicy(object):
         def input_processing(self, s):
-            fc1 = tf.layers.dense(s, width, tf.nn.relu, name='fc1')
-            fc2 = tf.layers.dense(fc1, width, tf.nn.relu, name='fc2')
+            fci = s
+            for i in range(depth):
+                fci = tf.layers.dense(fci, width, tf.nn.relu, name=f'fc{i+1}')
+            #fc1 = tf.layers.dense(s, width, tf.nn.relu, name='fc1')
+            #fc2 = tf.layers.dense(fc1, width, tf.nn.relu, name='fc2')
 
-            return fc2
+            return fci
     return MLPPolicy
 
 

@@ -224,7 +224,8 @@ class DummyHighLevelEnv(object):
 
         except AssertionError:
             raise Exception(f'Hindsight strategy must be in list: {self.possible_hindsight_strategies}')
-
+        print(self.hindsight_strategy, self.future_strategy_k)
+        input('...')
         self.distance_mode = distance_mode
 
 

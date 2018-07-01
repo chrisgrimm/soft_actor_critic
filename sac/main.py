@@ -64,11 +64,11 @@ def build_column_agent(env, name='SAC'):
 #             super(Agent, self).__init__(s_shape, a_shape, global_name=name)
 #     return Agent(env.env.observation_space.shape, [9])
 
-def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4, width=128, random_goal=False):
+def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4, width=128, random_goal=False, network_depth=2):
     class Agent(
         GaussianPolicy,
-        MLPPolicy(width),
-        MLPValueFunc(width),
+        MLPPolicy(width, network_depth),
+        MLPValueFunc(width, network_depth),
         AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
             super(Agent, self).__init__(s_shape, a_shape, global_name=name, learning_rate=learning_rate, inject_goal_randomness=random_goal)
@@ -208,6 +208,7 @@ if __name__ == '__main__':
     parser.add_argument('--distance-mode', type=str)
     parser.add_argument('--gpu-num', type=int, default=-1)
     parser.add_argument('--centered-actions', action='store_true')
+    parser.add_argument('--network-depth', type=int, default=2)
 
     parser.add_argument('--network-width', type=int, default=128)
     parser.add_argument('--random-goal', action='store_true')
@@ -269,7 +270,8 @@ if __name__ == '__main__':
                -2: lambda: 0}.get(args.gpu_num, lambda: args.gpu_num)()
     #gpu_num = get_best_gpu() if args.gpu_num == -1 else args.gpu_num
     with tf.device(f'/{device_type}:{gpu_num}'):
-        agent = build_high_level_agent(env, learning_rate=args.learning_rate, width=args.network_width, random_goal=args.random_goal)
+        agent = build_high_level_agent(env, learning_rate=args.learning_rate, width=args.network_width, random_goal=args.random_goal,
+                                       network_depth=args.network_depth)
     #agent = build_agent(env)
     if args.restore:
         restore_path = os.path.join('.', 'runs',  args.run_name, 'weights', 'sac.ckpt')
