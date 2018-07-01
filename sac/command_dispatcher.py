@@ -51,7 +51,7 @@ def produce_tensorboard_command(run_dir, common_path, run_names):
 
 
 if __name__ == '__main__':
-    '''parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('--file', type=str, default=None)
     parser.add_argument('--venv', type=str, default=None)
     parser.add_argument('--dont-wait', action='store_true')
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     else:
         evaluated_run_list = eval(args.tb_command)
         print(produce_tensorboard_command('runs', 'data', evaluated_run_list))
-'''
-print(produce_tensorboard_command('runs', 'data', [f'nc_future{i+1}' for i in range(0, 6)] + \
-                                                  [f'nc_future256_{i+1}' for i in range(0, 6)] + \
-                                                  [f'nc_future_10_{i+1}' for i in range(0, 6)] ))
+
+#print(produce_tensorboard_command('runs', 'data', [f'nc_future{i+1}' for i in range(0, 6)] + \
+#                                                  [f'nc_future256_{i+1}' for i in range(0, 6)] + \
+#                                                  [f'nc_future_10_{i+1}' for i in range(0, 6)] ))
