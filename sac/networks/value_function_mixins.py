@@ -72,7 +72,7 @@ class CNN_Power2_ValueFunc(object):
         return v
 
 
-class MLP_Categorical_X_Gaussian_ValueFunc(object):
+'''class MLP_Categorical_X_Gaussian_ValueFunc(object):
 
     def Q_network(self, s, a, name, reuse=None):
         with tf.variable_scope(name, reuse=reuse):
@@ -91,6 +91,6 @@ class MLP_Categorical_X_Gaussian_ValueFunc(object):
             fc1 = tf.layers.dense(s, 128, tf.nn.relu, name='fc1')
             fc2 = tf.layers.dense(fc1, 128, tf.nn.relu, name='fc2')
             v = tf.reshape(tf.layers.dense(fc2, 1, name='v'), [-1])
-        return v
+        return v'''
 
 

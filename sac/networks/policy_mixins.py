@@ -114,7 +114,52 @@ class CategoricalPolicy(object):
         return action_sample
 
 
-class Categorical_X_GaussianPolicy(object):
+def Categorical_X_GaussianPolicy(num_discrete_actions, num_gaussian):
+
+    class Categorical_X_GaussianPolicy(object):
+
+        def produce_policy_parameters(self, a_shape, processed_s):
+            # confirm that the agent has the right action dimensionality.
+            #assert a_shape == num_discrete_actions + num_gaussian
+            logits = tf.layers.dense(processed_s, num_discrete_actions, name='logits')
+            mu_params = tf.layers.dense(processed_s, num_gaussian, name='mu_params')
+            sigma_params = 3 * tf.layers.dense(processed_s, num_gaussian, tf.nn.sigmoid, name='sigma_params')
+            return (logits, mu_params, sigma_params + EPS)
+
+
+        def policy_parameters_to_log_prob(self, a, parameters):
+            (logits, mu, sigma) = parameters
+            a_cat, a_gauss = a[:, :num_discrete_actions], a[:, num_discrete_actions:]
+            cat_log_prob = tf.distributions.Categorical(logits=logits).log_prob(tf.argmax(a_cat, axis=1))
+            gauss_log_prob = tf.distributions.Normal(mu, sigma).log_prob(a_gauss)
+            tanh_gauss_log_prob = tf.reduce_sum(gauss_log_prob, axis=1) - tf.reduce_sum(tf.log(1 - tf.square(tf.tanh(a_gauss)) + EPS), axis=1)
+            return cat_log_prob + tanh_gauss_log_prob
+
+
+        def policy_parameters_to_sample(self, parameters):
+            (logits, mu, sigma) = parameters
+            cat_sample = tf.one_hot(tf.distributions.Categorical(logits=logits).sample(), num_discrete_actions)
+            gauss_sample = tf.distributions.Normal(mu, sigma).sample()
+            return tf.concat([cat_sample, gauss_sample], axis=1)
+
+
+        def policy_parameters_to_max_likelihood_action(self, parameters):
+            (logits, mu, sigma) = parameters
+            max_cat = tf.one_hot(tf.argmax(logits, axis=1), num_discrete_actions)
+            max_gauss = mu
+            return tf.concat([max_cat, max_gauss], axis=1)
+
+
+        def transform_action_sample(self, action_sample):
+            action_cat, action_gauss = action_sample[:, :num_discrete_actions], action_sample[:, num_discrete_actions:]
+            return tf.concat([action_cat, tf.nn.tanh(action_gauss)], axis=1)
+
+
+    return Categorical_X_GaussianPolicy
+
+
+
+'''class Categorical_X_GaussianPolicy(object):
 
     def produce_policy_parameters(self, a_shape, processed_s):
         logits_shape = 8
@@ -161,5 +206,5 @@ class Categorical_X_GaussianPolicy(object):
     def transform_action_sample(self, action_sample):
         out_cat, out_gauss = action_sample[:, :8], action_sample[:, 8:]
         print(out_cat, out_gauss)
-        return tf.concat([out_cat, tf.tanh(out_gauss)], axis=1)
+        return tf.concat([out_cat, tf.tanh(out_gauss)], axis=1)'''
 

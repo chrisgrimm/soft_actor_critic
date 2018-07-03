@@ -195,7 +195,7 @@ class DummyHighLevelEnv(object):
 
     def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None,
                  use_encoding=False, distance_mode='mean', hindsight_strategy='final', num_columns=8,
-                 centered_actions=False):
+                 centered_actions=False, accept_discrete_and_gaussian=False):
         # environment hyperparameters
         self.sparse_reward = sparse_reward
         self.goal_reward = goal_reward
@@ -208,6 +208,7 @@ class DummyHighLevelEnv(object):
         self.possible_distance_modes = ['mean', 'sum']
         self.possible_hindsight_strategies = ['final']
         self.centered_actions = centered_actions
+        self.accept_discrete_and_gaussian = accept_discrete_and_gaussian
 
         try:
             assert distance_mode in self.possible_distance_modes
@@ -246,9 +247,16 @@ class DummyHighLevelEnv(object):
 
         self.observation_space = Box(-3, 3, shape=[2*self.obs_size], dtype=np.float32)
         if self.centered_actions:
-            self.action_space = Box(-1, 1, shape=[2], dtype=np.float32)
+            if self.accept_discrete_and_gaussian:
+                self.action_space = Box(-1, 1, shape=[self.num_columns + 1], dtype=np.float32)
+            else:
+                self.action_space = Box(-1, 1, shape=[2], dtype=np.float32)
         else:
-            self.action_space = Box(0, 1, shape=[2], dtype=np.float32)
+            if self.accept_discrete_and_gaussian:
+                self.action_space = Box(0, 1, shape=[self.num_columns + 1], dtype=np.float32)
+            else:
+                self.action_space = Box(0, 1, shape=[2], dtype=np.float32)
+
 
         # initialize the environment
         self.column_position = self.new_column_position()
@@ -310,12 +318,17 @@ class DummyHighLevelEnv(object):
 
 
     def action_converter(self, raw_action):
-        a_cat, a_gauss = raw_action[0], raw_action[1]
-        a_cat = np.tanh(a_cat)
-        a_cat = int((a_cat + 1) / 2.0 * self.num_columns)
-        # handles stupid case when
-        if a_cat == self.num_columns:
-            a_cat = self.num_columns - 1
+        if self.accept_discrete_and_gaussian:
+            a_cat = np.argmax(raw_action[:self.num_columns])
+            a_gauss = raw_action[self.num_columns]
+        else:
+            a_cat, a_gauss = raw_action[0], raw_action[1]
+            a_cat = np.tanh(a_cat)
+            a_cat = int((a_cat + 1) / 2.0 * self.num_columns)
+            # handles stupid case when
+            if a_cat == self.num_columns:
+                a_cat = self.num_columns - 1
+        # otherwise a_cat is just itself.
         a_gauss = np.tanh(a_gauss)
         # h, l = 2.5, -2.5
         h, l = 1.0, 0.0

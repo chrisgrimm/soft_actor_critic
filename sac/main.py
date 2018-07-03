@@ -13,8 +13,7 @@ from indep_control2.vae_network import VAE_Network
 from networks.network_interface import AbstractSoftActorCritic
 from networks.policy_mixins import MLPPolicy, GaussianPolicy, CategoricalPolicy, CNN_Goal_Policy, CNN_Power2_Policy, \
     Categorical_X_GaussianPolicy
-from networks.value_function_mixins import MLPValueFunc, CNN_Goal_ValueFunc, CNN_Power2_ValueFunc, \
-    MLP_Categorical_X_Gaussian_ValueFunc
+from networks.value_function_mixins import MLPValueFunc, CNN_Goal_ValueFunc, CNN_Power2_ValueFunc
 from replay_buffer.replay_buffer import ReplayBuffer2
 from high_level_environment import HighLevelColumnEnvironment, DummyHighLevelEnv
 from utils import get_best_gpu
@@ -65,9 +64,10 @@ def build_column_agent(env, name='SAC'):
 #     return Agent(env.env.observation_space.shape, [9])
 
 def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4, width=128, random_goal=False, network_depth=2,
-                           grad_clip_magnitude=1000):
+                           grad_clip_magnitude=1000, accept_discrete_and_gaussian=False):
+    PolicyType = GaussianPolicy if not accept_discrete_and_gaussian else Categorical_X_GaussianPolicy(env.num_columns, 1)
     class Agent(
-        GaussianPolicy,
+        PolicyType,
         MLPPolicy(width, network_depth),
         MLPValueFunc(width, network_depth),
         AbstractSoftActorCritic):
@@ -212,6 +212,7 @@ if __name__ == '__main__':
     parser.add_argument('--centered-actions', action='store_true')
     parser.add_argument('--network-depth', type=int, default=2)
     parser.add_argument('--grad-clip-magnitude', type=float, default=1000)
+    parser.add_argument('--accept-discrete-and-gaussian', action='store_true')
 
     parser.add_argument('--network-width', type=int, default=128)
     parser.add_argument('--random-goal', action='store_true')
@@ -262,7 +263,8 @@ if __name__ == '__main__':
     #env = HighLevelColumnEnvironment(perfect_agents=True, buffer=buffer)
     env = DummyHighLevelEnv(sparse_reward=args.reward_mode, buffer=buffer, goal_reward=args.reward_per_goal,
                             use_encoding=args.use_encoding, distance_mode=args.distance_mode, hindsight_strategy=args.hindsight_strategy,
-                            num_columns=args.num_columns, centered_actions=args.centered_actions)
+                            num_columns=args.num_columns, centered_actions=args.centered_actions,
+                            accept_discrete_and_gaussian=args.accept_discrete_and_gaussian)
     #env = gym.make('CartPole-v0')
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)
@@ -273,7 +275,8 @@ if __name__ == '__main__':
     #gpu_num = get_best_gpu() if args.gpu_num == -1 else args.gpu_num
     with tf.device(f'/{device_type}:{gpu_num}'):
         agent = build_high_level_agent(env, learning_rate=args.learning_rate, width=args.network_width, random_goal=args.random_goal,
-                                       network_depth=args.network_depth, grad_clip_magnitude=args.grad_clip_magnitude)
+                                       network_depth=args.network_depth, grad_clip_magnitude=args.grad_clip_magnitude,
+                                       accept_discrete_and_gaussian=args.accept_discrete_and_gaussian)
     #agent = build_agent(env)
     if args.restore:
         restore_path = os.path.join('.', 'runs',  args.run_name, 'weights', 'sac.ckpt')
