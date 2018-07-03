@@ -64,14 +64,16 @@ def build_column_agent(env, name='SAC'):
 #             super(Agent, self).__init__(s_shape, a_shape, global_name=name)
 #     return Agent(env.env.observation_space.shape, [9])
 
-def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4, width=128, random_goal=False, network_depth=2):
+def build_high_level_agent(env, name='SAC_high_level', learning_rate=1*10**-4, width=128, random_goal=False, network_depth=2,
+                           grad_clip_magnitude=1000):
     class Agent(
         GaussianPolicy,
         MLPPolicy(width, network_depth),
         MLPValueFunc(width, network_depth),
         AbstractSoftActorCritic):
         def __init__(self, s_shape, a_shape):
-            super(Agent, self).__init__(s_shape, a_shape, global_name=name, learning_rate=learning_rate, inject_goal_randomness=random_goal)
+            super(Agent, self).__init__(s_shape, a_shape, global_name=name, learning_rate=learning_rate, inject_goal_randomness=random_goal,
+                                        grad_clip_magnitude=grad_clip_magnitude)
     return Agent(env.observation_space.shape, env.action_space.shape)
 
 # def build_high_level_action_converter(env):
@@ -209,6 +211,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpu-num', type=int, default=-1)
     parser.add_argument('--centered-actions', action='store_true')
     parser.add_argument('--network-depth', type=int, default=2)
+    parser.add_argument('--grad-clip-magnitude', type=float, default=1000)
 
     parser.add_argument('--network-width', type=int, default=128)
     parser.add_argument('--random-goal', action='store_true')
@@ -218,7 +221,6 @@ if __name__ == '__main__':
     parser.add_argument('--log-mode', type=str, choices=['tensorboard', 'text'], default='tensorboard')
 
     args = parser.parse_args()
-
     data_storage_dir = {'runs': {
         args.run_name: {
             'data': {},
@@ -271,7 +273,7 @@ if __name__ == '__main__':
     #gpu_num = get_best_gpu() if args.gpu_num == -1 else args.gpu_num
     with tf.device(f'/{device_type}:{gpu_num}'):
         agent = build_high_level_agent(env, learning_rate=args.learning_rate, width=args.network_width, random_goal=args.random_goal,
-                                       network_depth=args.network_depth)
+                                       network_depth=args.network_depth, grad_clip_magnitude=args.grad_clip_magnitude)
     #agent = build_agent(env)
     if args.restore:
         restore_path = os.path.join('.', 'runs',  args.run_name, 'weights', 'sac.ckpt')

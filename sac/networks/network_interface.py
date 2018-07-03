@@ -6,7 +6,8 @@ from utils import component
 
 class AbstractSoftActorCritic(object):
 
-    def __init__(self, s_shape, a_shape, global_name='SAC', sess=None, learning_rate=1*10**-4, inject_goal_randomness=False):
+    def __init__(self, s_shape, a_shape, global_name='SAC', sess=None, learning_rate=1*10**-4, inject_goal_randomness=False,
+                 grad_clip_magnitude=1000):
         with tf.variable_scope(global_name):
             self.S1 = S1 = tf.placeholder(tf.float32, [None] + list(s_shape))
             self.S1_random = S1_random = self.augment_state_with_randomness(S1, do_nothing=(not inject_goal_randomness))
@@ -58,7 +59,7 @@ class AbstractSoftActorCritic(object):
 
 
             # seems to improve training stability.
-            grad_clip_magnitude = 1000
+            #grad_clip_magnitude = 1000
 
             train_V_opt = tf.train.AdamOptimizer(learning_rate=learning_rate)
             train_V_grads = train_V_opt.compute_gradients(V_loss, var_list=xi)
