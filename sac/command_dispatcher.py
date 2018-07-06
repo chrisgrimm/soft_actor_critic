@@ -2,9 +2,11 @@ import os
 import sys
 import subprocess
 import re
+import time
 import argparse
 
 def run_in_screen(screen_name, commands, venv_path=None, wait_for_interrupt=False):
+    print(f'Starting run: {screen_name}')
     pre_commands = [] if venv_path is None else [f'source {venv_path}']
     post_commands = [] if not wait_for_interrupt else ['`while true; do sleep 10000; done`']
     command_list = pre_commands + commands + post_commands
@@ -24,7 +26,7 @@ def process_file_line(line):
     command = command.strip()
     return int(num_duplicates), screen_name, command
 
-def dispatch(file_path, venv_path=None, wait_for_interrupt=False, load_tensorboard=False):
+def dispatch(file_path, venv_path=None, wait_for_interrupt=False, load_tensorboard=False, stagger=True):
     with open(file_path, 'r') as f:
         lines = f.readlines()
         file_name = f.name
@@ -36,6 +38,8 @@ def dispatch(file_path, venv_path=None, wait_for_interrupt=False, load_tensorboa
             raise Exception(f'Failed to read line {i+1}: "{line}"')
     for num_duplicates, screen_name, command in processed_line_tuples:
         for i in range(num_duplicates):
+            if stagger:
+               time.sleep(10)
             augmented_command = command + f' --run-name={screen_name}_{i}'
             run_in_screen(f'{screen_name}_{i}', [augmented_command], venv_path=venv_path, wait_for_interrupt=wait_for_interrupt)
 
