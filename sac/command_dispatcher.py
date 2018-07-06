@@ -16,29 +16,34 @@ class FileProcessingException(Exception):
 
 def process_file_line(line):
     line = line.strip()
-    match = re.match(r'^(\S*?)\s*\:\s*([\s\S]*)$', line)
+    match = re.match(r'^\s*\{\s*(\d+)\s*\}\s*(\S*?)\s*\:\s*([\s\S]*)$', line)
     if not match:
         raise FileProcessingException(f'Could not read line: {line}')
-    (screen_name, command) = match.groups()
+    (num_duplicates, screen_name, command) = match.groups()
     screen_name = screen_name.strip()
     command = command.strip()
-    return screen_name, command
+    return int(num_duplicates), screen_name, command
 
 def dispatch(file_path, venv_path=None, wait_for_interrupt=False, load_tensorboard=False):
     with open(file_path, 'r') as f:
         lines = f.readlines()
         file_name = f.name
-    screen_name_command_pairs = []
+    processed_line_tuples = []
     for i, line in enumerate(lines):
         try:
-            screen_name_command_pairs.append(process_file_line(line))
+            processed_line_tuples.append(process_file_line(line))
         except FileProcessingException as e:
             raise Exception(f'Failed to read line {i+1}: "{line}"')
-    for screen_name, command in screen_name_command_pairs:
-        run_in_screen(screen_name, [command], venv_path=venv_path, wait_for_interrupt=wait_for_interrupt)
+    for num_duplicates, screen_name, command in processed_line_tuples:
+        for i in range(num_duplicates):
+            augmented_command = command + f' --run-name={screen_name}_{i}'
+            run_in_screen(f'{screen_name}_{i}', [augmented_command], venv_path=venv_path, wait_for_interrupt=wait_for_interrupt)
+
+    # I don't remember what this is supposed to do.
     if load_tensorboard:
+        raise Exception('I dont remember the functionality of this code. Be wary of use.')
         tb_command = produce_tensorboard_command(run_dir='runs', common_path='data',
-                                                 run_names=[screen_name for screen_name, _ in screen_name_command_pairs])
+                                                 run_names=[screen_name for screen_name, _ in processed_line_tuples])
         run_in_screen(f'tb_{file_name}', [tb_command], venv_path=venv_path, wait_for_interrupt=wait_for_interrupt)
 
 def produce_tensorboard_command(run_dir, common_path, run_names):

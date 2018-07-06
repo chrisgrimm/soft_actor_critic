@@ -7,7 +7,7 @@ from utils import component
 class AbstractSoftActorCritic(object):
 
     def __init__(self, s_shape, a_shape, global_name='SAC', sess=None, learning_rate=1*10**-4, inject_goal_randomness=False,
-                 grad_clip_magnitude=1000):
+                 grad_clip_magnitude=1000, alpha=0.01, multiply_entropy=False):
         with tf.variable_scope(global_name):
             self.S1 = S1 = tf.placeholder(tf.float32, [None] + list(s_shape))
             self.S1_random = S1_random = self.augment_state_with_randomness(S1, do_nothing=(not inject_goal_randomness))
@@ -20,6 +20,8 @@ class AbstractSoftActorCritic(object):
             self.T = T = tf.placeholder(tf.float32, [None])
             gamma = 0.99
             tau = 0.01
+            if not multiply_entropy:
+                alpha = 1.0
             #learning_rate = 1*10**-4
 
             # constructing V loss
@@ -31,9 +33,9 @@ class AbstractSoftActorCritic(object):
 
             V_S1 = self.V_network(S1, 'V')
             Q_sampled1 = self.Q_network(S1, self.transform_action_sample(A_sampled1), 'Q')
-            log_pi_sampled1 = self.pi_network_log_prob(A_sampled1, S1_random, 'pi', reuse=True)
+            log_pi_sampled1 = alpha*self.pi_network_log_prob(A_sampled1, S1_random, 'pi', reuse=True)
             Q_sampled2 = self.Q_network(S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
-            log_pi_sampled2 = self.pi_network_log_prob(A_sampled2, S1_random, 'pi', reuse=True)
+            log_pi_sampled2 = alpha*self.pi_network_log_prob(A_sampled2, S1_random, 'pi', reuse=True)
             self.V_loss = V_loss = tf.reduce_mean(0.5*tf.square(V_S1 - (Q_sampled1 - log_pi_sampled1)))
 
             # constructing Q loss

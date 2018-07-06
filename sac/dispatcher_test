@@ -1,4 +1,2 @@
-test2 : echo cats
-test3 :echo dogs
-test4:echo birds
-test5 :    echo lizards
+{5} test2 : echo cats
+{2} test3 : echo dogs

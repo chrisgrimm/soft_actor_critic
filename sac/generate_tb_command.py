@@ -20,7 +20,10 @@ run_names = (
     #[f'future_centered_run{i+1}' for i in range(0, 4)] +
     #[f'nc_future5_w128_d2_rs0.1_{i+1}' for i in range(0,6)]
     [f'nc_future5_w256_d2_lr5e-5_clip100_{i+1}' for i in range(0, 6)] +
-    [f'nc_future5_w256_d2_lr5e-5_clip10_{i+1}' for i in range(0, 6)]
+    [f'nc_future5_w256_d2_lr5e-5_clip10_{i+1}' for i in range(0, 6)] +
+    [f'nc_future5_w128_d2_lr5e-5_mixed_{i+1}' for i in range(0, 6)] +
+    [f'nc_future5_w128_d2_lr5e-5_clip100_rs0.005_{i+1}' for i in range(0, 3)] +
+    [f'nc_future5_w128_d2_lr5e-5_clip100_rs0.0075_{i+1}'for i in range(0, 3)]
 )
 
 print(produce_tensorboard_command('runs', 'data', run_names))
