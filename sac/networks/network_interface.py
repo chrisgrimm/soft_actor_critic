@@ -7,7 +7,7 @@ from utils import component
 class AbstractSoftActorCritic(object):
 
     def __init__(self, s_shape, a_shape, global_name='SAC', sess=None, learning_rate=1*10**-4, inject_goal_randomness=False,
-                 grad_clip_magnitude=1000, alpha=0.01, multiply_entropy=False):
+                 grad_clip_magnitude=1000, alpha=0.01):
         with tf.variable_scope(global_name):
             self.S1 = S1 = tf.placeholder(tf.float32, [None] + list(s_shape))
             self.S1_random = S1_random = self.augment_state_with_randomness(S1, do_nothing=(not inject_goal_randomness))
@@ -20,8 +20,6 @@ class AbstractSoftActorCritic(object):
             self.T = T = tf.placeholder(tf.float32, [None])
             gamma = 0.99
             tau = 0.01
-            if not multiply_entropy:
-                alpha = 1.0
             #learning_rate = 1*10**-4
 
             # constructing V loss
