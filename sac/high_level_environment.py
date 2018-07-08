@@ -205,7 +205,7 @@ class DummyHighLevelEnv(object):
         self.spacing = 2
         self.image_size = 128
         self.num_columns = num_columns
-        self.possible_distance_modes = ['mean', 'sum']
+        self.possible_distance_modes = ['mean', 'sum', 'max']
         self.possible_hindsight_strategies = ['final']
         self.centered_actions = centered_actions
         self.accept_discrete_and_gaussian = accept_discrete_and_gaussian
@@ -377,6 +377,8 @@ class DummyHighLevelEnv(object):
             return np.sum(np.abs(obs_part - goal))
         elif self.distance_mode == 'mean':
             return np.mean(np.abs(obs_part - goal))
+        elif self.distance_mode == 'max':
+            return np.max(np.abs(obs_part - goal))
         else:
             raise Exception('If youre getting this exception, something is wrong with the code')
 
