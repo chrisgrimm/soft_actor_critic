@@ -213,6 +213,7 @@ if __name__ == '__main__':
     parser.add_argument('--network-depth', type=int, default=2)
     parser.add_argument('--grad-clip-magnitude', type=float, default=1000)
     parser.add_argument('--accept-discrete-and-gaussian', action='store_true')
+    parser.add_argument('--train-single-column-agent', type=int, default=-1)
 
 
     parser.add_argument('--network-width', type=int, default=128)
@@ -265,7 +266,8 @@ if __name__ == '__main__':
     env = DummyHighLevelEnv(sparse_reward=args.reward_mode, buffer=buffer, goal_reward=args.reward_per_goal,
                             use_encoding=args.use_encoding, distance_mode=args.distance_mode, hindsight_strategy=args.hindsight_strategy,
                             num_columns=args.num_columns, centered_actions=args.centered_actions,
-                            accept_discrete_and_gaussian=args.accept_discrete_and_gaussian)
+                            accept_discrete_and_gaussian=args.accept_discrete_and_gaussian,
+                            single_column=args.train_single_column_agent)
     #env = gym.make('CartPole-v0')
 
     #env = BlockGoalWrapper(BlockEnv(), buffer, args.reward_scale, 0, 2, 10)

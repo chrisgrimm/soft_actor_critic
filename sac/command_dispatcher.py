@@ -18,13 +18,13 @@ class FileProcessingException(Exception):
 
 def process_file_line(line):
     line = line.strip()
-    match = re.match(r'^\s*\{\s*(\d+)\s*\}\s*(\S*?)\s*\:\s*([\s\S]*)$', line)
+    match = re.match(r'^\s*(\#?)\s*\{\s*(\d+)\s*\}\s*(\S*?)\s*\:\s*([\s\S]*)$', line)
     if not match:
         raise FileProcessingException(f'Could not read line: {line}')
-    (num_duplicates, screen_name, command) = match.groups()
+    (is_comment, num_duplicates, screen_name, command) = match.groups()
     screen_name = screen_name.strip()
     command = command.strip()
-    return int(num_duplicates), screen_name, command
+    return (is_comment == '#'), int(num_duplicates), screen_name, command
 
 def dispatch(file_path, venv_path=None, wait_for_interrupt=False, load_tensorboard=False, stagger=True):
     with open(file_path, 'r') as f:
@@ -36,12 +36,15 @@ def dispatch(file_path, venv_path=None, wait_for_interrupt=False, load_tensorboa
             processed_line_tuples.append(process_file_line(line))
         except FileProcessingException as e:
             raise Exception(f'Failed to read line {i+1}: "{line}"')
-    for num_duplicates, screen_name, command in processed_line_tuples:
+    for is_comment, num_duplicates, screen_name, command in processed_line_tuples:
+        # skip lines that are commented.
+        if is_comment:
+            continue
         for i in range(num_duplicates):
-            if stagger:
-               time.sleep(10)
             augmented_command = command + f' --run-name={screen_name}_{i}'
             run_in_screen(f'{screen_name}_{i}', [augmented_command], venv_path=venv_path, wait_for_interrupt=wait_for_interrupt)
+            if stagger:
+                time.sleep(10)
 
     # I don't remember what this is supposed to do.
     if load_tensorboard:

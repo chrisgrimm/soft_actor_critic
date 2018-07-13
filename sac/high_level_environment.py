@@ -194,8 +194,9 @@ class HighLevelColumnEnvironment():
 class DummyHighLevelEnv(object):
 
     def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None,
-                 use_encoding=False, distance_mode='mean', hindsight_strategy='final', num_columns=8,
-                 centered_actions=False, accept_discrete_and_gaussian=False):
+                 distance_mode='mean', hindsight_strategy='final', num_columns=8, use_encoding=False,
+                 centered_actions=False, accept_discrete_and_gaussian=False, use_l0_agents=False,
+                 single_column=-1, use_environment=False):
         # environment hyperparameters
         self.sparse_reward = sparse_reward
         self.goal_reward = goal_reward
@@ -209,6 +210,20 @@ class DummyHighLevelEnv(object):
         self.possible_hindsight_strategies = ['final']
         self.centered_actions = centered_actions
         self.accept_discrete_and_gaussian = accept_discrete_and_gaussian
+        self.single_column = single_column
+        self.singled_obs_index = single_column
+        self.centered_action_scaling = 1.0
+        self.use_environment = use_environment
+
+        # set up centered action mode by default if single-column mode is on.
+        if self.single_column != -1:
+            self.centered_action_scaling = 0.1
+            self.centered_actions = True
+
+        if self.single_column != -1:
+            # max is the only distance mode that is invariant to the number of columns, ie. when single column mode is on,
+            # max distance still makes sense to use.
+            assert distance_mode == 'max'
 
         try:
             assert distance_mode in self.possible_distance_modes
@@ -228,6 +243,7 @@ class DummyHighLevelEnv(object):
         self.distance_mode = distance_mode
 
 
+
         self.num_steps = 0
         self.max_steps = 100
 
@@ -237,12 +253,38 @@ class DummyHighLevelEnv(object):
 
         # encoding stuff
         self.use_encoding = use_encoding
+        self.use_l0_agents = use_l0_agents
         self.num_factors = 20
-        if use_encoding:
+
+        self.index_to_factor = [4, 5, 7, 8, 9, 10, 11, 16]  # maps the agent index to the factor it controls
+        self.factor_to_column = {4: 1, 5: 7, 7: 6, 8: 3, 9: 4, 10: 2, 11: 0, 16: 5}  # maps the factor to the column
+        self.column_to_factor = {column : factor for factor, column in self.factor_to_column.items()}
+        self.factor_to_index = {factor : index for index, factor in enumerate(self.index_to_factor)}
+
+        if self.use_environment:
+            self.env = ColumnGame(self.nn, force_max=0.3, reward_per_goal=10.0, visual=False, max_episode_steps=self.max_steps)
+
+        if self.use_encoding:
             assert self.num_columns == 8
             self.obs_size = 20
-            self.nn = VAE_Network(self.num_factors, 10 * 10, mode='image')
+            self.nn = VAE_Network(self.num_factors, 10*10, mode='image')
             self.nn.restore('./indep_control2/vae_network.ckpt')
+            # make a column game for each agent.
+            self.factor_envs = [ColumnGame(self.nn, force_max=0.3, reward_per_goal=10.0, indices=[factor], visual=False, max_episode_steps=self.max_steps)
+                                for factor in self.index_to_factor]
+            if self.single_column != -1:
+                self.singled_obs_index = self.column_to_factor[self.single_column]
+
+        if self.use_l0_agents:
+            sess = None
+            option_dir = './factor_agents'
+            option_names = [f'f{x}_random' for x in self.index_to_factor]
+            scope_names = [f'SAC{x}' for x in self.index_to_factor]
+            option_paths = [os.path.join(option_dir, name, 'weights/sac.ckpt') for name in option_names]
+            self.agents = [self.load_agents(path, scope) for path, scope in zip(option_paths, scope_names)]
+            self.l0_action_converter = build_action_converter(self.factor_envs[0])
+
+
 
 
         self.observation_space = Box(-3, 3, shape=[2*self.obs_size], dtype=np.float32)
@@ -259,9 +301,30 @@ class DummyHighLevelEnv(object):
 
 
         # initialize the environment
-        self.column_position = self.new_column_position()
+        self.set_column_position(self.new_column_position())
         self.goal = self.new_goal()
 
+    def set_column_position(self, value):
+        if self.use_environment:
+            self.env.column_positions = value
+        else:
+            self.column_position = value
+
+    def get_column_position(self):
+        if self.use_environment:
+            return np.copy(self.env.column_positions)
+        else:
+            return np.copy(self.column_position)
+
+
+
+    def load_agents(self, option_path, global_scope):
+        print(f'loading {global_scope}...')
+        agent = build_column_agent(self.env, global_scope, self.sess)
+        if self.sess is None:
+            self.sess = agent.sess
+        agent.restore(option_path)
+        return agent
 
     def do_final_strategy(self):
         self.add_hindsight_experience(-1)
@@ -274,12 +337,12 @@ class DummyHighLevelEnv(object):
             self.add_hindsight_experience(index)
 
 
-
     def add_hindsight_experience(self, index, use_value_estimates=False):
         if len(self.current_trajectory) == 0:
             return
         _, _, _, last_sp, _ = self.current_trajectory[index]
-        goal = np.copy(last_sp[:self.obs_size])
+        #goal = np.copy(last_sp[:self.obs_size])
+        goal = self.make_goal_from_obs(last_sp)
         for s, a, r, sp, t in self.current_trajectory[:index] + [self.current_trajectory[index]]:
             new_s = np.copy(np.concatenate([s[:self.obs_size], goal], axis=0))
             new_a = np.copy(a)
@@ -288,13 +351,25 @@ class DummyHighLevelEnv(object):
             new_t = self.get_terminal(new_sp)
             self.buffer.append(new_s, new_a, new_r, new_sp, new_t)
 
+    def make_goal_from_obs(self, obs):
+        if self.single_column == -1:
+            return np.copy(obs[:self.obs_size])
+        else:
+            goal = np.zeros_like(obs[:self.obs_size])
+            goal[self.singled_obs_index] = obs[self.singled_obs_index]
+            return goal
+
     def step(self, raw_action):
         action = self.action_converter(raw_action)
         (column_index, parameter) = action
 
         old_obs = self.get_observation()
 
-        self.perform_action(column_index, parameter)
+        if self.use_l0_agents:
+            self.perform_action_l0_agents(column_index, parameter)
+        else:
+            self.perform_action(column_index, parameter)
+
         self.num_steps += 1
 
         obs = self.get_observation()
@@ -311,10 +386,43 @@ class DummyHighLevelEnv(object):
         return obs, reward, terminal, {}
 
     def perform_action(self, column_index, parameter):
+        new_column_position = self.get_column_position()
         if not self.centered_actions:
-            self.column_position[column_index] = parameter
+            new_column_position[column_index] = parameter
+            self.set_column_position(new_column_position)
         else:
-            self.column_position[column_index] = np.clip(self.column_position[column_index] + parameter, 0, 1)
+            new_column_position[column_index] = np.clip(new_column_position[column_index] + self.centered_action_scaling * parameter, 0, 1)
+            self.set_column_position(new_column_position)
+
+    # we have an environment that sets the column value.
+    # we want to take
+
+    def perform_action_l0_agents(self, column_index, parameter):
+        column_positions = self.get_column_position()
+        self.env.reset()
+        agent = self.agents[column_index]
+        # how do I manage the low-level domain's state?
+        # the low level domain has a way of updating the internal state when the agent takes an action.
+        # expose this in the environment, and call this function on the state-representation in the high-level env.
+        goal = np.zeros(shape=[20])
+        # TODO this might not be right.
+        goal[self.index_to_factor[column_index]] = parameter
+        for i in range(self.max_steps):
+            # pass proper observation into agent.
+            obs = self.get_observation(goal=goal)
+            action = agent.get_actions([obs])[0]
+            action = self.l0_action_converter(action)
+            self.column_position = self.env.apply_action_to_state(action, self.column_position)
+            obs = self.get_observation(goal=goal)
+            # stop if the option tells us to stop.
+            if self.env.at_goal(obs[:20], goal):
+                break
+            # stop if the environmnet enters a terminal state.
+            if self.get_terminal(obs, self.goal):
+                break
+
+
+
 
 
     def action_converter(self, raw_action):
@@ -344,31 +452,64 @@ class DummyHighLevelEnv(object):
         if self.use_encoding:
             column_image = make_n_columns(self.new_column_position(), spacing=self.spacing, size=self.image_size)
             encoding = self.nn.encode_deterministic([column_image])[0]
+            # if single-column is enabled, zero out
+            if self.single_column != -1:
+                new_encoding = np.zeros_like(encoding)
+                factor = self.column_to_factor[self.single_column]
+                new_encoding[factor] = encoding[factor]
+                encoding = new_encoding
             return encoding
         else:
-            return self.new_column_position()
+            column_position = self.new_column_position()
+            if self.single_column != -1:
+                new_column_position = np.zeros_like(column_position)
+                new_column_position[self.single_column] = column_position[self.single_column]
+                column_position = new_column_position
+            return column_position
 
     def get_observation(self, goal=None):
         goal = np.copy(self.goal) if goal is None else goal
+        column_position = self.get_column_position()
         if self.use_encoding:
-            column_image = make_n_columns(self.column_position, spacing=self.spacing, size=self.image_size)
+            column_image = make_n_columns(column_position, spacing=self.spacing, size=self.image_size)
             encoding = self.nn.encode_deterministic([column_image])[0]
             return np.concatenate([encoding, goal], axis=0)
         else:
-            return np.concatenate([np.copy(self.column_position), goal], axis=0)
+            return np.concatenate([column_position, goal], axis=0)
 
     def get_reward(self, obs, goal=None):
         goal = obs[self.obs_size:] if goal is None else goal
         obs_part = obs[:self.obs_size]
         if self.sparse_reward:
-            return self.goal_reward if self.get_terminal(obs, goal) else self.no_goal_penalty
+            goal_reward = self.goal_reward if self.get_terminal(obs, goal) else self.no_goal_penalty
+            if self.single_column != -1:
+                movement_penalty = self.compute_unnecessary_movement_penalty(obs_part, self.starting_position, [self.singled_obs_index])
+            else:
+                movement_penalty = 0
+            return goal_reward - movement_penalty
         else:
             new_dist = self.dist_to_goal(obs_part, goal)
-            return -20*new_dist
+            if self.single_column != -1:
+                movement_penalty = self.compute_unnecessary_movement_penalty(obs_part, self.starting_position, [self.singled_obs_index])
+            else:
+                movement_penalty = 0
+            return -20*(new_dist - movement_penalty)
+
+    def compute_unnecessary_movement_penalty(self, vector, starting_vector, indices=None):
+        # penalize changes to the features on the unselected indices.
+        vector = np.copy(vector)
+        vector[indices] = 0
+        starting_vector = np.copy(starting_vector)
+        starting_vector[indices] = 0
+        return np.sum(np.abs(vector - starting_vector))
 
     def get_terminal(self, obs, goal=None):
         goal = obs[self.obs_size:] if goal is None else goal
         obs_part = obs[:self.obs_size]
+        if self.single_column != -1:
+            new_obs_part = np.zeros_like(obs_part)
+            new_obs_part[self.singled_obs_index] = obs_part[self.singled_obs_index]
+            obs_part = new_obs_part
         return self.dist_to_goal(obs_part, goal) < self.goal_threshold
 
 
@@ -394,13 +535,16 @@ class DummyHighLevelEnv(object):
                 raise Exception('If youre getting this exception, something is wrong with the code')
 
             self.current_trajectory = []
-        self.column_position = self.new_column_position()
+        self.set_column_position(self.new_column_position())
         self.goal = self.new_goal()
+        obs = self.get_observation()
+        self.starting_position = np.copy(obs[:(self.num_factors if self.use_encoding else self.num_columns)])
         self.num_steps = 0
         return self.get_observation()
 
     def render(self):
-        cv2.imshow('game', 255 * make_n_columns(self.column_position, spacing=2, size=128))
+        column_position = self.get_column_position()
+        cv2.imshow('game', 255 * make_n_columns(column_position, spacing=2, size=128))
         cv2.waitKey(1)
 
 

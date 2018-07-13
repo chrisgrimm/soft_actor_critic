@@ -27,9 +27,14 @@ run_names = (
     #[f'nc_future_ent_mult_{i}' for i in range(6)] +
     #[f'nc_final_{i}' for i in range(6)] +
     #[f'nc_future_mixed_actions_{i}' for i in range(6)]
-    [f'sum_run_{i}' for i in range(6)] +
-    [f'mean_run_lr1e-4_{i}' for i in range(6)] +
-    [f'sum_run_lr1e-4_{i}' for i in range(6)]
+    #[f'sum_run_{i}' for i in range(6)] +
+    #[f'mean_run_lr1e-4_{i}' for i in range(6)] +
+    #[f'sum_run_lr1e-4_{i}' for i in range(6)] +
+    #[f'max_run_lr1e-4_{i}' for i in range(6)]
+    [f'sum_run_lr5e-5_future10_{i}' for i in range(6)] +
+    [f'sum_run_lr5e-5_future5_{i}' for i in range(6)] +
+    [f'max_run_lr5e-5_future10_{i}' for i in range(6)] +
+    [f'max_run_lr5e-5_future5_{i}' for i in range(6)]
 )
 
 print(produce_tensorboard_command('runs', 'data', run_names))

@@ -96,11 +96,16 @@ class ColumnGame(object):
         return np.sum(np.abs(vector - starting_vector))
 
     # action is [-1, 1] x num_columns vector
+
+    def apply_action_to_state(self, action, column_positions):
+        action = self.force_max * np.clip(action, -1, 1)
+        #self.episode_step += 1
+        return np.clip(column_positions + action, 0, 1)
+
     def step(self, action):
         #print('columns', self.column_positions)
-        action = self.force_max * np.clip(action, -1, 1)
+        self.column_positions = self.apply_action_to_state(action, self.column_positions)
         self.episode_step += 1
-        self.column_positions = np.clip(self.column_positions + action, 0, 1)
         #print('new_columns', self.column_positions)
         obs = self.get_observation()
         if self.visual:
