@@ -15,11 +15,10 @@ def test():
     agent = build_column_agent(env, name='SAC2')
     agent.restore(f'./factor_agents/f{fac_num}_copy/weights/sac.ckpt')
 
-def perform_surgery():
-    ckpt_surgery('./factor_agents/f4_random/weights/sac.ckpt', lambda x: x, dry_run=True)
+def perform_surgery(column_number, run_number):
+    ckpt_surgery(f'./column_factor_agents/runs/column{column_number}_{run_number}/weights/sac.ckpt', lambda x: x.replace('SAC_high_level', f'column{column_number}'), dry_run=True)
 
 #def print_tensors():
 #    print_tensors_in_checkpoint_file(f'./factor_agents/f{fac_num}/weights/sac.ckpt', tensor_name='', all_tensors=True)
 
-#test()
-perform_surgery()
+perform_surgery(7, 1)

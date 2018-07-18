@@ -260,11 +260,13 @@ class DummyHighLevelEnv(object):
         self.factor_to_column = {4: 1, 5: 7, 7: 6, 8: 3, 9: 4, 10: 2, 11: 0, 16: 5}  # maps the factor to the column
         self.column_to_factor = {column : factor for factor, column in self.factor_to_column.items()}
         self.factor_to_index = {factor : index for index, factor in enumerate(self.index_to_factor)}
+        self.starting_position = np.zeros(shape=[8])
 
         if self.use_environment:
             self.env = ColumnGame(self.nn, force_max=0.3, reward_per_goal=10.0, visual=False, max_episode_steps=self.max_steps)
 
         if self.use_encoding:
+            self.starting_position = np.zeros(shape=[20])
             assert self.num_columns == 8
             self.obs_size = 20
             self.nn = VAE_Network(self.num_factors, 10*10, mode='image')
@@ -380,8 +382,8 @@ class DummyHighLevelEnv(object):
         reward = self.get_reward(obs)
 
         terminal = self.get_terminal(obs) or self.num_steps >= self.max_steps
-        if terminal:
-            print('dist_to_goal', self.dist_to_goal(obs[:self.obs_size], obs[self.obs_size:]))
+        #if terminal:
+        #    print('dist_to_goal', self.dist_to_goal(obs[:self.obs_size], obs[self.obs_size:]))
 
         if self.buffer is not None:
             self.current_trajectory.append((old_obs, raw_action, reward, obs, terminal))
@@ -555,8 +557,8 @@ class DummyHighLevelEnv(object):
 
             self.current_trajectory = []
         # TODO remember to unset this.
-        self.set_column_position(0.5*np.ones(shape=[8]))
-        #self.set_column_position(self.new_column_position())
+        #self.set_column_position(0.5*np.ones(shape=[8]))
+        self.set_column_position(self.new_column_position())
         self.goal = self.new_goal()
         obs = self.get_observation()
         self.starting_position = np.copy(obs[:(self.num_factors if self.use_encoding else self.num_columns)])
