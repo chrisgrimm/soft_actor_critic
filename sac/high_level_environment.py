@@ -270,12 +270,14 @@ class DummyHighLevelEnv(object):
             self.nn = VAE_Network(self.num_factors, 10*10, mode='image')
             self.nn.restore('./indep_control2/vae_network.ckpt')
             # make a column game for each agent.
-            self.factor_envs = [ColumnGame(self.nn, force_max=0.3, reward_per_goal=10.0, indices=[factor], visual=False, max_episode_steps=self.max_steps)
-                                for factor in self.index_to_factor]
+            #self.factor_envs = [ColumnGame(self.nn, force_max=0.3, reward_per_goal=10.0, indices=[factor], visual=False, max_episode_steps=self.max_steps)
+            #                    for factor in self.index_to_factor]
             if self.single_column != -1:
                 self.singled_obs_index = self.column_to_factor[self.single_column]
 
         if self.use_l0_agents:
+            # use_environment must be true to use the l0_agents.
+            assert self.use_environment
             sess = None
             option_dir = './factor_agents'
             option_names = [f'f{x}_random' for x in self.index_to_factor]
@@ -286,18 +288,26 @@ class DummyHighLevelEnv(object):
 
 
 
-
         self.observation_space = Box(-3, 3, shape=[2*self.obs_size], dtype=np.float32)
+        # TODO untangle this.
         if self.centered_actions:
             if self.accept_discrete_and_gaussian:
                 self.action_space = Box(-1, 1, shape=[self.num_columns + 1], dtype=np.float32)
             else:
-                self.action_space = Box(-1, 1, shape=[2], dtype=np.float32)
+                if self.single_column != -1:
+                    self.action_space = Box(-1, 1, shape=[self.num_columns], dtype=np.float32)
+                else:
+                    self.action_space = Box(-1, 1, shape=[2], dtype=np.float32)
+
         else:
             if self.accept_discrete_and_gaussian:
                 self.action_space = Box(0, 1, shape=[self.num_columns + 1], dtype=np.float32)
             else:
-                self.action_space = Box(0, 1, shape=[2], dtype=np.float32)
+                if self.single_column != -1:
+                    self.action_space = Box(-1, 1, shape=[self.num_columns], dtype=np.float32)
+                else:
+                    self.action_space = Box(-1, 1, shape=[2], dtype=np.float32)
+
 
 
         # initialize the environment
@@ -360,15 +370,8 @@ class DummyHighLevelEnv(object):
             return goal
 
     def step(self, raw_action):
-        action = self.action_converter(raw_action)
-        (column_index, parameter) = action
-
         old_obs = self.get_observation()
-
-        if self.use_l0_agents:
-            self.perform_action_l0_agents(column_index, parameter)
-        else:
-            self.perform_action(column_index, parameter)
+        self.perform_action(raw_action)
 
         self.num_steps += 1
 
@@ -385,7 +388,19 @@ class DummyHighLevelEnv(object):
 
         return obs, reward, terminal, {}
 
-    def perform_action(self, column_index, parameter):
+    def perform_action(self, action):
+        if self.use_l0_agents:
+            (column_index, parameter) = self.action_converter_high_level(action)
+            self.perform_action_l0_agents(column_index, parameter)
+        elif self.single_column != -1:
+            action = self.action_converter_single_column(action)
+            self.perform_action_single_column(action)
+        else:
+            (column_index, parameter) = self.action_converter_high_level(action)
+            self.perform_action_perfect(column_index, parameter)
+
+
+    def perform_action_perfect(self, column_index, parameter):
         new_column_position = self.get_column_position()
         if not self.centered_actions:
             new_column_position[column_index] = parameter
@@ -396,7 +411,6 @@ class DummyHighLevelEnv(object):
 
     # we have an environment that sets the column value.
     # we want to take
-
     def perform_action_l0_agents(self, column_index, parameter):
         column_positions = self.get_column_position()
         self.env.reset()
@@ -421,11 +435,16 @@ class DummyHighLevelEnv(object):
             if self.get_terminal(obs, self.goal):
                 break
 
+    def perform_action_single_column(self, all_column_action):
+        column_positions = self.get_column_position()
+        column_positions = np.clip(column_positions + self.centered_action_scaling * all_column_action, 0, 1)
+        self.set_column_position(column_positions)
+
+    def action_converter_single_column(self, raw_action):
+        return np.tanh(raw_action)
 
 
-
-
-    def action_converter(self, raw_action):
+    def action_converter_high_level(self, raw_action):
         if self.accept_discrete_and_gaussian:
             a_cat = np.argmax(raw_action[:self.num_columns])
             a_gauss = raw_action[self.num_columns]
@@ -501,7 +520,7 @@ class DummyHighLevelEnv(object):
         vector[indices] = 0
         starting_vector = np.copy(starting_vector)
         starting_vector[indices] = 0
-        return np.sum(np.abs(vector - starting_vector))
+        return 10*np.sum(np.abs(vector - starting_vector))
 
     def get_terminal(self, obs, goal=None):
         goal = obs[self.obs_size:] if goal is None else goal
@@ -535,7 +554,9 @@ class DummyHighLevelEnv(object):
                 raise Exception('If youre getting this exception, something is wrong with the code')
 
             self.current_trajectory = []
-        self.set_column_position(self.new_column_position())
+        # TODO remember to unset this.
+        self.set_column_position(0.5*np.ones(shape=[8]))
+        #self.set_column_position(self.new_column_position())
         self.goal = self.new_goal()
         obs = self.get_observation()
         self.starting_position = np.copy(obs[:(self.num_factors if self.use_encoding else self.num_columns)])
