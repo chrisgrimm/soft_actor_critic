@@ -35,7 +35,7 @@ run_names = (
     #[f'sum_run_lr5e-5_future5_{i}' for i in range(6)] +
     #[f'max_run_lr5e-5_future10_{i}' for i in range(6)] +
     #[f'max_run_lr5e-5_future5_{i}' for i in range(6)]
-    [f'column{j}_{i}' for i in range(2) for j in range(8)]
+    [f'column{j}_fix_{i}' for i in range(2) for j in range(8)]
 )
 
 print(produce_tensorboard_command('runs', 'data', run_names))

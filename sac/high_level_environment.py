@@ -196,7 +196,7 @@ class DummyHighLevelEnv(object):
     def __init__(self, sparse_reward=False, goal_reward=10, no_goal_penalty=-0.1, goal_threshold=0.1, buffer=None,
                  distance_mode='mean', hindsight_strategy='final', num_columns=8, use_encoding=False,
                  centered_actions=False, accept_discrete_and_gaussian=False, use_l0_agents=False,
-                 single_column=-1, use_environment=False):
+                 single_column=-1, use_environment=False, single_column_as_observation=False):
         # environment hyperparameters
         self.sparse_reward = sparse_reward
         self.goal_reward = goal_reward
@@ -214,6 +214,8 @@ class DummyHighLevelEnv(object):
         self.singled_obs_index = single_column
         self.centered_action_scaling = 1.0
         self.use_environment = use_environment
+        self.single_column_as_observation = single_column_as_observation
+        self.target_column = np.random.randint(0, self.num_columns)
 
         # set up centered action mode by default if single-column mode is on.
         if self.single_column != -1:
@@ -289,14 +291,17 @@ class DummyHighLevelEnv(object):
             self.l0_action_converter = build_action_converter(self.factor_envs[0])
 
 
+        if self.single_column != -1 or self.single_column_as_observation:
+            self.observation_space = Box(-3, 3, shape=[3*self.obs_size], dtype=np.float32)
+        else:
+            self.observation_space = Box(-3, 3, shape=[2*self.obs_size], dtype=np.float32)
 
-        self.observation_space = Box(-3, 3, shape=[2*self.obs_size], dtype=np.float32)
         # TODO untangle this.
         if self.centered_actions:
             if self.accept_discrete_and_gaussian:
                 self.action_space = Box(-1, 1, shape=[self.num_columns + 1], dtype=np.float32)
             else:
-                if self.single_column != -1:
+                if self.single_column != -1 or self.single_column_as_observation:
                     self.action_space = Box(-1, 1, shape=[self.num_columns], dtype=np.float32)
                 else:
                     self.action_space = Box(-1, 1, shape=[2], dtype=np.float32)
@@ -305,7 +310,7 @@ class DummyHighLevelEnv(object):
             if self.accept_discrete_and_gaussian:
                 self.action_space = Box(0, 1, shape=[self.num_columns + 1], dtype=np.float32)
             else:
-                if self.single_column != -1:
+                if self.single_column != -1 or self.single_column_as_observation:
                     self.action_space = Box(-1, 1, shape=[self.num_columns], dtype=np.float32)
                 else:
                     self.action_space = Box(-1, 1, shape=[2], dtype=np.float32)
@@ -313,8 +318,20 @@ class DummyHighLevelEnv(object):
 
 
         # initialize the environment
+        #self.set_column_position(0.5*np.ones(shape=[8]))
         self.set_column_position(self.new_column_position())
         self.goal = self.new_goal()
+        # if both single column mode and single column as observation is true, this creates a problem.
+        assert not (self.single_column != -1 and self.single_column_as_observation)
+
+    def get_singled_obs_index(self):
+        if self.single_column_as_observation:
+            if self.use_encoding:
+                return self.column_to_factor[self.target_column]
+            else:
+                return self.target_column
+        else:
+            return self.singled_obs_index
 
     def set_column_position(self, value):
         if self.use_environment:
@@ -327,8 +344,6 @@ class DummyHighLevelEnv(object):
             return np.copy(self.env.column_positions)
         else:
             return np.copy(self.column_position)
-
-
 
     def load_agents(self, option_path, global_scope):
         print(f'loading {global_scope}...')
@@ -364,12 +379,21 @@ class DummyHighLevelEnv(object):
             self.buffer.append(new_s, new_a, new_r, new_sp, new_t)
 
     def make_goal_from_obs(self, obs):
-        if self.single_column == -1:
+        # when no form of single column mode is on.
+        if self.single_column == -1 and (not self.single_column_as_observation):
             return np.copy(obs[:self.obs_size])
         else:
-            goal = np.zeros_like(obs[:self.obs_size])
-            goal[self.singled_obs_index] = obs[self.singled_obs_index]
-            return goal
+            obs_part, target_onehot, goal_obs = obs[:self.obs_size], obs[self.obs_size:2*self.obs_size], obs[2*self.obs_size:]
+            return np.copy(np.concatenate([target_onehot, obs_part]))
+
+        #if self.single_column != -1 or self.single_column_as_observation:
+        #    obs_part, target_onehot, goal_obs = obs[:self.obs_size], obs[self.obs_size:2*self.obs_size], obs[2*self.obs_size:]
+        #    return np.copy(np.concatenate([target_onehot, obs_part]))
+        # when the goal should be the entire obs.
+        #else:
+        #    goal = np.zeros_like(obs[:self.obs_size])
+        #    goal[self.get_singled_obs_index()] = obs[self.get_singled_obs_index()]
+        #    return goal
 
     def step(self, raw_action):
         old_obs = self.get_observation()
@@ -394,7 +418,7 @@ class DummyHighLevelEnv(object):
         if self.use_l0_agents:
             (column_index, parameter) = self.action_converter_high_level(action)
             self.perform_action_l0_agents(column_index, parameter)
-        elif self.single_column != -1:
+        elif self.single_column != -1 or self.single_column_as_observation:
             action = self.action_converter_single_column(action)
             self.perform_action_single_column(action)
         else:
@@ -474,23 +498,30 @@ class DummyHighLevelEnv(object):
             column_image = make_n_columns(self.new_column_position(), spacing=self.spacing, size=self.image_size)
             encoding = self.nn.encode_deterministic([column_image])[0]
             # if single-column is enabled, zero out
-            if self.single_column != -1:
+            if self.single_column != -1 or self.single_column_as_observation:
                 new_encoding = np.zeros_like(encoding)
                 factor = self.column_to_factor[self.single_column]
                 new_encoding[factor] = encoding[factor]
                 encoding = new_encoding
+                target_onehot = np.zeros(shape=[self.obs_size])
+                target_onehot[self.get_singled_obs_index()] = 1
+                encoding = np.concatenate([target_onehot, encoding], axis=0)
             return encoding
         else:
             column_position = self.new_column_position()
-            if self.single_column != -1:
+            if self.single_column != -1 or self.single_column_as_observation:
                 new_column_position = np.zeros_like(column_position)
                 new_column_position[self.single_column] = column_position[self.single_column]
                 column_position = new_column_position
+                target_onehot = np.zeros(shape=[self.obs_size])
+                target_onehot[self.get_singled_obs_index()] = 1
+                column_position = np.concatenate([target_onehot, column_position], axis=0)
             return column_position
 
     def get_observation(self, goal=None):
         goal = np.copy(self.goal) if goal is None else goal
         column_position = self.get_column_position()
+
         if self.use_encoding:
             column_image = make_n_columns(column_position, spacing=self.spacing, size=self.image_size)
             encoding = self.nn.encode_deterministic([column_image])[0]
@@ -501,19 +532,25 @@ class DummyHighLevelEnv(object):
     def get_reward(self, obs, goal=None):
         goal = obs[self.obs_size:] if goal is None else goal
         obs_part = obs[:self.obs_size]
+
         if self.sparse_reward:
             goal_reward = self.goal_reward if self.get_terminal(obs, goal) else self.no_goal_penalty
-            if self.single_column != -1:
-                movement_penalty = self.compute_unnecessary_movement_penalty(obs_part, self.starting_position, [self.singled_obs_index])
+            if self.single_column != -1 or self.single_column_as_observation:
+                singled_obs_index = np.argmax(goal[:self.obs_size])
+                movement_penalty = self.compute_unnecessary_movement_penalty(obs_part, self.starting_position, [singled_obs_index])
             else:
                 movement_penalty = 0
             return goal_reward - movement_penalty
         else:
-            new_dist = self.dist_to_goal(obs_part, goal)
-            if self.single_column != -1:
-                movement_penalty = self.compute_unnecessary_movement_penalty(obs_part, self.starting_position, [self.singled_obs_index])
+            goal_obs = goal
+            if self.single_column != -1 or self.single_column_as_observation:
+                singled_obs_index = np.argmax(goal[:self.obs_size])
+                movement_penalty = self.compute_unnecessary_movement_penalty(obs_part, self.starting_position, [singled_obs_index])
+                # cut out target column from goal.
+                goal_obs = goal[self.obs_size:]
             else:
                 movement_penalty = 0
+            new_dist = self.dist_to_goal(obs_part, goal_obs)
             return -20*(new_dist - movement_penalty)
 
     def compute_unnecessary_movement_penalty(self, vector, starting_vector, indices=None):
@@ -527,11 +564,16 @@ class DummyHighLevelEnv(object):
     def get_terminal(self, obs, goal=None):
         goal = obs[self.obs_size:] if goal is None else goal
         obs_part = obs[:self.obs_size]
-        if self.single_column != -1:
+        goal_obs = goal
+        # modify the obs_part for the target column case.
+        if self.single_column != -1 or self.single_column_as_observation:
+            singled_obs_index = np.argmax(goal[:self.obs_size])
             new_obs_part = np.zeros_like(obs_part)
-            new_obs_part[self.singled_obs_index] = obs_part[self.singled_obs_index]
+            new_obs_part[singled_obs_index] = obs_part[singled_obs_index]
             obs_part = new_obs_part
-        return self.dist_to_goal(obs_part, goal) < self.goal_threshold
+            # cut out the target column component for the distance comparison.
+            goal_obs = goal[self.obs_size:]
+        return self.dist_to_goal(obs_part, goal_obs) < self.goal_threshold
 
 
     def dist_to_goal(self, obs_part, goal):
@@ -560,6 +602,7 @@ class DummyHighLevelEnv(object):
         #self.set_column_position(0.5*np.ones(shape=[8]))
         self.set_column_position(self.new_column_position())
         self.goal = self.new_goal()
+        self.target_column = np.random.randint(0, self.num_columns)
         obs = self.get_observation()
         self.starting_position = np.copy(obs[:(self.num_factors if self.use_encoding else self.num_columns)])
         self.num_steps = 0

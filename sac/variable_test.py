@@ -16,9 +16,9 @@ def test():
     agent.restore(f'./factor_agents/f{fac_num}_copy/weights/sac.ckpt')
 
 def perform_surgery(column_number, run_number):
-    ckpt_surgery(f'./column_factor_agents/runs/column{column_number}_{run_number}/weights/sac.ckpt', lambda x: x.replace('SAC_high_level', f'column{column_number}'), dry_run=True)
+    ckpt_surgery(f'./column_factor_agents/runs/column{column_number}_fix_{run_number}/weights/sac.ckpt', lambda x: x.replace('SAC_high_level', f'column{column_number}'), dry_run=False)
 
 #def print_tensors():
 #    print_tensors_in_checkpoint_file(f'./factor_agents/f{fac_num}/weights/sac.ckpt', tensor_name='', all_tensors=True)
 
-perform_surgery(7, 1)
+perform_surgery(3, 1)
